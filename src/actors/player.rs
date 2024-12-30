@@ -1,14 +1,13 @@
-use crate::event_system::{event::{Event, EventType}, dispatcher::Dispatcher};
-use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
-
-use std::sync::Arc;
-use std::any::Any;
-
 use macroquad::prelude::*;
-use macroquad::time::get_time;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
+
+use std::sync::{Arc, Mutex};
+
+use crate::{event_system::{dispatcher::Dispatcher, event::{Event, EventType}}, state_machine::machine::StateMachine};
+use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
+use crate::state_machine::machine::StateType;
 
 pub struct Player{
     pos: Vec2,
@@ -19,11 +18,13 @@ pub struct Player{
     max_acceleration: f32,
     pub size: f32,
     color: Color,
-    emitter: Arc<Emitter>
+    emitter: Arc<Mutex<Emitter>>,
+    dispatcher: Arc<Mutex<Dispatcher>>,
+    machine: Arc<Mutex<StateMachine>>
 }
 
 impl Player{
-    pub fn new(x: f32, y:f32, size: f32, color: Color) -> Self{
+    pub fn new(x: f32, y:f32, size: f32, color: Color, dispatcher: Arc<Mutex<Dispatcher>>) -> Self{
         return Player { 
             pos: Vec2::new(x, y),
             direction: Vec2::new(0.0, 0.0),
@@ -33,7 +34,7 @@ impl Player{
             max_acceleration: 3000.0,
             size: size,
             color: color,
-            emitter: Arc::new(Emitter::new(EmitterConfig {
+            emitter: Arc::new(Mutex::new(Emitter::new(EmitterConfig {
                 lifetime: 0.5,
                 amount: 5,
                 initial_direction_spread: 0.0,
@@ -45,23 +46,39 @@ impl Player{
                 }),
                 blend_mode: BlendMode::Additive,
                 ..Default::default()
-            }))
+            }))),
+            dispatcher: dispatcher,
+            machine: Arc::new(Mutex::new(StateMachine::new())),
         }
     }
 
-    pub fn initialize_events(&self, dispatcher: &mut Dispatcher){
-        self.subscribe(&EventType::BlockInput, dispatcher);
+    pub fn initialize_events(&self){
+        self.subscribe(&EventType::PlayerMoving);
+        self.subscribe(&EventType::PlayerIdle);
+        self.subscribe(&EventType::PlayerHit);
     }
     
-    pub fn collide(&mut self, obj: Vec2, dispatcher: &mut Dispatcher){
+    pub fn collide(&mut self, obj: Vec2){
         if (obj - self.pos).length() < self.size + self.size{
-            let time = get_time();
-            
-            self.publish(Event::new(3.0, EventType::BlockInput), dispatcher);
-            self.direction = -self.direction;
-
-            println!("Player collition.");
+            let event = Event::new(get_time(), EventType::PlayerHit);
+            self.publish(event);
         }
+    }
+
+    pub fn update(&mut self, delta: f32){
+        let state = self.machine.lock().unwrap().get_state();
+        match *state.lock().unwrap(){
+            //move player
+            StateType::Moving | StateType::Idle => {
+                let _ = self.move_to(delta);
+            },
+            //player hit, bounce back
+            StateType::Hit => {
+                self.velocity = -self.velocity * 0.9;
+                self.direction = self.velocity.normalize();
+                self.pos += self.velocity * delta;
+            },
+        };
     }
 }
 
@@ -75,15 +92,6 @@ impl Object for Player{
 impl Moveable for Player{
     fn move_to(&mut self, delta: f32) -> (f32, f32) {
         self.direction = vec2(0.0, 0.0);
-
-        if is_key_down(KeyCode::Right) || is_key_down(KeyCode::Left) || is_key_down(KeyCode::Up) || is_key_down(KeyCode::Down) {
-            if self.acceleration <= self.max_acceleration {
-                self.acceleration += 1.7;
-            }
-        }
-        else if self.acceleration > 1.0{
-            self.acceleration /= 1.7; 
-        }
 
         //Moves to a direction while key is pressed
         if is_key_down(KeyCode::Right){
@@ -100,7 +108,12 @@ impl Moveable for Player{
         }
 
         //if player is moving
-        if self.direction.length() > 0.0 {   
+        if self.direction.length() > 0.0 {
+            //apply acceleration
+            if self.acceleration <= self.max_acceleration {
+                self.acceleration += 1.7;
+            }
+
             self.direction = self.direction.normalize();
             //apply direction and acceleration to velocity
             self.velocity += self.direction * self.acceleration * delta;
@@ -111,8 +124,12 @@ impl Moveable for Player{
             }
         }
         else{
+            //apply deceleration
+            if self.acceleration > 1.0{
+                self.acceleration *= 0.7; 
+            }
             //no input, apply friction to slow player
-            self.velocity *= 0.9;
+            self.velocity *= 0.95;
             
             if self.velocity.length() < 0.1 {
                 self.velocity = vec2(0.0, 0.0);
@@ -123,23 +140,15 @@ impl Moveable for Player{
         
         return (self.pos.x, self.pos.y)
     }
-
-    fn get_dir(&self) -> Vec2{
-        return self.direction;
-    }
 }
 
 impl Drawable for Player{
     fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
-        
-        match Arc::<Emitter>::get_mut(&mut self.emitter){
-            Some(emitter) => {
-                emitter.draw(self.pos);
-            },
-            None => {
-                println!("No emitter.");
-            }
+
+        match self.emitter.lock(){
+            Ok(mut emitter) => emitter.draw(self.pos),
+            Err(err) => println!("Emitter error: {:?}", err),
         }
     }
 }
@@ -147,25 +156,28 @@ impl Drawable for Player{
 
 //======== Event traits =============
 impl Subscriber for Player {
-    fn subscribe(&self, event: &EventType, mut dispatcher: &mut Dispatcher){
-        dispatcher.register_listener(event.clone(), Arc::new(self.clone()));
+    fn subscribe(&self, event: &EventType){
+        let _ = &mut self.dispatcher.lock().unwrap().register_listener(event.clone(), Arc::new(self.clone()));
     }
 
     fn notify(&self, event: &Event){
         match &event.event_type{
-            EventType::BlockInput => {
-                println!("BlockInput received.");
+            EventType::PlayerIdle => {
+                self.machine.lock().unwrap().transition(StateType::Idle);
             },
-            _ => {
-                return ()
+            EventType::PlayerMoving => {
+                self.machine.lock().unwrap().transition(StateType::Moving);
+            },
+            EventType::PlayerHit => {
+                self.machine.lock().unwrap().transition(StateType::Hit);
             }
         }
     }
 }
 
 impl Publisher for Player {
-    fn publish(&self, event: Event, dispatcher: &mut Dispatcher){
-        dispatcher.dispatch(event);
+    fn publish(&self, event: Event){
+        let _ = &mut self.dispatcher.lock().unwrap().dispatch(event);
     }
 }
 
@@ -181,7 +193,9 @@ impl Clone for Player{
             max_acceleration: self.max_acceleration,
             size: self.size,
             color: self.color,
-            emitter: Arc::clone(&self.emitter)
+            emitter: Arc::clone(&self.emitter),
+            dispatcher: Arc::clone(&self.dispatcher),
+            machine: Arc::clone(&self.machine)
         }
     }
 }
