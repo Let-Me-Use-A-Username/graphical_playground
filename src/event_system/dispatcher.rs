@@ -25,8 +25,6 @@ impl Dispatcher{
         
         if let Some(sub_list) = subscribers.get(&event.event_type){
             for subscriber in sub_list{
-                //if let Some(subscriber) = subscriber.as_any().downcast_ref::<Arc<dyn Subscriber<T>>>() {
-                    //subscriber.notify(&event);
                 subscriber.notify(&event);
             }
         }

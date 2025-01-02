@@ -3,7 +3,8 @@ use core::panic;
 #[derive(Debug, Clone, Copy)]
 pub enum TimerType{
     Unassigned,
-    ImmuneTimer
+    ImmuneTimer,
+    Cooldown
 }
 
 #[derive(Debug, Clone, Copy)]

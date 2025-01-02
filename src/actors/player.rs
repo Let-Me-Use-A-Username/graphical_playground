@@ -21,7 +21,8 @@ pub struct Player{
     emitter: Arc<Mutex<Emitter>>,
     dispatcher: Arc<Mutex<Dispatcher>>,
     machine: Arc<Mutex<StateMachine>>,
-    immune_timer: Timer
+    immune_timer: Timer,
+    immune_timer_cooldown: Timer
 }
 
 impl Player{
@@ -50,7 +51,8 @@ impl Player{
             }))),
             dispatcher: dispatcher,
             machine: Arc::new(Mutex::new(StateMachine::new())),
-            immune_timer: Timer::new()
+            immune_timer: Timer::new(),
+            immune_timer_cooldown: Timer::new()
 
         }
     }
@@ -64,12 +66,13 @@ impl Player{
     pub fn collide(&mut self, obj: Vec2){
         if (obj - self.pos).length() < self.size + self.size{
             let event = Event::new(get_time(), EventType::PlayerHit);
+            
             self.publish(event);
         }
     }
 
     pub fn update(&mut self, delta: f32){
-        let state = self.machine.lock().unwrap().get_state();
+        let state = self.machine.try_lock().unwrap().get_state();
         match *state.lock().unwrap(){
             //move player
             StateType::Moving | StateType::Idle => {
@@ -77,18 +80,31 @@ impl Player{
             },
             //player hit, bounce back
             StateType::Hit => {
+                //If player has been hit timer is active
                 if self.immune_timer.is_set(){
                     self.velocity = -self.velocity * 0.9;
                     self.direction = self.velocity.normalize();
                     self.pos += self.velocity * delta;
                 }
+                //Player has been hit, no timer active so activate it
                 else{
-                    self.immune_timer.set(get_time(), 3.0, TimerType::ImmuneTimer);
+                    if self.immune_timer_cooldown.is_set(){
+                        if self.immune_timer_cooldown.has_expired(get_time()){
+                            self.immune_timer_cooldown.clear();
+                        }
+                    }
+                    else{
+                        self.immune_timer.set(get_time(), 3.0, TimerType::ImmuneTimer);
+                    }
                 }
 
+                //Check if hit timer expired
                 if self.immune_timer.has_expired(get_time()){
-                    self.machine.lock().unwrap().transition(StateType::Moving);
                     self.immune_timer.clear();
+                    self.immune_timer_cooldown.set(get_time(), 10.0, TimerType::Cooldown);
+                    println!("Immune timer expired. Setting cooldown");
+                    
+                    self.publish(Event::new(10.0, EventType::PlayerMoving));
                 }
             },
         };
@@ -209,7 +225,8 @@ impl Clone for Player{
             emitter: Arc::clone(&self.emitter),
             dispatcher: Arc::clone(&self.dispatcher),
             machine: Arc::clone(&self.machine),
-            immune_timer: self.immune_timer
+            immune_timer: self.immune_timer,
+            immune_timer_cooldown: self.immune_timer_cooldown
         }
     }
 }

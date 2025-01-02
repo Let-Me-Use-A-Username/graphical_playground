@@ -17,8 +17,8 @@ impl StateMachine{
     }
 
     pub fn transition(&mut self, state: StateType){
-        println!("Changed state to {:?}", self.get_state().lock().unwrap());
         self.active = Arc::new(Mutex::new(state));
+        println!("Changed state to {:?}", self.active);
     }
 
     pub fn get_state(&self) -> Arc<Mutex<StateType>>{
