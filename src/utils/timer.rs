@@ -1,47 +1,43 @@
-use core::panic;
-
-#[derive(Debug, Clone, Copy)]
-pub enum TimerType{
-    Unassigned,
-    ImmuneTimer,
-    Cooldown
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Timer{
     start: f64,
     duration: f64,
-    timer_type: TimerType,
     set: bool,
+    cooldown: Option<f64>,
+    last_set: Option<f64>
 }
 
 impl Timer{
     pub fn new() -> Self{
-        return Timer { start: 0.0, duration: 0.0, timer_type: TimerType::Unassigned, set: false}
+        return Timer { start: 0.0, duration: 0.0, set: false, cooldown: None, last_set: None}
     }
 
-    pub fn set(&mut self, start: f64, duration: f64, timer_type: TimerType){
+    pub fn set(&mut self, start: f64, duration: f64, cooldown: Option<f64>){
         self.start = start;
         self.duration = duration;
-        self.timer_type = timer_type;
         self.set = true;
+        self.cooldown = cooldown;
+        self.last_set = Some(start);
     }
 
-    pub fn has_expired(&self, now: f64) -> bool{
+    pub fn has_expired(&self, now: f64) -> Option<bool>{
         if self.set{
-            return now - self.start > self.duration;
+            return Some(now > self.start + self.duration)
         }
-        panic!("Checking expiration on a Timer which hasn't been setted first.");
+        return None
     }
 
     pub fn is_set(&self) -> bool{
         return self.set
     }
 
-    pub fn clear(&mut self){
-        self.start = 0.0;
-        self.duration = 0.0;
-        self.timer_type = TimerType::Unassigned;
-        self.set = false;
+    pub fn can_be_set(&self, now: f64) -> bool{
+        if let Some(cooldown) = self.cooldown{
+            if let Some(last) = self.last_set{
+                return last + self.duration + cooldown > now
+            }
+        }
+        return true
     }
+
 }

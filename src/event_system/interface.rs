@@ -5,7 +5,7 @@ use macroquad::math::Vec2;
 //========= Event related interfaces ==========
 pub trait Subscriber{
     fn subscribe(&self, event: &EventType);
-    fn notify(&self, event: &Event);
+    fn notify(&mut self, event: &Event);
 }
 
 pub trait Publisher{

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 pub struct Dispatcher{
-    subscribers: Arc<Mutex<HashMap<EventType, Vec<Arc<dyn Subscriber>>>>>,
+    subscribers: Arc<Mutex<HashMap<EventType, Vec<Arc<Mutex<dyn Subscriber>>>>>>,
 }
 
 impl Dispatcher{
@@ -15,7 +15,7 @@ impl Dispatcher{
         }
     }
     
-    pub fn register_listener(&mut self, event: EventType, actor: Arc<dyn Subscriber>){
+    pub fn register_listener(&mut self, event: EventType, actor: Arc<Mutex<dyn Subscriber>>){
         let mut subscribers = self.subscribers.lock().unwrap();
         subscribers.entry(event).or_default().push(actor);
     }
@@ -25,7 +25,12 @@ impl Dispatcher{
         
         if let Some(sub_list) = subscribers.get(&event.event_type){
             for subscriber in sub_list{
-                subscriber.notify(&event);
+                match subscriber.lock(){
+                    Ok(mut sub) => {
+                        sub.notify(&event);
+                    },
+                    Err(error) => eprintln!("{:?}", error),
+                }
             }
         }
     }
