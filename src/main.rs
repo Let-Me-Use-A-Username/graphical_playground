@@ -3,16 +3,19 @@ mod actors;
 mod event_system;
 mod grid_system;
 mod factory;
+mod state_machine;
+mod utils;
 
 use macroquad::prelude::*;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::env;
 
+use crate::globals::Global;
 use crate::grid_system::grid::Grid;
 use crate::actors::player::Player;
-use crate::actors::enemy::{Enemy, EnemyType};
-use crate::event_system::{interface::{Drawable, Moveable, Object, Subscriber}, dispatcher::Dispatcher};
+use crate::actors::enemy::EnemyType;
+use crate::event_system::{interface::{Drawable, Object}, dispatcher::Dispatcher};
 use crate::factory::Factory;
 
 
@@ -21,19 +24,21 @@ async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     
     // ======= INITIALIZATION ========
-    let mut dispatcher = Dispatcher::new();
+    let dispatcher = Arc::new(Mutex::new(Dispatcher::new()));
     let mut grid = Grid::new(20.0);
     let mut factory = Factory::new();
+    let global = Global::new();
 
     let mut player = Player::new(
-        globals::get_screen_width() / 2.0, 
-        globals::get_screen_height() / 2.0, 
+        global.get_screen_width() / 2.0, 
+        global.get_screen_height() / 2.0, 
         15.0, 
-        YELLOW
+        YELLOW,
+        dispatcher.clone()
     );
 
-    player.initialize_events(&mut dispatcher);
-
+    player.initialize_events();
+    
     let mut player_pos = player.get_pos();
     let mut camera_pos = vec2(player_pos.x, player_pos.y);
     
@@ -46,7 +51,7 @@ async fn main() {
         // ======= LOGIC =========
 
         let delta = get_frame_time();
-        player.move_to(delta);
+        player.update(delta);
        
         let direction = player_pos - camera_pos;
         camera_pos += direction * 0.05;
@@ -59,7 +64,7 @@ async fn main() {
         
         let objects = grid.get_nearby_objects(Arc::new(player.clone()));
         for obj in objects{
-            player.collide(obj.get_pos(), &mut dispatcher);
+            player.collide(obj.get_pos());
         }
         // ======== RENDERING ========
         

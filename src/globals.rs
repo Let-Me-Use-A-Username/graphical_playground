@@ -1,9 +1,17 @@
 use macroquad::prelude::*;
 
-pub fn get_screen_width() -> f32{
-    return screen_width();
+pub struct Global{}
+
+impl Global{
+    pub fn new() -> Self{
+        return Global {}
+    }
+    pub fn get_screen_width(&self) -> f32{
+        return screen_width();
+    }
+    
+    pub fn get_screen_height(&self) -> f32{
+        return screen_height();
+    }
 }
 
-pub fn get_screen_height() -> f32{
-    return screen_height();
-}

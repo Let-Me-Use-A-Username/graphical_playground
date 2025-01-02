@@ -5,7 +5,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{Arc, Mutex};
 
-use crate::{event_system::{dispatcher::Dispatcher, event::{Event, EventType}}, state_machine::machine::StateMachine};
+use crate::{event_system::{dispatcher::Dispatcher, event::{Event, EventType}}, state_machine::machine::StateMachine, utils::timer::{Timer, TimerType}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -20,7 +20,8 @@ pub struct Player{
     color: Color,
     emitter: Arc<Mutex<Emitter>>,
     dispatcher: Arc<Mutex<Dispatcher>>,
-    machine: Arc<Mutex<StateMachine>>
+    machine: Arc<Mutex<StateMachine>>,
+    immune_timer: Timer
 }
 
 impl Player{
@@ -49,6 +50,8 @@ impl Player{
             }))),
             dispatcher: dispatcher,
             machine: Arc::new(Mutex::new(StateMachine::new())),
+            immune_timer: Timer::new()
+
         }
     }
 
@@ -74,9 +77,19 @@ impl Player{
             },
             //player hit, bounce back
             StateType::Hit => {
-                self.velocity = -self.velocity * 0.9;
-                self.direction = self.velocity.normalize();
-                self.pos += self.velocity * delta;
+                if self.immune_timer.is_set(){
+                    self.velocity = -self.velocity * 0.9;
+                    self.direction = self.velocity.normalize();
+                    self.pos += self.velocity * delta;
+                }
+                else{
+                    self.immune_timer.set(get_time(), 3.0, TimerType::ImmuneTimer);
+                }
+
+                if self.immune_timer.has_expired(get_time()){
+                    self.machine.lock().unwrap().transition(StateType::Moving);
+                    self.immune_timer.clear();
+                }
             },
         };
     }
@@ -195,7 +208,8 @@ impl Clone for Player{
             color: self.color,
             emitter: Arc::clone(&self.emitter),
             dispatcher: Arc::clone(&self.dispatcher),
-            machine: Arc::clone(&self.machine)
+            machine: Arc::clone(&self.machine),
+            immune_timer: self.immune_timer
         }
     }
 }
