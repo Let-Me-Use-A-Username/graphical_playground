@@ -39,7 +39,6 @@ impl Grid{
                 let neighbor = (cell.0 + dx, cell.1 + dy);
                 if let Some(objects) = self.map.lock().unwrap().get(&neighbor){
                     objects.iter().for_each(|x| nearby_objects.push(x.clone()));
-                    //nearby_objects.extend(objects.iter());
                 }
             }
         }

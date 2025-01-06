@@ -13,5 +13,9 @@ impl Global{
     pub fn get_screen_height(&self) -> f32{
         return screen_height();
     }
+
+    pub fn get_cell_size(&self) -> f32{
+        return 20.0
+    }
 }
 

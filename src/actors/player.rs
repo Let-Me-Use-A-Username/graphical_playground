@@ -21,7 +21,7 @@ pub struct Player{
     emitter: Arc<Mutex<Emitter>>,
     dispatcher: Arc<Mutex<Dispatcher>>,
     machine: Arc<Mutex<StateMachine>>,
-    immune_timer: Timer,
+    immune_timer: Arc<Mutex<Timer>>,
 }
 
 impl Player{
@@ -50,7 +50,7 @@ impl Player{
             }))),
             dispatcher: dispatcher,
             machine: Arc::new(Mutex::new(StateMachine::new())),
-            immune_timer: Timer::new(),
+            immune_timer: Arc::new(Mutex::new(Timer::new())),
 
         }
     }
@@ -62,7 +62,7 @@ impl Player{
     }
     
     pub fn collide(&mut self, obj: Vec2){
-        if (obj - self.pos).length() < self.size + self.size{
+        if (obj - self.pos).length() < self.size * 2.0{
             let event = Event::new(get_time(), EventType::PlayerHit);
             
             self.publish(event);
@@ -71,21 +71,33 @@ impl Player{
 
     pub fn update(&mut self, delta: f32){
         let state = self.machine.try_lock().unwrap().get_state();
-        match *state.lock().unwrap(){
+
+        match *state.try_lock().unwrap(){
             //move player
             StateType::Moving | StateType::Idle => {
                 let _ = self.move_to(delta);
             },
             //player hit, bounce back
             StateType::Hit => {
-                //If player has been hit timer is active
+                //TODO: fix bounce
                 self.velocity = -self.velocity * 0.9;
-                //FIXME: temporarely solution to avoid clipping
-                // if self.velocity.length() < 10.0 {
-                //     self.velocity = -self.velocity * 2.0;
-                // }
                 self.direction = self.velocity.normalize();
                 self.pos += self.velocity * delta;
+                
+                //Reset timer for Hit state
+                let timer_lock = self.immune_timer.try_lock();
+                
+                if let Ok(mut timer) = timer_lock {
+                    if let Some(exp) = timer.has_expired(get_time()){
+                        if exp{
+                            timer.reset();
+                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                        }
+                    }
+                    else{
+                        panic!("Timer is null.");
+                    }
+                }
             },
         };
     }
@@ -155,7 +167,7 @@ impl Drawable for Player{
     fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
 
-        match self.emitter.lock(){
+        match self.emitter.try_lock(){
             Ok(mut emitter) => emitter.draw(self.pos),
             Err(err) => println!("Emitter error: {:?}", err),
         }
@@ -166,26 +178,26 @@ impl Drawable for Player{
 //======== Event traits =============
 impl Subscriber for Player {
     fn subscribe(&self, event: &EventType){
-        let _ = &mut self.dispatcher.lock().unwrap().register_listener(event.clone(), Arc::new(Mutex::new(self.clone())));
+        let _ = &mut self.dispatcher.try_lock().unwrap().register_listener(event.clone(), Arc::new(Mutex::new(self.clone())));
     }
 
     fn notify(&mut self, event: &Event){
+        
         match &event.event_type{
             EventType::PlayerIdle => {
-                self.machine.lock().unwrap().transition(StateType::Idle);
+                self.machine.try_lock().unwrap().transition(StateType::Idle);
             },
             EventType::PlayerMoving => {
-                self.machine.lock().unwrap().transition(StateType::Moving);
+                self.machine.try_lock().unwrap().transition(StateType::Moving);
             },
             EventType::PlayerHit => {
-                if self.immune_timer.is_set() && self.immune_timer.has_expired(get_time()).is_some_and(|x| x){
-                    //self.publish(Event::new((), EventType::PlayerMoving));
-                    self.machine.lock().unwrap().transition(StateType::Moving);
-                }
-                else if !self.immune_timer.is_set() && self.immune_timer.can_be_set(get_time()){
-                    self.machine.lock().unwrap().transition(StateType::Hit);
-                    self.immune_timer.set(get_time(), 3.0, Some(10.0));
-                    
+                let current_time = get_time();
+                let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
+                
+                if self.immune_timer.try_lock().unwrap().can_be_set(*now){
+                    self.immune_timer.try_lock().unwrap().set(*now, 3.0, Some(10.0));
+                    //self.velocity = self.direction.normalize() * -500.0;
+                    self.machine.try_lock().unwrap().transition(StateType::Hit);
                 }
             }
         }
@@ -194,7 +206,7 @@ impl Subscriber for Player {
 
 impl Publisher for Player {
     fn publish(&self, event: Event){
-        let _ = &mut self.dispatcher.lock().unwrap().dispatch(event);
+        let _ = &mut self.dispatcher.try_lock().unwrap().dispatch(event);
     }
 }
 
@@ -213,7 +225,7 @@ impl Clone for Player{
             emitter: Arc::clone(&self.emitter),
             dispatcher: Arc::clone(&self.dispatcher),
             machine: Arc::clone(&self.machine),
-            immune_timer: self.immune_timer
+            immune_timer: Arc::clone(&self.immune_timer)
         }
     }
 }

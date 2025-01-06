@@ -34,10 +34,14 @@ impl Timer{
     pub fn can_be_set(&self, now: f64) -> bool{
         if let Some(cooldown) = self.cooldown{
             if let Some(last) = self.last_set{
-                return last + self.duration + cooldown > now
+                return now > last + self.duration + cooldown
             }
         }
-        return true
+        return !self.set
+    }
+
+    pub fn reset(&mut self){
+        self.set = false;
     }
 
 }

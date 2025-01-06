@@ -24,10 +24,11 @@ async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     
     // ======= INITIALIZATION ========
-    let dispatcher = Arc::new(Mutex::new(Dispatcher::new()));
-    let mut grid = Grid::new(20.0);
-    let mut factory = Factory::new();
     let global = Global::new();
+    let dispatcher = Arc::new(Mutex::new(Dispatcher::new()));
+    //let mut grid = Grid::new(globals.get_cell_size());
+    let mut grid = Grid::new(25.0);
+    let mut factory = Factory::new();
 
     let mut player = Player::new(
         global.get_screen_width() / 2.0, 
@@ -42,7 +43,7 @@ async fn main() {
     let mut player_pos = player.get_pos();
     let mut camera_pos = vec2(player_pos.x, player_pos.y);
     
-    let new_enemy = factory.spawn(vec2(player_pos.x, player_pos.y - 50.0), EnemyType::CIRCLE, 15.0, ORANGE);
+    let new_enemy = factory.spawn(vec2(player_pos.x, player_pos.y - 50.0), EnemyType::CIRCLE, 15.0, ORANGE, player_pos);
     
     loop {
         // ======= SYSTEM ========
@@ -64,6 +65,7 @@ async fn main() {
         
         let objects = grid.get_nearby_objects(Arc::new(player.clone()));
         for obj in objects{
+            //println!("object collition on {:?}", delta);
             player.collide(obj.get_pos());
         }
         // ======== RENDERING ========

@@ -19,8 +19,8 @@ impl Factory{
         }
     }
 
-    pub fn spawn(&mut self, pos: Vec2, enemy_type: EnemyType, size: f32, color: Color) -> Arc<Enemy>{
-        let enemy = Enemy::new(pos, enemy_type, size, color);
+    pub fn spawn(&mut self, pos: Vec2, enemy_type: EnemyType, size: f32, color: Color, player_pos: Vec2) -> Arc<Enemy>{
+        let enemy = Enemy::new(pos, enemy_type, size, color, player_pos);
         //FIXME: This might cause issues
         self.active.push(Arc::new(Mutex::new(enemy)));
         

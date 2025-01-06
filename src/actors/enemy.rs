@@ -1,4 +1,4 @@
-use crate::event_system::interface::{Object, Drawable};
+use crate::event_system::interface::{Object, Drawable, Moveable};
 
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
@@ -16,16 +16,31 @@ pub enum EnemyType{
 
 #[derive(Clone, Copy)]
 pub struct Enemy{
-    pub pos: Vec2,
+    pos: Vec2,
     enemy_type: EnemyType,
     size: f32,
+    speed: f32,
     color: Color,
-    pub is_alive: bool
+    pub is_alive: bool,
+    target: Vec2
 }
 
 impl Enemy{
-    pub fn new(pos: Vec2, enemy_type: EnemyType, size: f32, color: Color) -> Self{
-        return Enemy { pos: pos, enemy_type: enemy_type, size: size, color: color, is_alive: true }
+    pub fn new(pos: Vec2, enemy_type: EnemyType, size: f32, color: Color, player_pos: Vec2) -> Self{
+        return Enemy { 
+            pos: pos, 
+            enemy_type: enemy_type, 
+            size: size, 
+            speed: 1000.0,
+            color: color, 
+            is_alive: true,
+            target: player_pos
+        }
+    }
+
+    pub fn update(&mut self, player_pos: Vec2, delta: f32){
+        self.target = player_pos;
+        let _ = self.move_to(delta);
     }
 }
 
@@ -34,6 +49,13 @@ impl Enemy{
 impl Object for Enemy{
     fn get_pos(&self) -> Vec2{
         return self.pos
+    }
+}
+
+impl Moveable for Enemy{
+    fn move_to(&mut self, delta: f32) -> (f32, f32){
+        self.pos.move_towards(self.target, delta);
+        return (0.0, 0.0)
     }
 }
 
