@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::event_system::event::{Event, EventType};
 
 use macroquad::math::Vec2;
@@ -13,9 +15,10 @@ pub trait Publisher{
 }
 
 //======= General traits ==========
-
 pub trait Object{
     fn get_pos(&self) -> Vec2;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 pub trait Moveable{

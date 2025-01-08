@@ -6,7 +6,9 @@ use std::sync::Arc;
 pub enum EventType{
     PlayerMoving,
     PlayerIdle,
-    PlayerHit
+    PlayerHit,
+
+    EnemyHit
 }
 
 pub struct Event{

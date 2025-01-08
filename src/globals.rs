@@ -14,8 +14,9 @@ impl Global{
         return screen_height();
     }
 
+    //Note: Old cell size was 20.0, increased a bit to provide more robust collition
     pub fn get_cell_size(&self) -> f32{
-        return 20.0
+        return 25.0
     }
 }
 

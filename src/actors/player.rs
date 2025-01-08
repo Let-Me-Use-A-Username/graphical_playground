@@ -22,6 +22,7 @@ pub struct Player{
     dispatcher: Arc<Mutex<Dispatcher>>,
     machine: Arc<Mutex<StateMachine>>,
     immune_timer: Arc<Mutex<Timer>>,
+    bounce: Arc<Mutex<bool>>
 }
 
 impl Player{
@@ -51,6 +52,7 @@ impl Player{
             dispatcher: dispatcher,
             machine: Arc::new(Mutex::new(StateMachine::new())),
             immune_timer: Arc::new(Mutex::new(Timer::new())),
+            bounce: Arc::new(Mutex::new(false))
 
         }
     }
@@ -61,12 +63,14 @@ impl Player{
         self.subscribe(&EventType::PlayerHit);
     }
     
-    pub fn collide(&mut self, obj: Vec2){
+    pub fn collide(&mut self, obj: Vec2) -> bool{
         if (obj - self.pos).length() < self.size * 2.0{
             let event = Event::new(get_time(), EventType::PlayerHit);
             
             self.publish(event);
+            return true
         }
+        return false
     }
 
     pub fn update(&mut self, delta: f32){
@@ -79,19 +83,28 @@ impl Player{
             },
             //player hit, bounce back
             StateType::Hit => {
-                //TODO: fix bounce
-                self.velocity = -self.velocity * 0.9;
-                self.direction = self.velocity.normalize();
-                self.pos += self.velocity * delta;
-                
                 //Reset timer for Hit state
                 let timer_lock = self.immune_timer.try_lock();
                 
                 if let Ok(mut timer) = timer_lock {
                     if let Some(exp) = timer.has_expired(get_time()){
-                        if exp{
-                            timer.reset();
-                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                        match exp{
+                            true => {
+                                timer.reset();
+                                self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                            },
+                            false => {
+                                //Reverse velocity vector
+                                if *self.bounce.try_lock().unwrap(){
+                                    self.velocity = -self.velocity * 0.9;
+                                    *self.bounce.try_lock().unwrap() = false;
+                                }
+                                //apply bounce impact
+                                self.velocity *= 0.98;
+                                self.direction = self.velocity.normalize();
+                                self.pos += self.velocity * delta;
+                            }
+
                         }
                     }
                     else{
@@ -107,6 +120,14 @@ impl Player{
 impl Object for Player{
     fn get_pos(&self) -> Vec2{
         return self.pos
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any{
+        return self
     }
 }
 
@@ -195,11 +216,12 @@ impl Subscriber for Player {
                 let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
                 
                 if self.immune_timer.try_lock().unwrap().can_be_set(*now){
-                    self.immune_timer.try_lock().unwrap().set(*now, 3.0, Some(10.0));
-                    //self.velocity = self.direction.normalize() * -500.0;
+                    self.immune_timer.try_lock().unwrap().set(*now, 1.5, Some(10.0));
+                    *self.bounce.try_lock().unwrap() = true;
                     self.machine.try_lock().unwrap().transition(StateType::Hit);
                 }
-            }
+            },
+            _ => {}
         }
     }
 }
@@ -225,7 +247,8 @@ impl Clone for Player{
             emitter: Arc::clone(&self.emitter),
             dispatcher: Arc::clone(&self.dispatcher),
             machine: Arc::clone(&self.machine),
-            immune_timer: Arc::clone(&self.immune_timer)
+            immune_timer: Arc::clone(&self.immune_timer),
+            bounce: self.bounce.clone()
         }
     }
 }
