@@ -1,10 +1,10 @@
 use std::sync::atomic::AtomicU64;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::event_system::dispatcher::Dispatcher;
 use crate::event_system::event::{Event, EventType};
 use crate::event_system::interface::{Drawable, Publisher, Subscriber};
 use crate::actors::enemy::{Enemy, EnemyType};
@@ -13,14 +13,14 @@ static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct Factory{
     active: Vec<Arc<Mutex<Enemy>>>,
-    dispatcher: Arc<Mutex<Dispatcher>>
+    sender: Sender<Event>
 }
 
 impl Factory{
-    pub fn new(dispatcher: Arc<Mutex<Dispatcher>>) -> Self{
+    pub fn new(sender: Sender<Event>) -> Self{
         return Factory {
             active: Vec::new(),
-            dispatcher: dispatcher
+            sender: sender
         }
     }
 
@@ -34,18 +34,18 @@ impl Factory{
             player_pos
         );
         
-        self.active.push(Arc::new(Mutex::new(enemy.clone())));
+        self.active.push(Arc::new(Mutex::new(enemy)));
     }
 
     pub fn get_enemies(&self) -> Vec<Arc<Mutex<Enemy>>>{
-        return Vec::from_iter(self.active.iter().cloned())
+        return self.active.clone()
     }
 
     pub fn draw_all(&mut self){
         self.active
             .iter()
             .for_each(|e| {
-                if let Ok(mut enemy) = e.lock() {
+                if let Ok(mut enemy) = e.try_lock() {
                     enemy.draw();
                 }
             });
@@ -55,7 +55,7 @@ impl Factory{
         self.active
             .iter()
             .for_each(|e|{
-                if let Ok(mut enemy) = e.lock() {
+                if let Ok(mut enemy) = e.try_lock() {
                     enemy.update(player_pos, delta);
                 }
             });
@@ -64,42 +64,23 @@ impl Factory{
 
 impl Publisher for Factory{
     fn publish(&self, event: Event) {
-        self.dispatcher.try_lock().unwrap().dispatch(event);
+        let _ = self.sender.send(event.clone());
     }
 }
 
 impl Subscriber for Factory{
-    fn subscribe(&self, event: &EventType) {
-        self.dispatcher.try_lock().unwrap().register_listener(event.clone(), Arc::new(Mutex::new(self.clone())));
-    }
-
     fn notify(&mut self, event: &Event) {
+
         match event.event_type{
             EventType::EnemyHit => {
-                println!("Active enemies before removal: {:?}", self.active);
-                let id = *event.data.downcast_ref::<u64>().unwrap();
+                let event_id = *event.data.downcast_ref::<u64>().unwrap();
                 
                 self.active.retain(|e| {
-                    let lock = e.lock().unwrap();  // Use lock() to block until acquired
-                    let en_id = lock.get_id();
-                    let arc_count = Arc::strong_count(&e);
-                    println!("Arc count for enemy {}: {}", id, arc_count);
-                    en_id == id
+                    let enemy_id = e.lock().unwrap().get_id();
+                    enemy_id != event_id
                 });
-
-                println!("active enemies: {:?}", self.active);
             },
             _ => {}
-        }
-    }
-}
-
-impl Clone for Factory{
-    fn clone(&self) -> Self{
-        let cloned_vec: Vec<Arc<Mutex<Enemy>>> = self.active.iter().map(|x| x.clone()).collect();
-        return Factory{
-            active: cloned_vec,
-            dispatcher: Arc::clone(&self.dispatcher),
         }
     }
 }

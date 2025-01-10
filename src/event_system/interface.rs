@@ -1,12 +1,12 @@
 use std::any::Any;
 
-use crate::event_system::event::{Event, EventType};
-
 use macroquad::math::Vec2;
 
+use crate::event_system::event::Event;
+
 //========= Event related interfaces ==========
+//REVIEW: Subscriber should be Subscriber: Send but whatever
 pub trait Subscriber{
-    fn subscribe(&self, event: &EventType);
     fn notify(&mut self, event: &Event);
 }
 

@@ -3,9 +3,9 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc::Sender, Arc, Mutex};
 
-use crate::{event_system::{dispatcher::Dispatcher, event::{Event, EventType}}, state_machine::machine::StateMachine, utils::timer::Timer};
+use crate::{event_system::event::{Event, EventType}, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -19,14 +19,14 @@ pub struct Player{
     pub size: f32,
     color: Color,
     emitter: Arc<Mutex<Emitter>>,
-    dispatcher: Arc<Mutex<Dispatcher>>,
+    sender: Sender<Event>,
     machine: Arc<Mutex<StateMachine>>,
     immune_timer: Arc<Mutex<Timer>>,
     bounce: Arc<Mutex<bool>>
 }
 
 impl Player{
-    pub fn new(x: f32, y:f32, size: f32, color: Color, dispatcher: Arc<Mutex<Dispatcher>>) -> Self{
+    pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
             pos: Vec2::new(x, y),
             direction: Vec2::new(0.0, 0.0),
@@ -49,18 +49,12 @@ impl Player{
                 blend_mode: BlendMode::Additive,
                 ..Default::default()
             }))),
-            dispatcher: dispatcher,
+            sender: sender,
             machine: Arc::new(Mutex::new(StateMachine::new())),
             immune_timer: Arc::new(Mutex::new(Timer::new())),
             bounce: Arc::new(Mutex::new(false))
 
         }
-    }
-
-    pub fn initialize_events(&self){
-        self.subscribe(&EventType::PlayerMoving);
-        self.subscribe(&EventType::PlayerIdle);
-        self.subscribe(&EventType::PlayerHit);
     }
     
     pub fn collide(&mut self, obj: Vec2) -> bool{
@@ -198,12 +192,7 @@ impl Drawable for Player{
 
 //======== Event traits =============
 impl Subscriber for Player {
-    fn subscribe(&self, event: &EventType){
-        let _ = &mut self.dispatcher.try_lock().unwrap().register_listener(event.clone(), Arc::new(Mutex::new(self.clone())));
-    }
-
     fn notify(&mut self, event: &Event){
-        
         match &event.event_type{
             EventType::PlayerIdle => {
                 self.machine.try_lock().unwrap().transition(StateType::Idle);
@@ -228,27 +217,6 @@ impl Subscriber for Player {
 
 impl Publisher for Player {
     fn publish(&self, event: Event){
-        let _ = &mut self.dispatcher.try_lock().unwrap().dispatch(event);
-    }
-}
-
-
-impl Clone for Player{
-    fn clone(&self) -> Self{
-        return Player{
-            pos: self.pos,
-            direction: self.direction,
-            speed: self.speed,
-            velocity: self.velocity,
-            acceleration: self.acceleration,
-            max_acceleration: self.max_acceleration,
-            size: self.size,
-            color: self.color,
-            emitter: Arc::clone(&self.emitter),
-            dispatcher: Arc::clone(&self.dispatcher),
-            machine: Arc::clone(&self.machine),
-            immune_timer: Arc::clone(&self.immune_timer),
-            bounce: self.bounce.clone()
-        }
+        let _ = self.sender.send(event.clone());
     }
 }

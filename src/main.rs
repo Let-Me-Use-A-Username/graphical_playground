@@ -6,7 +6,6 @@ mod factory;
 mod state_machine;
 mod utils;
 
-use event_system::interface::Subscriber;
 use macroquad::prelude::*;
 
 use std::sync::{Arc, Mutex};
@@ -26,40 +25,43 @@ async fn main() {
     
     // ======= INITIALIZATION ========
     let global= Global::new();
-    let dispatcher = Arc::new(Mutex::new(Dispatcher::new()));
+    let mut dispatcher = Dispatcher::new();
     
-    let mut grid = Grid::new(global.get_cell_size(), dispatcher.clone());
-    let mut factory = Factory::new(dispatcher.clone());
+    let grid = Arc::new(Mutex::new(Grid::new(global.get_cell_size(), dispatcher.create_sender())));
+    let factory = Arc::new(Mutex::new(Factory::new(dispatcher.create_sender())));
 
-    let mut player = Player::new(
+    let player = Arc::new(Mutex::new(Player::new(
         global.get_screen_width() / 2.0, 
         global.get_screen_height() / 2.0, 
         15.0, 
         YELLOW,
-        dispatcher.clone()
-    );
+        dispatcher.create_sender()
+    )));
 
-    player.initialize_events();
-    factory.subscribe(&EventType::EnemyHit);
-    grid.subscribe(&EventType::EnemyHit);
+    dispatcher.register_listener(EventType::PlayerHit, player.clone());
+    dispatcher.register_listener(EventType::PlayerMoving, player.clone());
+    dispatcher.register_listener(EventType::PlayerIdle, player.clone());
+    dispatcher.register_listener(EventType::EnemyHit, factory.clone());
     
-    let mut player_pos = player.get_pos();
+    let mut player_pos = player.try_lock().unwrap().get_pos();
     let mut camera_pos = vec2(player_pos.x, player_pos.y);
+
+    let mut grid_unlocked = grid.try_lock().unwrap();
     
-    factory.spawn(vec2(player_pos.x, player_pos.y - 150.0), EnemyType::CIRCLE, 15.0, ORANGE, player_pos);
+    factory.try_lock().unwrap().spawn(vec2(player_pos.x, player_pos.y - 150.0), EnemyType::CIRCLE, 15.0, ORANGE, player_pos);
     
     loop {
         // ======= SYSTEM ========
-        factory.get_enemies().iter().for_each(|e| {
+        factory.try_lock().unwrap().get_enemies().iter().for_each(|e| {
             if let Ok(enemy) = e.try_lock(){
-                grid.update_object(Arc::new(Mutex::new(enemy.clone())));
+                grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
             }
         });
 
         // ======= LOGIC =========
         let delta = get_frame_time();
-        player.update(delta);
-        factory.update_all(player_pos, delta);
+        player.try_lock().unwrap().update(delta);
+        factory.try_lock().unwrap().update_all(player_pos, delta);
 
         camera_pos += (player_pos - camera_pos) * 0.05;
         
@@ -69,25 +71,30 @@ async fn main() {
             ..Default::default()
         });
         
-        //Check objects close to player
-        for obj in grid.get_nearby_objects(Arc::new(player.clone())){
-            //If player colldes, and object is enemy, emit signal
+        //Collition check
+        for obj in grid_unlocked.get_nearby_objects(player.clone()){
             if let Ok(mut guard) = obj.try_lock(){
                 if let Some(enemy) = guard.as_any_mut().downcast_mut::<Enemy>(){
-                    if player.collide(enemy.get_pos()){
-                        dispatcher.try_lock().unwrap().dispatch(Event::new(enemy.get_id(), EventType::EnemyHit));
+                    if player.try_lock().unwrap().collide(enemy.get_pos()){
+                        dispatcher.dispatch_event(Event::new(enemy.get_id(), EventType::EnemyHit));
                     }
                 }
             }
         }
 
+        dispatcher.dispatch();
+
         // ======== RENDERING ========
         clear_background(LIGHTGRAY);
-        player.draw();
-        factory.draw_all();
+        player.try_lock().unwrap().draw();
+        factory.try_lock().unwrap().draw_all();
+
+        //REVIEW: In order to not invoke Grid when an enemy is hit (Event) and to avoid cleaning up enemies from its map, 
+        //REVIEW: enemies will be updated at start and removed at the end of the game loop. 
+        grid_unlocked.clear();
 
         set_default_camera();
-        player_pos = player.get_pos();
+        player_pos = player.try_lock().unwrap().get_pos();
         next_frame().await
     }
 }

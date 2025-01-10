@@ -8,16 +8,17 @@ pub enum EventType{
     PlayerIdle,
     PlayerHit,
 
-    EnemyHit
+    EnemyHit,
 }
 
+#[derive(Clone, Debug)]
 pub struct Event{
-    pub data: Arc<dyn Any + Send>,
+    pub data: Arc<dyn Any + Send + Sync>,
     pub event_type: EventType
 }
 
 impl Event{
-    pub fn new<T: Any + Send>(data: T, event_type: EventType) -> Self{
+    pub fn new<T: Any + Send + Sync>(data: T, event_type: EventType) -> Self{
         return Event { 
             data: Arc::new(data), 
             event_type: event_type

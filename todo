@@ -1,6 +1,1 @@
-
-1) Implement player movement with mouse
-
-2) Implement enemy movement, to follow player.
-3) When player collides with enemy, emit event.
-4) When enemy dies, emit event to grid and factory with enemy id(?)
+- Implement player movement with mouse
