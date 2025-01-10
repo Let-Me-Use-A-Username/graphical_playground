@@ -1,1 +1,29 @@
+==============================================
+================== Critical ==================
+
+
+==============================================
+================== General todo ==============
+- Add game state
+    -Implement fullscreen with  macroquad::prelude::Conf
+- Implement additional enemies. Factory timers etc
+
+
+==============================================
+================== Gameplay ==================
 - Implement player movement with mouse
+
+
+==============================================
+================== Implementation ideas ======
+- Add threads to independent tasks (grid, factory, collition detection)
+- Use a thread per cell grid. Assign a structure per cell that gived information on either: Enemy pos and last pos, or cell status (populated, not)
+- Dynamic cell resize? 
+- Update enemies only when move or active
+
+
+==============================================
+================== Study =====================
+- Entity component system
+- https://domwillia.ms/devlog1/
+- https://mq.agical.se/ch3-smooth-movement.html
