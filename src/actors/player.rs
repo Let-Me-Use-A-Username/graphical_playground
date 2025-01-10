@@ -3,7 +3,7 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::mpsc::Sender;
 
 use crate::{event_system::event::{Event, EventType}, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
@@ -18,11 +18,11 @@ pub struct Player{
     max_acceleration: f32,
     pub size: f32,
     color: Color,
-    emitter: Arc<Mutex<Emitter>>,
+    emitter: Emitter,
     sender: Sender<Event>,
-    machine: Arc<Mutex<StateMachine>>,
-    immune_timer: Arc<Mutex<Timer>>,
-    bounce: Arc<Mutex<bool>>
+    machine: StateMachine,
+    immune_timer: Timer,
+    bounce: bool
 }
 
 impl Player{
@@ -36,7 +36,7 @@ impl Player{
             max_acceleration: 3000.0,
             size: size,
             color: color,
-            emitter: Arc::new(Mutex::new(Emitter::new(EmitterConfig {
+            emitter: Emitter::new(EmitterConfig {
                 lifetime: 0.5,
                 amount: 5,
                 initial_direction_spread: 0.0,
@@ -48,11 +48,11 @@ impl Player{
                 }),
                 blend_mode: BlendMode::Additive,
                 ..Default::default()
-            }))),
+            }),
             sender: sender,
-            machine: Arc::new(Mutex::new(StateMachine::new())),
-            immune_timer: Arc::new(Mutex::new(Timer::new())),
-            bounce: Arc::new(Mutex::new(false))
+            machine: StateMachine::new(),
+            immune_timer: Timer::new(),
+            bounce: false
 
         }
     }
@@ -68,7 +68,7 @@ impl Player{
     }
 
     pub fn update(&mut self, delta: f32){
-        let state = self.machine.try_lock().unwrap().get_state();
+        let state = self.machine.get_state();
 
         match *state.try_lock().unwrap(){
             //move player
@@ -78,32 +78,30 @@ impl Player{
             //player hit, bounce back
             StateType::Hit => {
                 //Reset timer for Hit state
-                let timer_lock = self.immune_timer.try_lock();
-                
-                if let Ok(mut timer) = timer_lock {
-                    if let Some(exp) = timer.has_expired(get_time()){
-                        match exp{
-                            true => {
-                                timer.reset();
-                                self.publish(Event::new(get_time(), EventType::PlayerMoving));
-                            },
-                            false => {
-                                //Reverse velocity vector
-                                if *self.bounce.try_lock().unwrap(){
-                                    self.velocity = -self.velocity * 0.9;
-                                    *self.bounce.try_lock().unwrap() = false;
-                                }
-                                //apply bounce impact
-                                self.velocity *= 0.98;
-                                self.direction = self.velocity.normalize();
-                                self.pos += self.velocity * delta;
-                            }
+                let mut timer = self.immune_timer;
 
+                if let Some(exp) = timer.has_expired(get_time()){
+                    match exp{
+                        true => {
+                            timer.reset();
+                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                        },
+                        false => {
+                            //Reverse velocity vector
+                            if self.bounce{
+                                self.velocity = -self.velocity * 0.9;
+                                self.bounce = false;
+                            }
+                            //apply bounce impact
+                            self.velocity *= 0.98;
+                            self.direction = self.velocity.normalize();
+                            self.pos += self.velocity * delta;
                         }
+
                     }
-                    else{
-                        panic!("Timer is null.");
-                    }
+                }
+                else{
+                    panic!("Timer is null.");
                 }
             },
         };
@@ -181,11 +179,7 @@ impl Moveable for Player{
 impl Drawable for Player{
     fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
-
-        match self.emitter.try_lock(){
-            Ok(mut emitter) => emitter.draw(self.pos),
-            Err(err) => println!("Emitter error: {:?}", err),
-        }
+        self.emitter.draw(self.pos)
     }
 }
 
@@ -195,19 +189,19 @@ impl Subscriber for Player {
     fn notify(&mut self, event: &Event){
         match &event.event_type{
             EventType::PlayerIdle => {
-                self.machine.try_lock().unwrap().transition(StateType::Idle);
+                self.machine.transition(StateType::Idle);
             },
             EventType::PlayerMoving => {
-                self.machine.try_lock().unwrap().transition(StateType::Moving);
+                self.machine.transition(StateType::Moving);
             },
             EventType::PlayerHit => {
                 let current_time = get_time();
                 let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
                 
-                if self.immune_timer.try_lock().unwrap().can_be_set(*now){
-                    self.immune_timer.try_lock().unwrap().set(*now, 1.5, Some(10.0));
-                    *self.bounce.try_lock().unwrap() = true;
-                    self.machine.try_lock().unwrap().transition(StateType::Hit);
+                if self.immune_timer.can_be_set(*now){
+                    self.immune_timer.set(*now, 1.5, Some(10.0));
+                    self.bounce = true;
+                    self.machine.transition(StateType::Hit);
                 }
             },
             _ => {}

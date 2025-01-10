@@ -1,6 +1,5 @@
 use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
 
 use macroquad::math::Vec2;
 use macroquad::color::Color;
@@ -12,7 +11,7 @@ use crate::actors::enemy::{Enemy, EnemyType};
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct Factory{
-    active: Vec<Arc<Mutex<Enemy>>>,
+    active: Vec<Enemy>,
     sender: Sender<Event>
 }
 
@@ -34,30 +33,26 @@ impl Factory{
             player_pos
         );
         
-        self.active.push(Arc::new(Mutex::new(enemy)));
+        self.active.push(enemy);
     }
 
-    pub fn get_enemies(&self) -> Vec<Arc<Mutex<Enemy>>>{
+    pub fn get_enemies(&self) -> Vec<Enemy>{
         return self.active.clone()
     }
 
     pub fn draw_all(&mut self){
         self.active
-            .iter()
-            .for_each(|e| {
-                if let Ok(mut enemy) = e.try_lock() {
-                    enemy.draw();
-                }
+            .iter_mut()
+            .for_each(|enemy| {
+                enemy.draw();
             });
     }
 
     pub fn update_all(&mut self, player_pos: Vec2, delta: f32){
         self.active
-            .iter()
-            .for_each(|e|{
-                if let Ok(mut enemy) = e.try_lock() {
-                    enemy.update(player_pos, delta);
-                }
+            .iter_mut()
+            .for_each(|enemy|{
+                enemy.update(player_pos, delta);
             });
     }
 }
@@ -75,9 +70,8 @@ impl Subscriber for Factory{
             EventType::EnemyHit => {
                 let event_id = *event.data.downcast_ref::<u64>().unwrap();
                 
-                self.active.retain(|e| {
-                    let enemy_id = e.lock().unwrap().get_id();
-                    enemy_id != event_id
+                self.active.retain(|enemy| {
+                    event_id != enemy.get_id()
                 });
             },
             _ => {}

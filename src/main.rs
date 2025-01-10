@@ -52,10 +52,8 @@ async fn main() {
     
     loop {
         // ======= SYSTEM ========
-        factory.try_lock().unwrap().get_enemies().iter().for_each(|e| {
-            if let Ok(enemy) = e.try_lock(){
-                grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
-            }
+        factory.try_lock().unwrap().get_enemies().iter().for_each(|enemy| {
+            grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
         });
 
         // ======= LOGIC =========

@@ -7,7 +7,7 @@ use crate::event_system::interface::{Object, Publisher, Subscriber};
 
 pub struct Grid{
     cell_size: f32,
-    map: Arc<Mutex<HashMap<(i32, i32), Vec<Arc<Mutex<dyn Object>>>>>>,
+    map: HashMap<(i32, i32), Vec<Arc<Mutex<dyn Object>>>>,
     sender: Sender<Event>
 }
 
@@ -15,7 +15,7 @@ impl Grid{
     pub fn new(cell_size: f32, sender: Sender<Event>) -> Grid{
         return Grid {
             cell_size: cell_size,
-            map: Arc::new(Mutex::new(HashMap::new())),
+            map: HashMap::new(),
             sender: sender
         }
     }
@@ -30,7 +30,7 @@ impl Grid{
     pub fn update_object(&mut self, obj: Arc<Mutex<dyn Object>>){
         let obj_pos = obj.try_lock().unwrap().get_pos();
         let obj_cell = self.get_cell(obj_pos.x, obj_pos.y);
-        self.map.lock().unwrap().entry(obj_cell).or_insert(vec!(obj));
+        self.map.entry(obj_cell).or_insert(vec!(obj));
     }
 
     pub fn get_nearby_objects(&self, obj: Arc<Mutex<dyn Object>>) -> Vec<Arc<Mutex<dyn Object>>>{
@@ -41,8 +41,8 @@ impl Grid{
         for dx in -1..=1 {
             for dy in -1..=1{
                 let neighbor = (cell.0 + dx, cell.1 + dy);
-                if let Some(objects) = self.map.lock().unwrap().get(&neighbor){
-                    objects.iter().for_each(|x| nearby_objects.push(x.clone()));
+                if let Some(objects) = self.map.get(&neighbor){
+                    objects.iter().for_each(|obj| nearby_objects.push(obj.clone()));
                 }
             }
         }
@@ -51,7 +51,7 @@ impl Grid{
     }
 
     pub fn clear(&mut self){
-        self.map.try_lock().unwrap().clear();
+        self.map.clear();
     }
 }
 

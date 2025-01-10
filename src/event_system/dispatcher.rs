@@ -6,7 +6,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
 pub struct Dispatcher{
-    subscribers: Arc<Mutex<HashMap<EventType, Vec<Arc<Mutex<dyn Subscriber>>>>>>,
+    subscribers: HashMap<EventType, Vec<Arc<Mutex<dyn Subscriber>>>>,
     sender: Sender<Event>,
     receiver: Receiver<Event>
 }
@@ -15,14 +15,14 @@ impl Dispatcher{
     pub fn new() -> Self{
         let (sender, receiver) = channel();
         return Dispatcher {
-            subscribers: Arc::new(Mutex::new(HashMap::new())),
+            subscribers: HashMap::new(),
             sender: sender,
             receiver: receiver
         }
     }
     
     pub fn register_listener(&mut self, event: EventType, actor: Arc<Mutex<dyn Subscriber>>){
-        self.subscribers.try_lock().unwrap()
+        self.subscribers
             .entry(event)
             .or_insert_with(Vec::new)
             .push(actor.clone());
@@ -34,8 +34,7 @@ impl Dispatcher{
 
     pub fn dispatch(&self){
         while let Ok(event) = self.receiver.try_recv() {
-            let subscribers = self.subscribers.lock().unwrap();
-            if let Some(subscriber_list) = subscribers.get(&event.event_type) {
+            if let Some(subscriber_list) = self.subscribers.get(&event.event_type) {
                 for subscriber in subscriber_list {
                     if let Ok(mut sub) = subscriber.lock() {
                         sub.notify(&event);
@@ -46,8 +45,7 @@ impl Dispatcher{
     }
 
     pub fn dispatch_event(&self, event: Event){
-        let subscribers = self.subscribers.lock().unwrap();
-        if let Some(subscriber_list) = subscribers.get(&event.event_type) {
+        if let Some(subscriber_list) = self.subscribers.get(&event.event_type) {
             for subscriber in subscriber_list {
                 if let Ok(mut sub) = subscriber.try_lock() {
                     sub.notify(&event);
