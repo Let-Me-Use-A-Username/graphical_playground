@@ -26,7 +26,7 @@ pub enum GameStatus{
 }
 
 
-pub struct Game{
+pub struct GameManager{
     state: GameState,
     status: GameStatus,
     
@@ -37,7 +37,7 @@ pub struct Game{
     player: Arc<Mutex<Player>>
 }
 
-impl Game{
+impl GameManager{
     pub fn new() -> Self{
         let global = Global::new();
         let mut dispatcher = Dispatcher::new();
@@ -56,7 +56,7 @@ impl Game{
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
         dispatcher.register_listener(EventType::EnemyHit, factory.clone());
         
-        return Game { 
+        return GameManager { 
             state: GameState::Menu,
             status: GameStatus::Running,
 
@@ -69,7 +69,6 @@ impl Game{
     }
 
     pub async fn update(&mut self){
-        println!("STATE {:?}", self.state);
         match self.state{
             //Playing -> Paused
             GameState::Playing => {
@@ -98,6 +97,8 @@ impl Game{
 
         loop {
             // ======= SYSTEM ========
+            self.factory.try_lock().unwrap().spawn_random_batch(3, player_pos);
+
             self.factory.try_lock().unwrap().get_enemies().iter().for_each(|enemy| {
                 grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
             });
@@ -107,6 +108,7 @@ impl Game{
             self.player.try_lock().unwrap().update(delta);
             self.factory.try_lock().unwrap().update_all(player_pos, delta);
 
+            
             camera_pos += (player_pos - camera_pos) * 0.05;
         
             set_camera(&Camera2D{
@@ -132,10 +134,10 @@ impl Game{
             // ======== RENDERING ========
             clear_background(LIGHTGRAY);
             self.player.try_lock().unwrap().draw();
-            self.factory.try_lock().unwrap().draw_all();
+            self.factory.try_lock().unwrap().draw_all(player_pos);
 
             //REVIEW: In order to not invoke Grid when an enemy is hit (Event) and to avoid cleaning up enemies from its map, 
-            //REVIEW: enemies will be updated at start and removed at the end of the game loop. 
+            //REVIEW: enemies will be updated at start and removed at the end of the GameManager loop. 
             grid_unlocked.clear();
 
             set_default_camera();
@@ -154,11 +156,14 @@ impl Game{
         let mut state = &self.state;
         let mut quit = false;
 
+        let width = self.global.get_screen_width();
+        let height = self.global.get_screen_height();
+
         loop{
             widgets::Window::new(
                 hash!(),
-                vec2(self.global.get_screen_width() / 2.0, self.global.get_screen_height() / 2.0),
-                vec2(300.0, 200.0)
+                vec2(0.0, 0.0),
+                vec2(width, height)
             )
                 .label("Main Menu")
                 .titlebar(true)
@@ -184,6 +189,6 @@ impl Game{
     }
 
     pub fn exit_game(&mut self){
-        todo!("Exit game");
+        todo!("Exit GameManager");
     }
 }

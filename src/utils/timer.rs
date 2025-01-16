@@ -27,6 +27,7 @@ impl Timer{
         return None
     }
 
+    ///Returns true if the cooldown has ended.
     pub fn can_be_set(&self, now: f64) -> bool{
         if let Some(cooldown) = self.cooldown{
             if let Some(last) = self.last_set{

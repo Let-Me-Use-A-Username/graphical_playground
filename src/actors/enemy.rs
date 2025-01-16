@@ -1,8 +1,13 @@
-use crate::event_system::interface::{Object, Drawable, Moveable};
+use ::rand::distributions::{Distribution, Standard};
+use ::rand::Rng;
+
 
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
+
+use crate::event_system::interface::{Object, Drawable, Moveable};   
+
 
 #[derive(Clone, Copy, Debug)]
 pub enum EnemyType{
@@ -32,7 +37,7 @@ impl Enemy{
             pos: pos, 
             enemy_type: enemy_type, 
             size: size, 
-            speed: 10.0,
+            speed: 100.0,
             color: color,
             target: player_pos
         }
@@ -84,7 +89,7 @@ impl Drawable for Enemy{
             EnemyType::RECT => {
                 draw_rectangle(self.pos.x, self.pos.y, self.size / 2.0, self.size / 2.0, self.color);
             },
-            EnemyType:: TRIANGLE => {
+            EnemyType::TRIANGLE => {
                 todo!("Requires 3 vectors instead of points");
             },
             EnemyType::HEXAGON => {
@@ -109,5 +114,20 @@ impl std::fmt::Debug for Enemy{
             // .field("color", &self.color)
             // .field("target", &self.target)
             .finish()
+    }
+}
+
+impl Distribution<EnemyType> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> EnemyType {
+        match rng.gen_range(0..=3) {
+            0 => EnemyType::CIRCLE,
+            1 => EnemyType::ELLIPSE,
+            2 => EnemyType::HEXAGON,
+            3 => EnemyType::RECT,
+            e => {
+                eprintln!("Random range offset: {:?}", e);
+                return EnemyType::CIRCLE
+            }
+        }
     }
 }
