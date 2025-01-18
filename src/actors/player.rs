@@ -22,7 +22,9 @@ pub struct Player{
     sender: Sender<Event>,
     machine: StateMachine,
     immune_timer: Timer,
-    bounce: bool
+    bounce: bool,
+    dash_timer: Timer,
+    dash_multiplier: f32
 }
 
 impl Player{
@@ -52,13 +54,14 @@ impl Player{
             sender: sender,
             machine: StateMachine::new(),
             immune_timer: Timer::new(),
-            bounce: false
-
+            bounce: false,
+            dash_timer: Timer::new(),
+            dash_multiplier: 200.0
         }
     }
     
-    pub fn collide(&mut self, obj: Vec2) -> bool{
-        if (obj - self.pos).length() < self.size * 2.0{
+    pub fn collide(&mut self, obj_pos: Vec2, obj_size: f32) -> bool{
+        if (obj_pos - self.pos).length() < self.size * obj_size{
             let event = Event::new(get_time(), EventType::PlayerHit);
             
             self.publish(event);
@@ -97,13 +100,26 @@ impl Player{
                             self.direction = self.velocity.normalize();
                             self.pos += self.velocity * delta;
                         }
+                    }
+                }                
+            },
+            StateType::Dash => {
+                let mut timer = self.dash_timer;
 
+                if let Some(exp) = timer.has_expired(get_time()) {
+                    match exp{
+                        true => {
+                            timer.reset();
+                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                        },
+                        false => {
+                            self.velocity += self.direction.normalize() * self.dash_multiplier;
+                        },
                     }
                 }
-                else{
-                    panic!("Timer is null.");
-                }
-            },
+                self.velocity *= 0.9;
+                self.pos += self.velocity * delta;
+            }
         };
     }
 }
@@ -125,6 +141,11 @@ impl Object for Player{
 
 impl Moveable for Player{
     fn move_to(&mut self, delta: f32) -> (f32, f32) {
+
+        if is_key_down(KeyCode::Space) {
+            self.publish(Event::new(get_time(), EventType::PlayerDashing));
+        }
+
         self.direction = vec2(0.0, 0.0);
 
         //Moves to a direction while key is pressed
@@ -197,13 +218,23 @@ impl Subscriber for Player {
             EventType::PlayerHit => {
                 let current_time = get_time();
                 let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
+                let dash_timer = self.dash_timer;
                 
-                if self.immune_timer.can_be_set(*now){
+                if self.immune_timer.can_be_set(*now) && dash_timer.has_expired(*now).is_none_or(|dashing| dashing){
                     self.immune_timer.set(*now, 1.5, Some(10.0));
                     self.bounce = true;
                     self.machine.transition(StateType::Hit);
                 }
             },
+            EventType::PlayerDashing => {
+                let current_time = get_time();
+                let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
+                
+                if self.dash_timer.can_be_set(*now){
+                    self.dash_timer.set(*now, 0.3, Some(3.0));
+                    self.machine.transition(StateType::Dash);
+                }
+            }
             _ => {}
         }
     }

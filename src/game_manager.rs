@@ -54,10 +54,11 @@ impl GameManager{
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
         dispatcher.register_listener(EventType::PlayerMoving, player.clone());
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
+        dispatcher.register_listener(EventType::PlayerDashing, player.clone());
         dispatcher.register_listener(EventType::EnemyHit, factory.clone());
         
         return GameManager { 
-            state: GameState::Menu,
+            state: GameState::Playing,
             status: GameStatus::Running,
 
             global: global,
@@ -94,6 +95,9 @@ impl GameManager{
         let mut camera_pos = vec2(player_pos.x, player_pos.y);
         
         let mut grid_unlocked = self.grid.try_lock().unwrap();
+        let mut camera = Camera2D::default();
+        camera.target = camera_pos;
+        camera.zoom = vec2(0.002, 0.002);
 
         loop {
             // ======= SYSTEM ========
@@ -108,21 +112,16 @@ impl GameManager{
             self.player.try_lock().unwrap().update(delta);
             self.factory.try_lock().unwrap().update_all(player_pos, delta);
 
-            
+            //Camera
             camera_pos += (player_pos - camera_pos) * 0.05;
-        
-            set_camera(&Camera2D{
-                target: camera_pos,
-                //zoom: vec2(0.003, 0.003),
-                zoom: vec2(0.002, 0.002),
-                ..Default::default()
-            });
+            camera.target = camera_pos;
+            set_camera(&camera);
         
             //Collition check
             for obj in grid_unlocked.get_nearby_objects(self.player.clone()){
                 if let Ok(mut guard) = obj.try_lock(){
                     if let Some(enemy) = guard.as_any_mut().downcast_mut::<Enemy>(){
-                        if self.player.try_lock().unwrap().collide(enemy.get_pos()){
+                        if self.player.try_lock().unwrap().collide(enemy.get_pos(), enemy.get_size()){
                             self.dispatcher.dispatch_event(Event::new(enemy.get_id(), EventType::EnemyHit));
                         }
                     }
@@ -189,6 +188,6 @@ impl GameManager{
     }
 
     pub fn exit_game(&mut self){
-        todo!("Exit GameManager");
+        todo!("Exit Game");
     }
 }

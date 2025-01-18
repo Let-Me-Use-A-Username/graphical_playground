@@ -51,6 +51,14 @@ impl Enemy{
     pub fn get_id(&self) -> u64{
         return self.id
     }
+
+    pub fn get_size(&self) -> f32{
+        return self.size
+    }
+
+    pub fn get_type(&self) -> EnemyType{
+        return self.enemy_type
+    }
 }
 
 
