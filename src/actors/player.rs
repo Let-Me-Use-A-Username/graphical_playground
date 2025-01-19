@@ -70,7 +70,7 @@ impl Player{
         return false
     }
 
-    pub fn update(&mut self, delta: f32){
+    pub fn update(&mut self, delta: f32, mouse_pos: Vec2){
         let state = self.machine.get_state();
 
         match *state.try_lock().unwrap(){
@@ -113,7 +113,9 @@ impl Player{
                             self.publish(Event::new(get_time(), EventType::PlayerMoving));
                         },
                         false => {
-                            self.velocity += self.direction.normalize() * self.dash_multiplier;
+                            let dash_direction = (mouse_pos - self.pos).normalize();
+                            
+                            self.velocity += dash_direction * self.dash_multiplier;
                         },
                     }
                 }
@@ -149,16 +151,16 @@ impl Moveable for Player{
         self.direction = vec2(0.0, 0.0);
 
         //Moves to a direction while key is pressed
-        if is_key_down(KeyCode::Right){
+        if is_key_down(KeyCode::D){
             self.direction.x += 1.0;
         }
-        if is_key_down(KeyCode::Left){
+        if is_key_down(KeyCode::A){
             self.direction.x -= 1.0;
         }
-        if is_key_down(KeyCode::Up){
+        if is_key_down(KeyCode::W){
             self.direction.y -= 1.0;
         }
-        if is_key_down(KeyCode::Down){
+        if is_key_down(KeyCode::S){
             self.direction.y += 1.0;
         }
 
