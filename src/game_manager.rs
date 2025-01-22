@@ -98,40 +98,35 @@ impl GameManager{
 
         // Zoom variables
         let mut zoom_level = 0.002;
-        let zoom_speed = 0.00001; 
-        let min_zoom = 0.001;
+        let zoom_speed = 0.000001; 
+        let min_zoom = 0.0005;
         let max_zoom = 0.004;
 
         let mut camera = Camera2D::default();
         camera.target = camera_pos;
         camera.zoom = vec2(zoom_level, zoom_level);
-
-        let mut mouse_world_pos = camera.screen_to_world(mouse_position().into());
     
         loop {
-            // ======= SYSTEM ========
-            //self.factory.try_lock().unwrap().spawn_random_batch(3, player_pos);
+            // Mouse
+            let mouse_pos = Into::<Vec2>::into(mouse_position());
+            // Mouse wheel
+            if mouse_wheel().1 != 0.0 {
+                zoom_level = (zoom_level - mouse_wheel().1 * zoom_speed).clamp(min_zoom, max_zoom);
+                camera.zoom = vec2(zoom_level, zoom_level);
+            }
+
+            // ======= Updates ========
+            self.factory.try_lock().unwrap().spawn_random_batch(3, player_pos);
             self.factory.try_lock().unwrap().get_enemies().iter().for_each(|enemy| {
                 grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
             });
-    
-            // ======= LOGIC =========
-            let delta = get_frame_time();
-            self.player.try_lock().unwrap().update(delta, mouse_world_pos);
-            self.factory.try_lock().unwrap().update_all(player_pos, delta);
 
+            let delta = get_frame_time();
+            self.player.try_lock().unwrap().update(delta, camera.screen_to_world(mouse_pos));
+            self.factory.try_lock().unwrap().update_all(player_pos, delta);
     
             // Camera
             camera_pos += (player_pos - camera_pos) * 0.05;
-            mouse_world_pos = camera.world_to_screen(mouse_position().into());
-            
-            let wheel_movement = mouse_wheel().1;
-            if wheel_movement != 0.0 {
-                zoom_level = (zoom_level - wheel_movement * zoom_speed)
-                    .clamp(min_zoom, max_zoom);
-                camera.zoom = vec2(zoom_level, zoom_level);
-            }
-            
             camera.target = camera_pos;
             set_camera(&camera);
     
@@ -154,6 +149,7 @@ impl GameManager{
             
             grid_unlocked.clear();
             set_default_camera();
+
             player_pos = self.player.try_lock().unwrap().get_pos();
             next_frame().await
         }

@@ -57,12 +57,11 @@ impl Factory{
 
                 for _ in 0..=num{
                     self.active.push(
-                        //TODO: add additional offset 
                         Enemy::new(
                             COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst), 
                             self.get_screen_edges_from(player_pos), 
                             rand::random(), 
-                            rng.gen_range(3..=25) as f32, 
+                            rng.gen_range(7..=35) as f32, 
                             RED, 
                             player_pos
                         )

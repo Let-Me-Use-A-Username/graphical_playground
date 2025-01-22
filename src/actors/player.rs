@@ -39,7 +39,7 @@ impl Player{
             size: size,
             color: color,
             emitter: Emitter::new(EmitterConfig {
-                lifetime: 0.5,
+                lifetime: 2.0,
                 amount: 5,
                 initial_direction_spread: 0.0,
                 initial_velocity: -50.0,
@@ -56,7 +56,7 @@ impl Player{
             immune_timer: Timer::new(),
             bounce: false,
             dash_timer: Timer::new(),
-            dash_multiplier: 200.0
+            dash_multiplier: 300.0
         }
     }
     
@@ -233,7 +233,7 @@ impl Subscriber for Player {
                 let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
                 
                 if self.dash_timer.can_be_set(*now){
-                    self.dash_timer.set(*now, 0.3, Some(3.0));
+                    self.dash_timer.set(*now, 0.5, Some(3.0));
                     self.machine.transition(StateType::Dash);
                 }
             }
