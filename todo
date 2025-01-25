@@ -1,16 +1,23 @@
 ==============================================
 ================== Critical ==================
-
+- Figure out what game I want to make
+- Decouple update and draw logic from factory and create a new entity EnemyHandler
+    - Either:
+        - Rework grid to remove some overhead from continuasly unlocking mutexes
+        - Rework grid to handle collition (both player-enemy and enemy-enemy) and generally have more responsibilities
+            - Essentiall, it will retrieve close objecs and then object (player, enemy, game manager) checks for the collition
 
 ==============================================
 ================== General todo ==============
 - Implement fullscreen with  macroquad::prelude::Conf
     - Function macroquad::window::set_fullscreen ?
+        - When settings are changed, restart game to run them?
 - Implement better UI
 
 
 ==============================================
 ================== Gameplay ==================
+- Draw non-complete shapes to imitate "zombie" like creatures. I.e. circle with transparent circle top left to imitate a 3/4 circle.
 
 
 ==============================================
@@ -20,12 +27,15 @@
 
 ==============================================
 ================== Implementation ideas ======
-- Add threads to independent tasks (grid, factory, collition detection)
+- Add a shape to enemies. If their shape overlaps another, distance them.
+    - Trait collidable? 
+        - New game component that is dedicated to checking collitions?
+- Update enemies only when move or active or inside view(?)s
+- Change collition detection (Square collider ?)
+- Add threads to independent tasks (grid, factory, collition detection) be careful with shared data
 - Use a thread per cell grid. Assign a structure per cell that gived information on either: Enemy pos and last pos, or cell status (populated, not)
     -When enemies exceed a certai number in a cell, divide the cell (and only this cell) with size 32 into 4 sub cells with size 8. One thread per subcell
     - Dynamic cell resize? 
-- Update enemies only when move or active or inside view(?)s
-- Change collition detection (Square collider ?)
 
 
 ==============================================
