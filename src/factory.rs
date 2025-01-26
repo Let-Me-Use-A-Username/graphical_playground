@@ -9,8 +9,8 @@ use macroquad::math::{vec2, Vec2};
 use macroquad::color::{Color, RED};
 use rand::{thread_rng, Rng};
 
-use crate::event_system::event::{Event, EventType};
-use crate::event_system::interface::{Drawable, Object, Publisher, Subscriber};
+use crate::event_system::event::Event;
+use crate::event_system::interface::{Publisher, Subscriber};
 use crate::actors::enemy::{Enemy, EnemyType};
 use crate::globals;
 use crate::utils::timer::Timer;
@@ -18,7 +18,6 @@ use crate::utils::timer::Timer;
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct Factory{
-    active: Vec<Enemy>,
     sender: Sender<Event>,
     spawn_timer: Timer
 }
@@ -26,29 +25,27 @@ pub struct Factory{
 impl Factory{
     pub fn new(sender: Sender<Event>) -> Self{
         return Factory {
-            active: Vec::new(),
             sender: sender,
             spawn_timer: Timer::new()
         }
     }
 
-    pub fn spawn(&mut self, pos: Vec2, enemy_type: EnemyType, size: f32, color: Color, player_pos: Vec2){
-        let enemy = Enemy::new(
+    pub fn spawn(&mut self, pos: Vec2, enemy_type: EnemyType, size: f32, color: Color, player_pos: Vec2) -> Enemy{
+        return Enemy::new(
             COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst), 
             pos, 
             enemy_type, 
             size, 
             color, 
             player_pos
-        );
-        
-        self.active.push(enemy);
+        )
     }
 
-    ///Spawns X random enemies 
-    pub fn spawn_random_batch(&mut self, num: i32, player_pos: Vec2){
+    //Review: Perhaps remove timer, or spawn based on event
+    pub fn spawn_random_batch(&mut self, num: i32, player_pos: Vec2) -> Option<Vec<Enemy>>{
         let time = get_time();
         let is_set = self.spawn_timer.has_expired(time);
+        let mut enemies = vec!();
 
         match is_set{
             //Timer is set, but hasn't expired
@@ -56,7 +53,7 @@ impl Factory{
                 let mut rng = thread_rng();
 
                 for _ in 0..=num{
-                    self.active.push(
+                    enemies.push(
                         Enemy::new(
                             COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst), 
                             self.get_screen_edges_from(player_pos), 
@@ -79,33 +76,12 @@ impl Factory{
                 self.spawn_timer.set(time, 1.0, Some(8.0));
             },
         }
-    }
 
-    
-    pub fn get_enemies(&self) -> Vec<Enemy>{
-        return self.active.clone()
-    }
+        if enemies.is_empty(){
+            return None
+        }
 
-    pub fn draw_all(&mut self, player_pos: Vec2){
-        let global = globals::Global::new();
-        
-        self.active
-            .iter_mut()
-            .for_each(|enemy| {
-                //If enemy in player site, render
-                let length = (enemy.get_pos() - player_pos).length();
-                if length < global.get_screen_width() || length < global.get_screen_height(){
-                    enemy.draw();
-                }
-            });
-    }
-
-    pub fn update_all(&mut self, player_pos: Vec2, delta: f32){
-        self.active
-            .iter_mut()
-            .for_each(|enemy|{
-                enemy.update(player_pos, delta);
-            });
+        return Some(enemies)
     }
 
     fn get_screen_edges_from(&self, pos: Vec2)-> Vec2{
@@ -164,13 +140,6 @@ impl Subscriber for Factory{
     fn notify(&mut self, event: &Event) {
 
         match event.event_type{
-            EventType::EnemyHit => {
-                let event_id = *event.data.downcast_ref::<u64>().unwrap();
-                
-                self.active.retain(|enemy| {
-                    event_id != enemy.get_id()
-                });
-            },
             _ => {}
         }
     }

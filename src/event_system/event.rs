@@ -10,6 +10,7 @@ pub enum EventType{
     PlayerDashing,
 
     EnemyHit,
+    EnemyMovedToPosition
 }
 
 #[derive(Clone, Debug)]

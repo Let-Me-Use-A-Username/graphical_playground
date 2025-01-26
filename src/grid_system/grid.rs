@@ -1,30 +1,58 @@
-use std::{collections::HashMap, rc::{Rc, Weak}, sync::mpsc::Sender};
+use std::{collections::HashMap, sync::{mpsc::Sender, Arc, Weak}};
 
-use crate::event_system::{event::Event, interface::{Object, Publisher, Subscriber}};
+use macroquad::math::{vec2, Vec2};
+
+use crate::event_system::{event::{Event, EventType}, interface::{Object, Publisher, Subscriber}};
+
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum EntityType{
+    Enemy,
+    PowerUp,
+    Npc
+}
+
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct Entity{
+    entity_type: EntityType,
+    entity_id: u64
+}
+
+impl Entity{
+    pub fn new(entity_type: EntityType, id: u64) -> Self{
+        return Entity{
+            entity_type: entity_type,
+            entity_id: id
+        }
+    }
+}
 
 
 #[derive(Clone)]
 pub struct Cell{
-    entities: Vec<Weak<dyn Object>>
+    populated: bool,
+    entities: Vec<Entity>
 }
 
 impl Cell{
-    pub fn new() -> Self{
+    fn new() -> Self{
         return Cell {
+            populated: false,
             entities: Vec::new()
         }
     }
 
-    pub fn insert(&mut self, obj: Weak<dyn Object>){
-        self.entities.push(obj);
+    fn insert(&mut self, entity_type: EntityType, id: u64){
+        self.entities.push(Entity::new(entity_type, id));
     }
 
-    pub fn clear(&mut self){
+    fn clear(&mut self){
         self.entities.clear();
     }
     
-    pub fn get_entities(&self) -> Vec<Weak<dyn Object>>{
-        return self.entities.clone()
+    pub fn get_entities(&self) -> &Vec<Entity>{
+        return &self.entities
     }
 }
 
@@ -51,21 +79,7 @@ impl Grid{
         }
     }
 
-    pub fn update(&mut self){
-        //for cell in grid
-        self.cells.iter_mut().for_each(|entry | {
-            let cell_pos = entry.0;
-            let cell = entry.1;
-            let entities = cell.get_entities();
-            //for entity in cell
-            entities.iter().for_each(|entity| {
-                if let Some(entity_upg) = entity.upgrade(){
-                }
-            });
-        });
-    }
-
-    pub fn insert_obj(&self, obj: Weak<dyn Object>){
+    pub fn insert_obj(&self, entity_type: EntityType, id: u64){
         let obj_upg = obj.upgrade();
 
         match obj_upg {
@@ -73,7 +87,7 @@ impl Grid{
                 let pos = obj_inner.get_pos();
 
                 if let Some((_, mut cell)) = self.get_cell((pos.x as i32, pos.y as i32)){
-                    cell.insert(Rc::downgrade(&obj_inner));
+                    cell.insert(Arc::downgrade(&obj_inner));
                 }
             },
             None => eprintln!("Grid: Failed to upgrade enemy")
@@ -110,7 +124,7 @@ impl Grid{
         return None
     }
 
-    fn get_cell(&self, coord: (i32, i32)) -> Option<((u64, u64),Cell)>{
+    fn get_cell(&self, coord: (i32, i32)) -> Option<((u64, u64), Cell)>{
         let world_to_cell = self.world_to_cell(coord);
         
         for (key, val) in self.cells.iter(){
@@ -139,7 +153,28 @@ impl Publisher for Grid{
 impl Subscriber for Grid{
 
     fn notify(&mut self, event: &Event) {
-        match event.event_type{
+        match &event.event_type{
+            EventType::EnemyMovedToPosition => {
+                if let Some(data) = event.data.downcast_ref::<(Vec2, u64)>(){
+                    let enemy_pos = vec2(data.0.x, data.0.y);
+                    let entry = self.get_cell((enemy_pos.x as i32, enemy_pos.y as i32));
+
+                    if let Some(mut cell) = entry{
+
+                        let entity = Entity::new(EntityType::Enemy, data.1);
+                        let dx = cell.0.0 -1..1;
+                        let dy = cell.0.1 -1..1;
+
+                        if !cell.1.entities.contains(&entity){
+                            cell.1.entities.push(Entity::new(EntityType::Enemy, data.1));
+                        }
+                        else{
+                        }
+                    }
+                }
+                
+                
+            }
             _ => {
                 todo!()
             }
