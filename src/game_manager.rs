@@ -42,7 +42,12 @@ impl GameManager{
         let global = Global::new();
         let mut dispatcher = Dispatcher::new();
         let factory = Arc::new(Mutex::new(Factory::new(dispatcher.create_sender())));
-        let grid = Arc::new(Mutex::new(Grid::new(global.get_cell_size(), dispatcher.create_sender())));
+        let grid = Arc::new(Mutex::new(
+            Grid::new(
+                global.get_grid_size() as u64,
+                global.get_cell_size() as i32, 
+                dispatcher.create_sender())
+            ));
         let player = Arc::new(Mutex::new(Player::new(
                 global.get_screen_width() / 2.0,
                 global.get_screen_height() / 2.0,
@@ -117,13 +122,13 @@ impl GameManager{
 
             // ======= Updates ========
             self.factory.try_lock().unwrap().spawn_random_batch(3, player_pos);
-            self.factory.try_lock().unwrap().get_enemies().iter().for_each(|enemy| {
-                grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
-            });
+            // self.factory.try_lock().unwrap().get_enemies().iter().for_each(|enemy| {
+            //     grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
+            // });
 
             let delta = get_frame_time();
             self.player.try_lock().unwrap().update(delta, camera.screen_to_world(mouse_pos));
-            self.factory.try_lock().unwrap().update_all(player_pos, delta);
+            //self.factory.try_lock().unwrap().update_all(player_pos, delta);
     
             // Camera
             camera_pos += (player_pos - camera_pos) * 0.05;
@@ -131,23 +136,23 @@ impl GameManager{
             set_camera(&camera);
     
             // Collision check
-            for obj in grid_unlocked.get_nearby_objects(self.player.clone()) {
-                if let Ok(mut guard) = obj.try_lock() {
-                    if let Some(enemy) = guard.as_any_mut().downcast_mut::<Enemy>() {
-                        if self.player.try_lock().unwrap().collide(enemy.get_pos(), enemy.get_size()) {
-                            self.dispatcher.dispatch_event(Event::new(enemy.get_id(), EventType::EnemyHit));
-                        }
-                    }
-                }
-            }
+            // for obj in grid_unlocked.get_nearby_objects(self.player.clone()) {
+            //     if let Ok(mut guard) = obj.try_lock() {
+            //         if let Some(enemy) = guard.as_any_mut().downcast_mut::<Enemy>() {
+            //             if self.player.try_lock().unwrap().collide(enemy.get_pos(), enemy.get_size()) {
+            //                 self.dispatcher.dispatch_event(Event::new(enemy.get_id(), EventType::EnemyHit));
+            //             }
+            //         }
+            //     }
+            // }
             self.dispatcher.dispatch();
     
             // ======== RENDERING ========
             clear_background(LIGHTGRAY);
             self.player.try_lock().unwrap().draw();
-            self.factory.try_lock().unwrap().draw_all(player_pos);
+            //self.factory.try_lock().unwrap().draw_all(player_pos);
             
-            grid_unlocked.clear();
+            //grid_unlocked.clear();
             set_default_camera();
 
             player_pos = self.player.try_lock().unwrap().get_pos();

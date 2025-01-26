@@ -18,5 +18,9 @@ impl Global{
     pub fn get_cell_size(&self) -> f32{
         return 25.0
     }
+
+    pub fn get_grid_size(&self) -> f32{
+        return 2000.0
+    }
 }
 

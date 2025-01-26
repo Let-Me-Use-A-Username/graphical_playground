@@ -6,6 +6,7 @@ mod factory;
 mod state_machine;
 mod utils;
 mod game_manager;
+mod entity_manager;
 
 use macroquad::prelude::*;
 
