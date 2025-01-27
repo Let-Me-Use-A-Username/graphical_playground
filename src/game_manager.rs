@@ -44,7 +44,7 @@ impl GameManager{
         let factory = Arc::new(Mutex::new(Factory::new(dispatcher.create_sender())));
         let grid = Arc::new(Mutex::new(
             Grid::new(
-                global.get_grid_size() as u64,
+                global.get_grid_size() as i32,
                 global.get_cell_size() as i32, 
                 dispatcher.create_sender())
             ));

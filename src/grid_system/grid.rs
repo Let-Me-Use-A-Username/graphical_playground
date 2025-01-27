@@ -1,22 +1,23 @@
-use std::{collections::HashMap, sync::{mpsc::Sender, Arc, Weak}};
+use std::{collections::HashMap, sync::mpsc::Sender};
 
-use macroquad::math::{vec2, Vec2};
+use macroquad::math::Vec2;
 
-use crate::event_system::{event::{Event, EventType}, interface::{Object, Publisher, Subscriber}};
+use crate::event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}};
+
+type EntityId = u64;
+type CellPos = (i32, i32);
 
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum EntityType{
     Enemy,
-    PowerUp,
-    Npc
 }
 
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Entity{
     entity_type: EntityType,
-    entity_id: u64
+    entity_id: EntityId
 }
 
 impl Entity{
@@ -30,15 +31,13 @@ impl Entity{
 
 
 #[derive(Clone)]
-pub struct Cell{
-    populated: bool,
+struct Cell{
     entities: Vec<Entity>
 }
 
 impl Cell{
     fn new() -> Self{
         return Cell {
-            populated: false,
             entities: Vec::new()
         }
     }
@@ -46,24 +45,17 @@ impl Cell{
     fn insert(&mut self, entity_type: EntityType, id: u64){
         self.entities.push(Entity::new(entity_type, id));
     }
-
-    fn clear(&mut self){
-        self.entities.clear();
-    }
-    
-    pub fn get_entities(&self) -> &Vec<Entity>{
-        return &self.entities
-    }
 }
 
 pub struct Grid{
-    cells: HashMap<(u64, u64), Cell>,
+    cells: HashMap<CellPos, Cell>,
+    entity_table: HashMap<EntityId, CellPos>,
     cell_size: i32,
     sender: Sender<Event>
 }
 
 impl Grid{
-    pub fn new(grid_size: u64, cell_size: i32, sender: Sender<Event>) -> Self{
+    pub fn new(grid_size: i32, cell_size: i32, sender: Sender<Event>) -> Self{
         let mut cells = HashMap::new();
 
         for dx in 0..grid_size{
@@ -74,57 +66,93 @@ impl Grid{
         
         return Grid{
             cells: cells,
+            entity_table: HashMap::new(),
             cell_size: cell_size,
             sender: sender
         }
     }
 
-    pub fn insert_obj(&self, entity_type: EntityType, id: u64){
-        let obj_upg = obj.upgrade();
+    // Update entity position in the grid
+    pub fn update_entity(&mut self, id: EntityId, entity_type: EntityType, pos: Vec2) {
+        let new_pos = self.world_to_cell(pos.into());
 
-        match obj_upg {
-            Some(obj_inner) => {
-                let pos = obj_inner.get_pos();
+        if let Some(old_pos) = self.entity_table.get(&id) {
+            if *old_pos == new_pos {
+                return;
+            }
 
-                if let Some((_, mut cell)) = self.get_cell((pos.x as i32, pos.y as i32)){
-                    cell.insert(Arc::downgrade(&obj_inner));
-                }
-            },
-            None => eprintln!("Grid: Failed to upgrade enemy")
+            if let Some(cell) = self.cells.get_mut(old_pos) {
+                cell.entities.retain(|entity| entity.entity_id != id);
+            }
+        }
+
+        // Add to new position
+        if let Some(new_cell) = self.cells.get_mut(&new_pos) {
+            new_cell.insert(entity_type, id);
+            self.entity_table.insert(id, new_pos);
+        }
+        else{
+            eprintln!("|Grid|update_entity()|: Cell not found for pos {:?}", new_pos);
         }
     }
 
-    pub fn get_nearby_object(&self, obj:Weak<dyn Object>) -> Option<Vec<Weak<dyn Object>>>{
-        let obj_upg = obj.upgrade();
-
-        match obj_upg{
-            Some(obj_rc) => {
-                let pos = obj_rc.get_pos();
-                
-                if let Some((cell_pos, _)) = self.get_cell((pos.x as i32, pos.y as i32)){
-                    
-                    let mut nearby: Vec<Weak<dyn Object>> = Vec::new();
-
-                    for dx in -1..=1{
-                        for dy in -1..=1{
-                            let neighbor_coord = (cell_pos.0 + dx as u64, cell_pos.1 + dy as u64);
-                            if let Some(neighbor) = self.cells.get(&neighbor_coord){
-                                neighbor.get_entities().iter().for_each(|ent| {
-                                    nearby.push(ent.clone()); 
-                                });
-                            }
-                        }
-                    }
-                    return Some(nearby)
-                }
-            },
-            None => eprintln!("Grid: Failed to upgrade obj"),
+    pub fn remove_entity(&mut self, id: EntityId) {
+        if let Some(ent) = self.entity_table.get(&id){
+            if let Some(cell) = self.cells.get_mut(ent){
+                cell.entities.retain(|entity| entity.entity_id != id);
+            }
         }
-
-        return None
     }
 
-    fn get_cell(&self, coord: (i32, i32)) -> Option<((u64, u64), Cell)>{
+    
+    pub fn get_nearby_entities(&self, pos: Vec2) -> Vec<(EntityType, EntityId)> {
+        let mut entities: Vec<(EntityType, EntityId)> = Vec::new();
+
+        let cell_pos = self.world_to_cell(pos.into());
+
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                if let Some(cell) = self.cells.get(&(cell_pos.0 + dx, cell_pos.1 + dy)){
+                    entities.extend(cell.entities.iter().map(|entity| (entity.entity_type.clone(), entity.entity_id)));
+                }
+                else{
+                    eprintln!("|Grid|get_nearby_enemies()|: Cell not found for pos {:?} and offset {:?}", cell_pos, (dx, dy));
+                }
+            }
+        }
+
+
+        return entities
+    }
+
+    pub fn get_nearby_entities_by_type(&self, pos: Vec2, entity_type: EntityType) -> Vec<EntityId> {
+        self.get_nearby_entities(pos)
+            .into_iter()
+            .filter(|(ent_t, _)| *ent_t == entity_type)
+            .map(|(_, id)| id)
+            .collect()
+    }
+
+    pub fn insert_entity(&mut self, ent_type: EntityType, id: EntityId, pos: Vec2){
+        //if entity exists, return
+        if let Some(cell) = self.entity_table.get(&id){
+            if let Some(entry) = self.cells.get_mut(cell){
+                let entity = Entity::new(ent_type.clone(), id);
+                if entry.entities.contains(&entity){
+                    return;
+                }
+            }
+        }
+
+        //Add entity to table cell and to table
+        if let Some(entry) = self.get_cell((pos.x, pos.y)){
+            let mut cell = entry.1;
+            cell.insert(ent_type, id);
+            self.entity_table.insert(id, entry.0);
+        }
+    }
+
+    fn get_cell(&self, coord: (f32, f32)) -> Option<((i32, i32), Cell)>{
         let world_to_cell = self.world_to_cell(coord);
         
         for (key, val) in self.cells.iter(){
@@ -135,9 +163,9 @@ impl Grid{
         return None
     }
 
-    fn world_to_cell(&self, coord: (i32, i32)) -> (u64, u64){
-        let x = (coord.0 / self.cell_size) as u64;
-        let y = (coord.1 / self.cell_size) as u64;
+    fn world_to_cell(&self, coord: (f32, f32)) -> CellPos{
+        let x = (coord.0 / self.cell_size as f32).floor() as i32;
+        let y = (coord.1 / self.cell_size as f32).floor() as i32;
         
         return (x, y)
     }
@@ -155,25 +183,9 @@ impl Subscriber for Grid{
     fn notify(&mut self, event: &Event) {
         match &event.event_type{
             EventType::EnemyMovedToPosition => {
-                if let Some(data) = event.data.downcast_ref::<(Vec2, u64)>(){
-                    let enemy_pos = vec2(data.0.x, data.0.y);
-                    let entry = self.get_cell((enemy_pos.x as i32, enemy_pos.y as i32));
-
-                    if let Some(mut cell) = entry{
-
-                        let entity = Entity::new(EntityType::Enemy, data.1);
-                        let dx = cell.0.0 -1..1;
-                        let dy = cell.0.1 -1..1;
-
-                        if !cell.1.entities.contains(&entity){
-                            cell.1.entities.push(Entity::new(EntityType::Enemy, data.1));
-                        }
-                        else{
-                        }
-                    }
+                if let Some(data) = event.data.downcast_ref::<(EntityId, Vec2)>(){
+                    self.update_entity(data.0, EntityType::Enemy, data.1);
                 }
-                
-                
             }
             _ => {
                 todo!()
