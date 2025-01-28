@@ -1,8 +1,10 @@
 ==============================================
 ================== Critical ==================
+- Implement collider to each entity that can collide.
+    - Implement trait Collidable and have its method return whether the rect inside us overlaps the other.
+    - This way the entity manager can check whether the player rect collides with an entities (by id)
+    
 - Implement EntityHandler
-- Implement a way to detect collitions
-    - Either the way it was or have a dedicated system (check Implementation ideas)
 - Implement communication between game components via Events
 - Refactor update loop
 
@@ -27,7 +29,6 @@
 
 ==============================================
 ================== Implementation ideas ======
-- Change collition detection (Square collider ?)
 - Add a shape to enemies. If their shape overlaps another, distance them.
     - Trait collidable? 
         - New game component that is dedicated to checking collitions?

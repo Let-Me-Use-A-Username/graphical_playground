@@ -13,7 +13,7 @@ pub enum EntityType{
     Enemy,
 }
 
-
+///Entity represents the minimal information about an entity present in the game.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Entity{
     entity_type: EntityType,
@@ -29,7 +29,7 @@ impl Entity{
     }
 }
 
-
+/// Grid cell that holds entity vector.
 #[derive(Clone)]
 struct Cell{
     entities: Vec<Entity>
@@ -47,6 +47,8 @@ impl Cell{
     }
 }
 
+///Grid that keeps track of entities by having entries in a hashmap and which cell they belong to.
+/// Each cell position has a cell that holds a vec of entities. Where entity is entity_type and id.
 pub struct Grid{
     cells: HashMap<CellPos, Cell>,
     entity_table: HashMap<EntityId, CellPos>,
@@ -72,7 +74,8 @@ impl Grid{
         }
     }
 
-    // Update entity position in the grid
+    /// Removes old entity entry, by first checking if its in the correct cell.
+    /// And then proceeds to insert it.
     //Review: Change the following parameter to a struct, pass a stuct as event data to update.
     pub fn update_entity(&mut self, id: EntityId, entity_type: EntityType, pos: Vec2) {
         let new_pos = self.world_to_cell(pos.into());
@@ -97,6 +100,8 @@ impl Grid{
         }
     }
 
+    ///Removes first occurance of an element by id.
+    /// Doesn't check for double references.
     pub fn remove_entity(&mut self, id: EntityId) {
         if let Some(ent) = self.entity_table.get(&id){
             if let Some(cell) = self.cells.get_mut(ent){
@@ -105,7 +110,27 @@ impl Grid{
         }
     }
 
+
+    ///Returns entities in the cell that `pos` belongs to.
+    pub fn get_approximate_entities(&self, pos: Vec2) -> Option<Vec<(EntityType, EntityId)>>{
+        let cell_pos = self.world_to_cell(pos.into());
+        
+        if let Some(cell) = self.cells.get(&(cell_pos.0, cell_pos.1)){
+            return Some(cell.entities.
+                    iter()
+                    .map(|entity| (entity.entity_type.clone(), entity.entity_id))
+                    .collect::<Vec<(EntityType, EntityId)>>()
+                );
+        }
+        else{
+            eprintln!("|Grid|get_nearby_enemies()|: Cell not found for pos {:?}", cell_pos);
+        }
+
+        return None
+    }
+
     
+    ///Returns entities in the current and adjusent cells in range of -1..1.
     pub fn get_nearby_entities(&self, pos: Vec2) -> Vec<(EntityType, EntityId)> {
         let mut entities: Vec<(EntityType, EntityId)> = Vec::new();
 
@@ -126,6 +151,7 @@ impl Grid{
         return entities
     }
 
+    ///Returns entities in the current and adjusent cells that are of type `entity_type`.
     pub fn get_nearby_entities_by_type(&self, pos: Vec2, entity_type: EntityType) -> Vec<EntityId> {
         self.get_nearby_entities(pos)
             .into_iter()
@@ -134,8 +160,9 @@ impl Grid{
             .collect()
     }
 
+    ///Inserts a new entity. Checks for `entry` and `cell` existence. 
+    /// If already in some cell, returns, even if wrong position.
     pub fn insert_entity(&mut self, ent_type: EntityType, id: EntityId, pos: Vec2){
-        //if entity exists, return
         if let Some(cell) = self.entity_table.get(&id){
             if let Some(entry) = self.cells.get_mut(cell){
                 let entity = Entity::new(ent_type.clone(), id);
@@ -153,6 +180,7 @@ impl Grid{
         }
     }
 
+    ///Returns an `entry` with cell position and cell object.
     fn get_cell(&self, coord: (f32, f32)) -> Option<((i32, i32), Cell)>{
         let world_to_cell = self.world_to_cell(coord);
         
@@ -164,6 +192,7 @@ impl Grid{
         return None
     }
 
+    ///Translates a (f32, f32) pair into a cell position.
     fn world_to_cell(&self, coord: (f32, f32)) -> CellPos{
         let x = (coord.0 / self.cell_size as f32).floor() as i32;
         let y = (coord.1 / self.cell_size as f32).floor() as i32;

@@ -6,7 +6,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::event_system::interface::{Drawable, Moveable, Object, Updatable};   
+use crate::event_system::interface::{Drawable, GameEntity, Moveable, Object, Updatable};   
 
 
 #[derive(Clone, Copy, Debug)]
@@ -116,6 +116,8 @@ impl Drawable for Enemy{
         }
     }
 }
+
+impl GameEntity for Enemy{}
 
 
 impl std::fmt::Debug for Enemy{

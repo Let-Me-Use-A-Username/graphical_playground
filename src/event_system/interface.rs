@@ -1,16 +1,15 @@
 use std::any::Any;
 
-use macroquad::math::Vec2;
+use macroquad::math::{Rect, Vec2};
 
 use crate::event_system::event::Event;
 
 //========= Event related interfaces ==========
-//REVIEW: Subscriber should be Subscriber: Send but whatever
-pub trait Subscriber{
+pub trait Subscriber: Send + Sync{
     fn notify(&mut self, event: &Event);
 }
 
-pub trait Publisher{
+pub trait Publisher: Send + Sync{
     fn publish(&self, event: Event);
 }
 
@@ -21,16 +20,20 @@ pub trait Object{
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-pub trait Moveable{
-    fn move_to(&mut self, delta: f32) -> (f32, f32);
-}
-
-pub trait Drawable{
-    fn draw(&mut self);
-}
-
-pub trait Updatable{
+pub trait Updatable: Object{
     fn update(&mut self, delta: f32, params: Vec<Box<dyn Any>>);
 }
 
+pub trait Moveable: Object{
+    fn move_to(&mut self, delta: f32) -> (f32, f32);
+}
 
+pub trait Drawable: Object{
+    fn draw(&mut self);
+}
+
+pub trait GameEntity: Updatable + Drawable + Send + Sync{}
+
+pub trait Collidable: Object{
+    fn collides(&self, collider: Rect) -> bool;
+}
