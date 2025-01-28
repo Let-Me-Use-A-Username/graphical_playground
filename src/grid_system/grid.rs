@@ -73,6 +73,7 @@ impl Grid{
     }
 
     // Update entity position in the grid
+    //Review: Change the following parameter to a struct, pass a stuct as event data to update.
     pub fn update_entity(&mut self, id: EntityId, entity_type: EntityType, pos: Vec2) {
         let new_pos = self.world_to_cell(pos.into());
 

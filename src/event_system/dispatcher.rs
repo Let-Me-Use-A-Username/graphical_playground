@@ -50,9 +50,6 @@ impl Dispatcher{
                 if let Ok(mut sub) = subscriber.try_lock() {
                     sub.notify(&event);
                 }
-                else{
-                    println!("Error");
-                }
             }
         }
     }

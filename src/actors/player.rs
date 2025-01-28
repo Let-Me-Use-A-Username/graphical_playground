@@ -5,7 +5,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::mpsc::Sender;
 
-use crate::{event_system::event::{Event, EventType}, state_machine::machine::StateMachine, utils::timer::Timer};
+use crate::{event_system::{event::{Event, EventType}, interface::Updatable}, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -69,8 +69,11 @@ impl Player{
         }
         return false
     }
+}
 
-    pub fn update(&mut self, delta: f32, mouse_pos: Vec2){
+//======= Player interfaces ========
+impl Updatable for Player{
+    fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any>>) {
         let state = self.machine.get_state();
 
         match *state.try_lock().unwrap(){
@@ -104,29 +107,33 @@ impl Player{
                 }                
             },
             StateType::Dash => {
-                let mut timer = self.dash_timer;
+                //Review: Check if it works. Like enemy, downacsting any could be heavy
+                if let Some(param_item) = params.pop(){
+                    if let Some(mouse_pos) = param_item.downcast_ref::<Vec2>(){
+                        let mut timer = self.dash_timer;
 
-                if let Some(exp) = timer.has_expired(get_time()) {
-                    match exp{
-                        true => {
-                            timer.reset();
-                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
-                        },
-                        false => {
-                            let dash_direction = (mouse_pos - self.pos).normalize();
-                            
-                            self.velocity += dash_direction * self.dash_multiplier;
-                        },
+                        if let Some(exp) = timer.has_expired(get_time()) {
+                            match exp{
+                                true => {
+                                    timer.reset();
+                                    self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                                },
+                                false => {
+                                    let dash_direction = (*mouse_pos - self.pos).normalize();
+                                    
+                                    self.velocity += dash_direction * self.dash_multiplier;
+                                },
+                            }
+                        }
+                        self.velocity *= 0.9;
+                        self.pos += self.velocity * delta;
                     }
                 }
-                self.velocity *= 0.9;
-                self.pos += self.velocity * delta;
             }
         };
     }
 }
 
-//======= Player interfaces ========
 impl Object for Player{
     fn get_pos(&self) -> Vec2{
         return self.pos

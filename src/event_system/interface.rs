@@ -29,4 +29,8 @@ pub trait Drawable{
     fn draw(&mut self);
 }
 
+pub trait Updatable{
+    fn update(&mut self, delta: f32, params: Vec<Box<dyn Any>>);
+}
+
 

@@ -1,39 +1,35 @@
-use std::any::Any;
+use std::{any::Any, sync::Arc};
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use macroquad::math::Vec2;
 
-use crate::actors::enemy::Enemy;
-use crate::event_system::interface::Drawable;
+use crate::event_system::interface::{Drawable, Object, Updatable};
 
 
 pub struct Manager{
-    enemies: HashMap<u64, Box<dyn Any>>
+    entities: HashMap<u64, Arc<dyn Object>>
 }
 
 impl Manager{
 
     pub fn new() -> Self{
         return Manager{
-            enemies: HashMap::new()
+            entities: HashMap::new()
         }
     }
 
-
-    pub fn insert_enemy(&mut self, enemy: Enemy){
-
-    }
-
-
+    //TODO: Think how you want to keep entities, and how to diverge between them.
     pub fn update_all(&mut self, delta: f32, player_pos: Vec2){
-        self.enemies.iter_mut()
-            .for_each(|enemy| enemy.update(player_pos, delta));
     }
 
     pub fn draw_all(&mut self){
-        self.enemies.iter_mut()
-            .for_each(|enemy| enemy.draw());
     }
 
-}
+    pub fn get_entity_with_id(&mut self, id: u64) -> Option<Arc<dyn Object>>{
+        if let Some(boxxed) = self.entities.get(&id){
+            return Some(boxxed.clone())
+        }
+        return None
+    }
+
+}   

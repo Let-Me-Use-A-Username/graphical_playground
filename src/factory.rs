@@ -41,7 +41,7 @@ impl Factory{
         )
     }
 
-    //Review: Perhaps remove timer, or spawn based on event
+    //Review: Perhaps remove timer, or spawn based on event or both
     pub fn spawn_random_batch(&mut self, num: i32, player_pos: Vec2) -> Option<Vec<Enemy>>{
         let time = get_time();
         let is_set = self.spawn_timer.has_expired(time);

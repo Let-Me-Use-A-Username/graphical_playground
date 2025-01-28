@@ -6,7 +6,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::event_system::interface::{Object, Drawable, Moveable};   
+use crate::event_system::interface::{Drawable, Moveable, Object, Updatable};   
 
 
 #[derive(Clone, Copy, Debug)]
@@ -43,11 +43,6 @@ impl Enemy{
         }
     }
 
-    pub fn update(&mut self, player_pos: Vec2, delta: f32){
-        self.target = player_pos;
-        let _ = self.move_to(delta);
-    }
-
     pub fn get_id(&self) -> u64{
         return self.id
     }
@@ -63,6 +58,18 @@ impl Enemy{
 
 
 //========== Enemy interfaces =========
+impl Updatable for Enemy{
+    //Review: Could be quite heavy downcasting for Any
+    fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any>>) {
+        if let Some(param_item) = params.pop(){
+            if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
+                self.target = *player_pos;
+                self.move_to(delta);
+            }
+        }
+    }
+}
+
 impl Object for Enemy{
     fn get_pos(&self) -> Vec2{
         return self.pos

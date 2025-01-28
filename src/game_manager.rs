@@ -5,7 +5,7 @@ use macroquad::ui::{hash, root_ui, widgets};
 
 use std::sync::{Arc, Mutex};
 
-use crate::event_system::interface::{Object, Drawable};
+use crate::event_system::interface::{Object, Drawable, Updatable};
 use crate::globals::Global;
 use crate::grid_system::grid::Grid;
 use crate::actors::{enemy::Enemy, player::Player};
@@ -127,7 +127,7 @@ impl GameManager{
             // });
 
             let delta = get_frame_time();
-            self.player.try_lock().unwrap().update(delta, camera.screen_to_world(mouse_pos));
+            self.player.try_lock().unwrap().update(delta, vec!(Box::new(camera.screen_to_world(mouse_pos))));
             //self.factory.try_lock().unwrap().update_all(player_pos, delta);
     
             // Camera
