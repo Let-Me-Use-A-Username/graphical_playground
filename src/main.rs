@@ -7,6 +7,7 @@ mod state_machine;
 mod utils;
 mod game_manager;
 mod entity_handler;
+mod collision_system;
 
 use macroquad::prelude::*;
 

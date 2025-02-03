@@ -8,6 +8,7 @@ use std::sync::mpsc::Sender;
 use crate::{event_system::{event::{Event, EventType}, interface::Updatable}, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
+use crate::collision_system::collider::CircleCollider;
 
 pub struct Player{
     pos: Vec2,
@@ -24,7 +25,8 @@ pub struct Player{
     immune_timer: Timer,
     bounce: bool,
     dash_timer: Timer,
-    dash_multiplier: f32
+    dash_multiplier: f32,
+    collider: CircleCollider
 }
 
 impl Player{
@@ -56,7 +58,8 @@ impl Player{
             immune_timer: Timer::new(),
             bounce: false,
             dash_timer: Timer::new(),
-            dash_multiplier: 300.0
+            dash_multiplier: 300.0,
+            collider: CircleCollider::new(x, y, size)
         }
     }
     

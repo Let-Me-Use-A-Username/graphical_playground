@@ -1,9 +1,14 @@
 ==============================================
 ================== Critical ==================
 - Implement collider to each entity that can collide.
-    - Implement trait Collidable and have its method return whether the rect inside us overlaps the other.
     - This way the entity manager can check whether the player rect collides with an entities (by id)
-    
+        -The colliders inside an enemy can be more than one, and could have properties that 
+        make them adjustable, for example a triangle could have two circles or a rectangle
+        thats longer on one side
+
+- Break down enemy handling in different files. Circle, Square etc and implement different AIs
+    - Attempt to create a share handling via Enemy Enum, to make testing easier
+
 - Implement EntityHandler
 - Implement communication between game components via Events
 - Refactor update loop
@@ -12,7 +17,7 @@
 ================== General todo ==============
 - Implement fullscreen with  macroquad::prelude::Conf
     - Function macroquad::window::set_fullscreen ?
-        - When settings are changed, restart game to run them?
+        - When settings are changed, restart game to run them (hot reload)
 - Implement better UI
 
 

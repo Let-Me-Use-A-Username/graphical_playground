@@ -33,7 +33,3 @@ pub trait Drawable: Object{
 }
 
 pub trait GameEntity: Updatable + Drawable + Send + Sync{}
-
-pub trait Collidable: Object{
-    fn collides(&self, collider: Rect) -> bool;
-}
