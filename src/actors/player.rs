@@ -5,7 +5,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::mpsc::Sender;
 
-use crate::{event_system::{event::{Event, EventType}, interface::Updatable}, state_machine::machine::StateMachine, utils::timer::Timer};
+use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::Updatable}, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 use crate::collision_system::collider::CircleCollider;
@@ -20,20 +20,20 @@ pub struct Player{
     max_acceleration: f32,
     pub size: f32,
     color: Color,
+    rotation: f32,
     //Compoennts
     emitter: Emitter,
     sender: Sender<Event>,
     machine: StateMachine,
-    collider: CircleCollider,
+    collider: RectCollider,
     //State specifics
     immune_timer: Timer,
-    bounce: bool,
-    dash_timer: Timer,
-    dash_multiplier: f32,
-    dash_target: Option<Vec2>
+    bounce: bool
 }
 
 impl Player{
+    const ROTATION_SPEED: f32 = 3.0;
+
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
             pos: Vec2::new(x, y),
@@ -44,6 +44,7 @@ impl Player{
             max_acceleration: 3000.0,
             size: size,
             color: color,
+            rotation: 0.0,
             emitter: Emitter::new(EmitterConfig {
                 lifetime: 2.0,
                 amount: 5,
@@ -59,12 +60,9 @@ impl Player{
             }),
             sender: sender,
             machine: StateMachine::new(),
-            collider: CircleCollider::new(x, y, size),
+            collider: RectCollider::new(x, y, size, size),
             immune_timer: Timer::new(),
-            bounce: false,
-            dash_timer: Timer::new(),
-            dash_multiplier: 3.0,
-            dash_target: None
+            bounce: false
         }
     }
     
@@ -81,7 +79,7 @@ impl Player{
 
 //======= Player interfaces ========
 impl Updatable for Player{
-    fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any>>) {
+    fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any>>) {
         let state = self.machine.get_state();
 
         match *state.try_lock().unwrap(){
@@ -113,43 +111,6 @@ impl Updatable for Player{
                         }
                     }
                 }                
-            },
-            StateType::Dash => {
-                let target = self.dash_target;
-                let mut timer = self.dash_timer;
-
-                match target{
-                    Some(tar) => {
-                        let distance = (tar - self.pos).length();
-
-                        if distance < 25.0 || timer.has_expired(get_time()).unwrap_or(true){
-                            timer.reset();
-                            self.dash_target = None;
-                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
-                        }
-                        else{
-                            let dash_direction = (tar - self.pos).normalize();
-                            let dash_multiplier = (self.dash_multiplier * distance)
-                                .clamp(10.0, 1500.0);
-                            println!("Mult: {:?}", dash_multiplier);
-                            
-                            let dash_velocity = dash_direction * dash_multiplier;
-                            println!("Dash Velocity: {:?}", dash_velocity);
-                            println!("Velocity: {:?}", self.velocity);
-                            
-                            self.velocity = (self.velocity + dash_velocity) * 0.9;
-                            self.pos += self.velocity * delta;
-                        }
-                    },
-                    None => {
-                        //Review: downacsting any could be heavy
-                        if let Some(param_item) = params.pop(){
-                            if let Some(mouse_pos) = param_item.downcast_ref::<Vec2>(){
-                                self.dash_target = Some(*mouse_pos);
-                            }
-                        }
-                    },
-                }
             }
         };
     }
@@ -171,49 +132,47 @@ impl Object for Player{
 
 impl Moveable for Player{
     fn move_to(&mut self, delta: f32) -> (f32, f32) {
-
-        if is_key_down(KeyCode::Space) {
-            self.publish(Event::new(get_time(), EventType::PlayerDashing));
-        }
-
         self.direction = vec2(0.0, 0.0);
+        //Rotate
+        if is_key_down(KeyCode::D) {
+            self.rotation += Self::ROTATION_SPEED * delta;
+        }
+        if is_key_down(KeyCode::A) {
+            self.rotation -= Self::ROTATION_SPEED * delta;
+        }
 
-        //Moves to a direction while key is pressed
-        if is_key_down(KeyCode::D){
-            self.direction.x += 1.0;
-        }
-        if is_key_down(KeyCode::A){
-            self.direction.x -= 1.0;
-        }
-        if is_key_down(KeyCode::W){
+        //Move
+        if is_key_down(KeyCode::W) {
             self.direction.y -= 1.0;
         }
-        if is_key_down(KeyCode::S){
+        if is_key_down(KeyCode::S) {
             self.direction.y += 1.0;
         }
 
-        //if player is moving
+        // If moving, apply rotation
         if self.direction.length() > 0.0 {
-            //apply acceleration
+            self.direction = self.direction.normalize();
+            
+            // Rotate the direction vector by current rotation
+            let rotated_x = self.direction.x * self.rotation.cos() - self.direction.y * self.rotation.sin();
+            let rotated_y = self.direction.x * self.rotation.sin() + self.direction.y * self.rotation.cos();
+            self.direction = vec2(rotated_x, rotated_y);
+
+            //Apply acceleration
             if self.acceleration <= self.max_acceleration {
                 self.acceleration += 1.7;
             }
 
-            self.direction = self.direction.normalize();
-            //apply direction and acceleration to velocity
             self.velocity += self.direction * self.acceleration * delta;
             
-            //if player is moving faster than allowed speed, normalize it
             if self.velocity.length() > self.speed {
                 self.velocity = self.velocity.normalize() * self.speed;
             }
-        }
-        else{
-            //apply deceleration
-            if self.acceleration > 1.0{
+        } else {
+            //Apply decceleration
+            if self.acceleration > 1.0 {
                 self.acceleration *= 0.7; 
             }
-            //no input, apply friction to slow player
             self.velocity *= 0.95;
             
             if self.velocity.length() < 0.1 {
@@ -230,8 +189,25 @@ impl Moveable for Player{
 impl Drawable for Player{
     fn draw(&mut self){
         //draw_circle(self.pos.x, self.pos.y, self.size, self.color);
-        draw_rectangle(self.pos.x, self.pos.y, self.size, self.size * 2.0, self.color);
-        self.emitter.draw(self.pos)
+        draw_rectangle_ex(
+            self.pos.x - self.size / 2.0, 
+            self.pos.y - self.size * 2.0 / 2.0, 
+            self.size, 
+            self.size * 2.0,
+            DrawRectangleParams {
+                rotation: self.rotation,
+                color: self.color,
+                ..Default::default()
+            });
+
+        // Calculate emitter position at back of rectangle
+        let back_offset = self.size;
+        let emitter_pos = Vec2::new(
+            self.pos.x - (self.rotation.sin() * back_offset),
+            self.pos.y + (self.rotation.cos() * back_offset)
+        );
+        
+        self.emitter.draw(emitter_pos);
     }
 }
 
@@ -249,23 +225,13 @@ impl Subscriber for Player {
             EventType::PlayerHit => {
                 let current_time = get_time();
                 let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
-                let dash_timer = self.dash_timer;
                 
-                if self.immune_timer.can_be_set(*now) && dash_timer.has_expired(*now).is_none_or(|dashing| dashing){
+                if self.immune_timer.can_be_set(*now){
                     self.immune_timer.set(*now, 1.5, Some(10.0));
                     self.bounce = true;
                     self.machine.transition(StateType::Hit);
                 }
             },
-            EventType::PlayerDashing => {
-                let current_time = get_time();
-                let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
-                
-                if self.dash_timer.can_be_set(*now){
-                    self.dash_timer.set(*now, 0.5, Some(1.0));
-                    self.machine.transition(StateType::Dash);
-                }
-            }
             _ => {}
         }
     }

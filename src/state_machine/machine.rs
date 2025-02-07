@@ -4,8 +4,7 @@ use std::sync::{Arc, Mutex};
 pub enum StateType{
     Idle,
     Moving,
-    Hit,
-    Dash
+    Hit
 }
 
 pub struct StateMachine{

@@ -59,7 +59,6 @@ impl GameManager{
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
         dispatcher.register_listener(EventType::PlayerMoving, player.clone());
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
-        dispatcher.register_listener(EventType::PlayerDashing, player.clone());
         dispatcher.register_listener(EventType::EnemyHit, factory.clone());
         
         return GameManager { 

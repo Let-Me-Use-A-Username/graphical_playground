@@ -7,7 +7,6 @@ pub enum EventType{
     PlayerMoving,
     PlayerIdle,
     PlayerHit,
-    PlayerDashing,
 
     EnemyHit,
     EnemyMovedToPosition

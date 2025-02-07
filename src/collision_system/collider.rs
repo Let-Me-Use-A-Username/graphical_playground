@@ -48,6 +48,13 @@ pub struct RectCollider{
     w: f32,
     h: f32
 }
+impl RectCollider{
+    //REVIEW: Perhaps new should be a `Collider` method and have 
+    //it return a Collider obj.
+    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self{
+        return RectCollider { x, y, w, h }
+    }
+}
 impl Collider for RectCollider{
     fn collides_with(&self, other: &dyn Collider) -> bool{
         return other.collide_with_rect(&self)
