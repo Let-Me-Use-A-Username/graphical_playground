@@ -11,6 +11,7 @@ use crate::state_machine::machine::StateType;
 use crate::collision_system::collider::CircleCollider;
 
 pub struct Player{
+    //Attributes
     pos: Vec2,
     direction: Vec2,
     speed: f32,
@@ -19,14 +20,17 @@ pub struct Player{
     max_acceleration: f32,
     pub size: f32,
     color: Color,
+    //Compoennts
     emitter: Emitter,
     sender: Sender<Event>,
     machine: StateMachine,
+    collider: CircleCollider,
+    //State specifics
     immune_timer: Timer,
     bounce: bool,
     dash_timer: Timer,
     dash_multiplier: f32,
-    collider: CircleCollider
+    dash_target: Option<Vec2>
 }
 
 impl Player{
@@ -55,11 +59,12 @@ impl Player{
             }),
             sender: sender,
             machine: StateMachine::new(),
+            collider: CircleCollider::new(x, y, size),
             immune_timer: Timer::new(),
             bounce: false,
             dash_timer: Timer::new(),
-            dash_multiplier: 300.0,
-            collider: CircleCollider::new(x, y, size)
+            dash_multiplier: 3.0,
+            dash_target: None
         }
     }
     
@@ -110,27 +115,40 @@ impl Updatable for Player{
                 }                
             },
             StateType::Dash => {
-                //Review: Check if it works. Like enemy, downacsting any could be heavy
-                if let Some(param_item) = params.pop(){
-                    if let Some(mouse_pos) = param_item.downcast_ref::<Vec2>(){
-                        let mut timer = self.dash_timer;
+                let target = self.dash_target;
+                let mut timer = self.dash_timer;
 
-                        if let Some(exp) = timer.has_expired(get_time()) {
-                            match exp{
-                                true => {
-                                    timer.reset();
-                                    self.publish(Event::new(get_time(), EventType::PlayerMoving));
-                                },
-                                false => {
-                                    let dash_direction = (*mouse_pos - self.pos).normalize();
-                                    
-                                    self.velocity += dash_direction * self.dash_multiplier;
-                                },
+                match target{
+                    Some(tar) => {
+                        let distance = (tar - self.pos).length();
+
+                        if distance < 25.0 || timer.has_expired(get_time()).unwrap_or(true){
+                            timer.reset();
+                            self.dash_target = None;
+                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                        }
+                        else{
+                            let dash_direction = (tar - self.pos).normalize();
+                            let dash_multiplier = (self.dash_multiplier * distance)
+                                .clamp(10.0, 1500.0);
+                            println!("Mult: {:?}", dash_multiplier);
+                            
+                            let dash_velocity = dash_direction * dash_multiplier;
+                            println!("Dash Velocity: {:?}", dash_velocity);
+                            println!("Velocity: {:?}", self.velocity);
+                            
+                            self.velocity = (self.velocity + dash_velocity) * 0.9;
+                            self.pos += self.velocity * delta;
+                        }
+                    },
+                    None => {
+                        //Review: downacsting any could be heavy
+                        if let Some(param_item) = params.pop(){
+                            if let Some(mouse_pos) = param_item.downcast_ref::<Vec2>(){
+                                self.dash_target = Some(*mouse_pos);
                             }
                         }
-                        self.velocity *= 0.9;
-                        self.pos += self.velocity * delta;
-                    }
+                    },
                 }
             }
         };
@@ -211,7 +229,8 @@ impl Moveable for Player{
 
 impl Drawable for Player{
     fn draw(&mut self){
-        draw_circle(self.pos.x, self.pos.y, self.size, self.color);
+        //draw_circle(self.pos.x, self.pos.y, self.size, self.color);
+        draw_rectangle(self.pos.x, self.pos.y, self.size, self.size * 2.0, self.color);
         self.emitter.draw(self.pos)
     }
 }
@@ -243,7 +262,7 @@ impl Subscriber for Player {
                 let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
                 
                 if self.dash_timer.can_be_set(*now){
-                    self.dash_timer.set(*now, 0.5, Some(3.0));
+                    self.dash_timer.set(*now, 0.5, Some(1.0));
                     self.machine.transition(StateType::Dash);
                 }
             }

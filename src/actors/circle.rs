@@ -2,7 +2,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::event_system::interface::{Drawable, GameEntity, Moveable, Object, Updatable};   
+use crate::event_system::interface::{Drawable, Enemy, GameEntity, Moveable, Object, Updatable};   
 
 #[derive(Clone, Copy)]
 pub struct Circle{
@@ -13,32 +13,6 @@ pub struct Circle{
     color: Color,
     target: Vec2
 }
-
-impl Circle{
-    pub fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2) -> Self{
-        return Circle {
-            id: id,
-            pos: pos, 
-            size: size, 
-            speed: 100.0,
-            color: color,
-            target: player_pos
-        }
-    }
-
-    pub fn get_id(&self) -> u64{
-        return self.id
-    }
-
-    pub fn get_size(&self) -> f32{
-        return self.size
-    }
-
-    pub fn get_type(&self) -> CircleType{
-        return self.enemy_type
-    }
-}
-
 
 //========== Circle interfaces =========
 impl Updatable for Circle{
@@ -82,6 +56,29 @@ impl Drawable for Circle{
 }
 
 impl GameEntity for Circle{}
+
+
+impl Enemy for Circle{
+    fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2) -> Self where Self: Sized {
+        return Circle {
+            id: id,
+            pos: pos, 
+            size: size, 
+            speed: 100.0,
+            color: color,
+            target: player_pos
+        }
+    }
+    
+    fn get_id(&self) -> u64 {
+        return self.id
+    }
+    
+    fn get_size(&self) -> f32 {
+        return self.size
+    }
+}
+
 
 
 impl std::fmt::Debug for Circle{

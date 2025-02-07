@@ -1,91 +1,102 @@
 
-### **Core Gameplay Mechanics**
-1. **Dashing as an Attack**:
-   - Make dashing a primary combat tool. Enemies hit by the dash could explode or be stunned.
-   - Add mechanics like "perfect dashes," which deal extra damage if timed correctly.
+### **RoadRage**
+You are a card with machine guns on the side, you run, drift and shoot at badies. Same idea as not but without dash
 
-2. **Shooting Mechanics**:
-   - **Charge Shots**: Hold the shoot button to fire a more powerful shot.
-   - **Directional Shooting**: Allow the player to aim in 360 degrees independently of movement.
-   - **Bullet Types**: Introduce different bullet types like bouncing bullets, piercing lasers, or homing missiles.
+
+### **Abilities**:
+1. **Dash**:
+    - Provide rapid movement that can be used offsensivelly and deffensively.
+2. **Pulse**
+    - Neutralize anything nearby including enemies and projectiles.
+    - Could push back enemies who are on the edge of the hitbox.
+    - Triggers in any state, but isn't a state.
+
+This combination allows for multiple dashes with the fallback of the pulse in case the 
+dash was somehow "bad".
+
+Additionally, this can be chained with the rythim aspect of the game. 
+
+
+### **Core Gameplay Mechanics**
+1. **Dashing**
+
+2. **Shooting**:
+    - **Charge Shots**: Hold the shoot button to fire a more powerful shot.
+    - **Directional Shooting**: Allow the player to aim in 360 degrees independently of movement.
+    - **Bullet Types**: Introduce different bullet types like bouncing bullets, piercing lasers, or homing missiles.
 
 ---
 
 ### **Enemy Variety**
 1. **Enemy Types**:
-   - **Chasers**: Enemies that relentlessly follow the player.
-   - **Snipers**: Stationary enemies that fire long-range, high-damage projectiles.
-   - **Splitters**: Enemies that divide into smaller units when defeated.
-   - **Exploders**: Enemies that detonate upon death, damaging nearby foes.
+    - **Chasers**: Enemies that follow the player.
+    - **Snipers**: Enemies that resemble snipers.
+    - **Splitters**: Enemies that divide into smaller units based on a trigger
+    - **Exploders**: Enemies that detonate upon some trigger.
 
 2. **Bullet Patterns**:
-   - Introduce bullet hell patterns (e.g., spirals, waves, random scatter).
-   - Make some patterns avoidable only through dashing or precise movement.
+    - Introduce bullet hell patterns (e.g., spirals, waves, random scatter).
 
 ---
 
 ### **Player Abilities and Progression**
 1. **Power-ups**:
-   - Temporary boosts: Increased speed, multi-shot, or invincibility.
-   - Randomized power-ups to encourage variety and adaptability.
+    - Temporary boosts: Increased speed, multi-shot, or invincibility.
+    - Randomized power-ups.
 
 2. **Skill Progression**:
-   - Unlock abilities like increased dash distance, larger bullets, or healing over time.
-   - Add passive upgrades like increased speed, reduced cooldowns, or bonus score multipliers.
+    - Unlock abilities like increased dash distance, larger bullets, healing over time or increased pulse area.
+    - Passive upgrades like increased speed, reduced cooldowns etc.
 
 3. **Energy System**:
-   - Use an energy bar for dashes or powerful attacks, which recharges over time or by collecting energy orbs.
+    - Restricts how quickly the player can dash. Could also be a fixed timer.
 
 ---
 
 ### **Levels and Challenges**
 1. **Wave-Based Combat**:
-   - Introduce waves of enemies with increasing difficulty, culminating in a boss fight.
+    - Increasingly difficult waves, with bosses later on.
 
 2. **Arena Modifiers**:
-   - Add hazards like moving walls, spikes, or rotating lasers.
-   - Use environmental elements like gravity wells or ice zones to make movement trickier.
+    - Static Moving walls, spikes, or rotating lasers etc (bullet hell aspects).
+    - Dynamic elements like gravity wells or ice zones.
 
 3. **Dynamic Events**:
-   - Random events like sudden enemy spawns, area restrictions, or bonus objectives (e.g., survive 30 seconds without shooting).
+    - Random events like sudden enemy spawns, area restrictions, or bonus objectives (e.g., survive 30 seconds without shooting).
+        - Rewards the player in some way.
+    - Light and dark zones makes entities invisible
 
 ---
 
 ### **Boss Battles**
 1. **Shape-Themed Bosses**:
-   - **Square Titan**: A slow, tanky boss that launches walls of bullets.
-   - **Triangle Spear**: A fast boss that charges toward the player while firing precision attacks.
-   - **Hexagon Swarm**: A boss that splits into smaller parts as it's damaged.
+    - **Square Titan**: A slow, tanky boss that launches walls of bullets.
+    - **Triangle Spear**: A fast boss that charges toward the player while firing precision attacks.
+    - **Hexagon Swarm**: A boss that splits into smaller parts as it's damaged.
 
 2. **Phase Changes**:
-   - As the boss takes damage, it introduces new patterns or abilities.
-   - Example: The Triangle Spear starts creating mini-triangles to chase the player.
+    - As the boss takes damage, it introduces new patterns or abilities.
 
 ---
 
 ### **Replayability**
 1. **Endless Mode**:
-   - Introduce a survival mode with infinite waves and escalating difficulty.
-   - Add leaderboards for high scores.
+    - Introduce a survival mode with infinite waves and escalating difficulty. Main mode??
 
 2. **Customizable Runs**:
-   - Let players choose difficulty modifiers (e.g., double enemy speed or no power-ups) for higher rewards.
+    - Allows the customization of modifiers (e.g., double enemy speed or no power-ups) for higher rewards.
 
 3. **Unlockable Content**:
-   - Add new bullet types, dashing effects, or visual styles as rewards for high performance.
+    - New abilities, quests?
 
 ---
 
 ### **Visual and Audio Enhancements**
 1. **Dynamic Visual Effects**:
-   - Screen shakes or slow-motion effects for critical hits or near misses.
-   - Vibrant particle effects for bullets, dashes, and explosions.
+    - Screen shakes or slow-motion effects for critical hits, near misses or chaining abilities.
+    - Particle effects for bullets, dashes, explosions etc.
 
 2. **Sound Design**:
-   - Intense, fast-paced music to match the action.
-   - Satisfying sound effects for shooting, dashing, and enemy destruction.
+    - Intense, fast-paced music to match the action. Mick Gordon
+    - Nishe sound effects for shooting, dashing, and enemy destruction.
 
-
-### **Dynamic effects**
-1. **Dynamic area effects**:
-    - Light and dark zones makes entities invisible

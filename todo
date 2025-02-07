@@ -1,5 +1,9 @@
 ==============================================
 ================== Critical ==================
+- Implement new player shape, rotate front based on direction. 
+- Implement shooting from small rects at the side
+- Implement drifting
+
 - Implement collider to each entity that can collide.
     - This way the entity manager can check whether the player rect collides with an entities (by id)
         -The colliders inside an enemy can be more than one, and could have properties that 

@@ -33,10 +33,6 @@ impl Triangle{
     pub fn get_size(&self) -> f32{
         return self.size
     }
-
-    pub fn get_type(&self) -> TriangleType{
-        return self.enemy_type
-    }
 }
 
 

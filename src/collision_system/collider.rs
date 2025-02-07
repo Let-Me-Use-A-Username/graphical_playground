@@ -13,7 +13,7 @@ trait Collider{
     fn collide_with_rect(&self, rect: &RectCollider) -> bool;
 }
 
-struct CircleCollider{
+pub struct CircleCollider{
     x: f32,
     y: f32,
     radius: f32
@@ -42,7 +42,7 @@ impl Collider for CircleCollider{
     }
 }
 
-struct RectCollider{
+pub struct RectCollider{
     x: f32, 
     y: f32,
     w: f32,

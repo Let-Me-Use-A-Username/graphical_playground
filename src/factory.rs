@@ -10,8 +10,7 @@ use macroquad::color::{Color, RED};
 use rand::{thread_rng, Rng};
 
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Publisher, Subscriber};
-use crate::actors::enemy::{Enemy, EnemyType};
+use crate::event_system::interface::{Enemy, Publisher, Subscriber};
 use crate::globals;
 use crate::utils::timer::Timer;
 
@@ -30,59 +29,53 @@ impl Factory{
         }
     }
 
-    pub fn spawn(&mut self, pos: Vec2, enemy_type: EnemyType, size: f32, color: Color, player_pos: Vec2) -> Enemy{
-        return Enemy::new(
-            COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst), 
-            pos, 
-            enemy_type, 
-            size, 
-            color, 
-            player_pos
-        )
-    }
+    pub fn spawn<T: Enemy + 'static>(&mut self, pos: Vec2, size: f32, color: Color, player_pos: Vec2) -> Box<dyn Enemy>{
+        let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        return Box::new(T::new(id, pos, size, color, player_pos))
+    }   
 
     //Review: Perhaps remove timer, or spawn based on event or both
-    pub fn spawn_random_batch(&mut self, num: i32, player_pos: Vec2) -> Option<Vec<Enemy>>{
-        let time = get_time();
-        let is_set = self.spawn_timer.has_expired(time);
-        let mut enemies = vec!();
+    // pub fn spawn_random_batch(&mut self, num: i32, player_pos: Vec2) -> Option<Vec<Box<dyn Enemy>>>{
+    //     let time = get_time();
+    //     let is_set = self.spawn_timer.has_expired(time);
+    //     let mut enemies = vec!();
 
-        match is_set{
-            //Timer is set, but hasn't expired
-            Some(false) => {
-                let mut rng = thread_rng();
+    //     match is_set{
+    //         //Timer is set, but hasn't expired
+    //         Some(false) => {
+    //             let mut rng = thread_rng();
 
-                for _ in 0..=num{
-                    enemies.push(
-                        Enemy::new(
-                            COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst), 
-                            self.get_screen_edges_from(player_pos), 
-                            rand::random(), 
-                            rng.gen_range(7..=35) as f32, 
-                            RED, 
-                            player_pos
-                        )
-                    );
-                }
-            },
-            //Timer is set and it has expired
-            Some(true) => {
-                if self.spawn_timer.can_be_set(time){
-                    self.spawn_timer.reset();
-                }
-            },
-            //Timer isn't set, so we set it
-            None => {
-                self.spawn_timer.set(time, 1.0, Some(8.0));
-            },
-        }
+    //             for _ in 0..=num{
+    //                 enemies.push(
+    //                     Enemy::new(
+    //                         COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst), 
+    //                         self.get_screen_edges_from(player_pos), 
+    //                         rand::random(), 
+    //                         rng.gen_range(7..=35) as f32, 
+    //                         RED, 
+    //                         player_pos
+    //                     )
+    //                 );
+    //             }
+    //         },
+    //         //Timer is set and it has expired
+    //         Some(true) => {
+    //             if self.spawn_timer.can_be_set(time){
+    //                 self.spawn_timer.reset();
+    //             }
+    //         },
+    //         //Timer isn't set, so we set it
+    //         None => {
+    //             self.spawn_timer.set(time, 1.0, Some(8.0));
+    //         },
+    //     }
 
-        if enemies.is_empty(){
-            return None
-        }
+    //     if enemies.is_empty(){
+    //         return None
+    //     }
 
-        return Some(enemies)
-    }
+    //     return Some(enemies)
+    // }
 
     fn get_screen_edges_from(&self, pos: Vec2)-> Vec2{
         let mut rng = thread_rng();

@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use macroquad::math::{Rect, Vec2};
+use macroquad::{color::Color, math::Vec2};
 
 use crate::event_system::event::Event;
 
@@ -33,3 +33,11 @@ pub trait Drawable: Object{
 }
 
 pub trait GameEntity: Updatable + Drawable + Send + Sync{}
+
+
+//Review: This could lead to a problem with the entity manager, since he handles game entities
+pub trait Enemy: GameEntity{
+    fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2) -> Self where Self: Sized;
+    fn get_id(&self) -> u64;
+    fn get_size(&self) -> f32;
+}

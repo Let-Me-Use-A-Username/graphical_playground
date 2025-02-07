@@ -33,10 +33,6 @@ impl Ellipse{
     pub fn get_size(&self) -> f32{
         return self.size
     }
-
-    pub fn get_type(&self) -> EllipseType{
-        return self.enemy_type
-    }
 }
 
 

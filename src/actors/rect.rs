@@ -33,10 +33,6 @@ impl Rect{
     pub fn get_size(&self) -> f32{
         return self.size
     }
-
-    pub fn get_type(&self) -> RectType{
-        return self.enemy_type
-    }
 }
 
 

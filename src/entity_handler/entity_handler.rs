@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
-use macroquad::math::{Rect, Vec2};
+use macroquad::math::Vec2;
 
 use crate::event_system::{event::Event, interface::{GameEntity, Publisher, Subscriber}};
 
@@ -38,7 +38,7 @@ impl Handler{
 
     pub fn get_entity_with_id(&mut self, id: u64) -> Option<&Box<dyn GameEntity>>{
         if let Some(boxxed) = self.entities.get(&id){
-            return Some(boxxed.clone())
+            return Some(boxxed)
         }
         return None
     }

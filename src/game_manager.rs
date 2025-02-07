@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use crate::event_system::interface::{Object, Drawable, Updatable};
 use crate::globals::Global;
 use crate::grid_system::grid::Grid;
-use crate::actors::{enemy::Enemy, player::Player};
+use crate::actors::player::Player;
 use crate::factory::Factory;
 use crate::event_system::{event::{EventType, Event}, dispatcher::Dispatcher};
 
@@ -121,7 +121,7 @@ impl GameManager{
             }
 
             // ======= Updates ========
-            self.factory.try_lock().unwrap().spawn_random_batch(3, player_pos);
+            //self.factory.try_lock().unwrap().spawn_random_batch(3, player_pos);
             // self.factory.try_lock().unwrap().get_enemies().iter().for_each(|enemy| {
             //     grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
             // });
