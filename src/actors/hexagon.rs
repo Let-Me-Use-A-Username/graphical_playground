@@ -77,7 +77,11 @@ impl Drawable for Hexagon{
     }
 }
 
-impl GameEntity for Hexagon{}
+impl GameEntity for Hexagon{
+    fn get_id(&self) -> u64 {
+        return self.id
+    }
+}
 
 
 impl std::fmt::Debug for Hexagon{

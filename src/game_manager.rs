@@ -5,6 +5,7 @@ use macroquad::ui::{hash, root_ui, widgets};
 
 use std::sync::{Arc, Mutex};
 
+use crate::entity_handler::entity_handler::Handler;
 use crate::event_system::interface::{Object, Drawable, Updatable};
 use crate::globals::Global;
 use crate::grid_system::grid::Grid;
@@ -34,7 +35,8 @@ pub struct GameManager{
     dispatcher: Dispatcher,
     factory: Arc<Mutex<Factory>>,
     grid: Arc<Mutex<Grid>>,
-    player: Arc<Mutex<Player>>
+    handler: Arc<Mutex<Handler>>,
+    player: Arc<Mutex<Player>>,
 }
 
 impl GameManager{
@@ -48,6 +50,7 @@ impl GameManager{
                 global.get_cell_size() as i32, 
                 dispatcher.create_sender())
             ));
+        let handler = Arc::new(Mutex::new(Handler::new(dispatcher.create_sender())));
         let player = Arc::new(Mutex::new(Player::new(
                 global.get_screen_width() / 2.0,
                 global.get_screen_height() / 2.0,
@@ -55,11 +58,16 @@ impl GameManager{
                 YELLOW,
                 dispatcher.create_sender()
         )));
+
         
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
         dispatcher.register_listener(EventType::PlayerMoving, player.clone());
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
+
         dispatcher.register_listener(EventType::EnemyHit, factory.clone());
+        
+        dispatcher.register_listener(EventType::PlayerBulletSpawn, handler.clone());
+        dispatcher.register_listener(EventType::PlayerBulletExpired, handler.clone());
         
         return GameManager { 
             state: GameState::Playing,
@@ -69,6 +77,7 @@ impl GameManager{
             dispatcher: dispatcher,
             factory: factory,
             grid: grid,
+            handler: handler,
             player: player
         }
     }
@@ -120,14 +129,10 @@ impl GameManager{
             }
 
             // ======= Updates ========
-            //self.factory.try_lock().unwrap().spawn_random_batch(3, player_pos);
-            // self.factory.try_lock().unwrap().get_enemies().iter().for_each(|enemy| {
-            //     grid_unlocked.update_object(Arc::new(Mutex::new(enemy.clone())));
-            // });
 
             let delta = get_frame_time();
             self.player.try_lock().unwrap().update(delta, vec!(Box::new(camera.screen_to_world(mouse_pos))));
-            //self.factory.try_lock().unwrap().update_all(player_pos, delta);
+            self.handler.try_lock().unwrap().update_all(delta, player_pos);
     
             // Camera
             camera_pos += (player_pos - camera_pos) * 0.05;
@@ -149,7 +154,7 @@ impl GameManager{
             // ======== RENDERING ========
             clear_background(LIGHTGRAY);
             self.player.try_lock().unwrap().draw();
-            //self.factory.try_lock().unwrap().draw_all(player_pos);
+            self.handler.try_lock().unwrap().draw_all();
             
             //grid_unlocked.clear();
             set_default_camera();

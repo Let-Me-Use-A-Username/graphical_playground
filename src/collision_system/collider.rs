@@ -1,3 +1,5 @@
+use macroquad::math::Vec2;
+
 
 fn distance_squared(x1: f32, y1: f32, x2:f32, y2: f32 ) -> f32{
     let dx = x1 - x2;
@@ -6,8 +8,9 @@ fn distance_squared(x1: f32, y1: f32, x2:f32, y2: f32 ) -> f32{
 }
 
 ///Each entity is either assigned a circle or rectangular collider.
-trait Collider{
+pub trait Collider{
     fn collides_with(&self, other: &dyn Collider) -> bool;
+    fn update(&mut self, pos: Vec2);
 
     fn collide_with_circle(&self, circle: &CircleCollider) -> bool;
     fn collide_with_rect(&self, rect: &RectCollider) -> bool;
@@ -28,6 +31,11 @@ impl CircleCollider{
 impl Collider for CircleCollider{
     fn collides_with(&self, other: &dyn Collider) -> bool{
         return other.collide_with_circle(&self)
+    }
+
+    fn update(&mut self, pos: Vec2) {
+        self.x = pos.x;
+        self.y = pos.y;
     }
 
     fn collide_with_circle(&self, circle: &CircleCollider) -> bool{
@@ -58,6 +66,11 @@ impl RectCollider{
 impl Collider for RectCollider{
     fn collides_with(&self, other: &dyn Collider) -> bool{
         return other.collide_with_rect(&self)
+    }
+
+    fn update(&mut self, pos: Vec2) {
+        self.x = pos.x;
+        self.y = pos.y;
     }
 
     fn collide_with_circle(&self, circle: &CircleCollider) -> bool{

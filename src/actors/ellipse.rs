@@ -77,7 +77,11 @@ impl Drawable for Ellipse{
     }
 }
 
-impl GameEntity for Ellipse{}
+impl GameEntity for Ellipse{
+    fn get_id(&self) -> u64 {
+        return self.id
+    }
+}
 
 
 impl std::fmt::Debug for Ellipse{

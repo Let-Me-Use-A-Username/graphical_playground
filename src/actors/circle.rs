@@ -55,7 +55,11 @@ impl Drawable for Circle{
     }
 }
 
-impl GameEntity for Circle{}
+impl GameEntity for Circle{
+    fn get_id(&self) -> u64 {
+        return self.id
+    }
+}
 
 
 impl Enemy for Circle{
@@ -68,10 +72,6 @@ impl Enemy for Circle{
             color: color,
             target: player_pos
         }
-    }
-    
-    fn get_id(&self) -> u64 {
-        return self.id
     }
     
     fn get_size(&self) -> f32 {

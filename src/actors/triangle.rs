@@ -77,7 +77,11 @@ impl Drawable for Triangle{
     }
 }
 
-impl GameEntity for Triangle{}
+impl GameEntity for Triangle{
+    fn get_id(&self) -> u64 {
+        return self.id
+    }
+}
 
 
 impl std::fmt::Debug for Triangle{

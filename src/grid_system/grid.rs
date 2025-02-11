@@ -213,8 +213,10 @@ impl Subscriber for Grid{
     fn notify(&mut self, event: &Event) {
         match &event.event_type{
             EventType::EnemyMovedToPosition => {
-                if let Some(data) = event.data.downcast_ref::<(EntityId, Vec2)>(){
-                    self.update_entity(data.0, EntityType::Enemy, data.1);
+                if let Ok(result) = event.data.try_lock(){
+                    if let Some(data) = result.downcast_ref::<(EntityId, Vec2)>(){
+                        self.update_entity(data.0, EntityType::Enemy, data.1);
+                    }
                 }
             }
             _ => {

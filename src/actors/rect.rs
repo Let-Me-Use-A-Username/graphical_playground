@@ -77,7 +77,11 @@ impl Drawable for Rect{
     }
 }
 
-impl GameEntity for Rect{}
+impl GameEntity for Rect{
+    fn get_id(&self) -> u64 {
+        return self.id
+    }
+}
 
 
 impl std::fmt::Debug for Rect{

@@ -3,12 +3,13 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
-use std::sync::mpsc::Sender;
+use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::Updatable}, state_machine::machine::StateMachine, utils::timer::Timer};
+use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, objects::bullet::Bullet, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
-use crate::collision_system::collider::CircleCollider;
+
+static BULLETCOUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct Player{
     //Attributes
@@ -28,11 +29,13 @@ pub struct Player{
     collider: RectCollider,
     //State specifics
     immune_timer: Timer,
-    bounce: bool
+    bounce: bool,
+    fire_timer: Timer,
+    left_fire: bool
 }
 
 impl Player{
-    const ROTATION_SPEED: f32 = 3.0;
+    const ROTATION_SPEED: f32 = 1.0;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
@@ -62,7 +65,9 @@ impl Player{
             machine: StateMachine::new(),
             collider: RectCollider::new(x, y, size, size),
             immune_timer: Timer::new(),
-            bounce: false
+            bounce: false,
+            fire_timer: Timer::new(),
+            left_fire: true
         }
     }
     
@@ -75,6 +80,54 @@ impl Player{
         }
         return false
     }
+
+    fn fire(&mut self){
+        //Invert facing direction
+        let front_vector = Vec2::new(
+            self.rotation.sin(),
+            -self.rotation.cos()
+        ).normalize();
+
+        //Calculate side vector
+        let side_vector = Vec2::new(
+            self.rotation.cos(),
+            self.rotation.sin()
+        ).normalize();
+
+        //Apply rotation
+        let rotation = Vec2::new(
+            self.size * side_vector.x,
+            self.size * side_vector.y
+        );
+
+        //Add offset to position at middle of rect
+        let vertical_offset = front_vector * self.size / 2.0;
+        let base_pos = self.pos - vertical_offset;
+        
+        let spawn_pos: Vec2;
+
+        if self.left_fire{
+            spawn_pos = base_pos - rotation;
+        }
+        else{
+            spawn_pos = base_pos + rotation;
+        }
+
+        self.left_fire = !self.left_fire;
+
+        let bullet= Bullet::spawn(
+            BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
+            self.velocity,
+            spawn_pos,
+            3000.0,
+            front_vector,
+            20.0,
+            10.0,
+            self.sender.clone()
+        );
+        
+        self.publish(Event::new((bullet.get_id(), Some(Box::new(bullet))), EventType::PlayerBulletSpawn));
+    }
 }
 
 //======= Player interfaces ========
@@ -82,20 +135,30 @@ impl Updatable for Player{
     fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any>>) {
         let state = self.machine.get_state();
 
+        let mut hit_timer = self.immune_timer;
+
         match *state.try_lock().unwrap(){
             //move player
             StateType::Moving | StateType::Idle => {
                 let _ = self.move_to(delta);
+                
+                if is_mouse_button_down(MouseButton::Left){
+                    let mut timer = self.fire_timer;
+                    let time = get_time();
+
+                    if timer.can_be_set(time) || timer.has_expired(time).unwrap_or(true){
+                        self.fire();
+                        timer.set(time, 0.1, Some(0.5));
+                    }
+                }
             },
             //player hit, bounce back
             StateType::Hit => {
                 //Reset timer for Hit state
-                let mut timer = self.immune_timer;
-
-                if let Some(exp) = timer.has_expired(get_time()){
+                if let Some(exp) = hit_timer.has_expired(get_time()){
                     match exp{
                         true => {
-                            timer.reset();
+                            hit_timer.reset();
                             self.publish(Event::new(get_time(), EventType::PlayerMoving));
                         },
                         false => {
@@ -122,7 +185,7 @@ impl Object for Player{
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
-        self
+        return self
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any{
@@ -133,12 +196,16 @@ impl Object for Player{
 impl Moveable for Player{
     fn move_to(&mut self, delta: f32) -> (f32, f32) {
         self.direction = vec2(0.0, 0.0);
-        //Rotate
-        if is_key_down(KeyCode::D) {
-            self.rotation += Self::ROTATION_SPEED * delta;
-        }
-        if is_key_down(KeyCode::A) {
-            self.rotation -= Self::ROTATION_SPEED * delta;
+
+        //If player has momentum, allow rotation
+        if self.velocity.length() > 7.5{
+            //Rotate
+            if is_key_down(KeyCode::D) {
+                self.rotation += Self::ROTATION_SPEED * delta;
+            }
+            if is_key_down(KeyCode::A) {
+                self.rotation -= Self::ROTATION_SPEED * delta;
+            }
         }
 
         //Move
@@ -149,7 +216,7 @@ impl Moveable for Player{
             self.direction.y += 1.0;
         }
 
-        // If moving, apply rotation
+        // If movement input
         if self.direction.length() > 0.0 {
             self.direction = self.direction.normalize();
             
@@ -171,9 +238,10 @@ impl Moveable for Player{
         } else {
             //Apply decceleration
             if self.acceleration > 1.0 {
-                self.acceleration *= 0.7; 
+                self.acceleration *= 0.85; 
             }
-            self.velocity *= 0.95;
+
+            self.velocity *= 0.955;
             
             if self.velocity.length() < 0.1 {
                 self.velocity = vec2(0.0, 0.0);
@@ -188,26 +256,22 @@ impl Moveable for Player{
 
 impl Drawable for Player{
     fn draw(&mut self){
-        //draw_circle(self.pos.x, self.pos.y, self.size, self.color);
+        let p_rect_width = self.size;
+        let p_rect_height = self.size * 2.0;
+
+        //player rect
         draw_rectangle_ex(
-            self.pos.x - self.size / 2.0, 
-            self.pos.y - self.size * 2.0 / 2.0, 
-            self.size, 
-            self.size * 2.0,
+            self.pos.x, 
+            self.pos.y,
+            p_rect_width, 
+            p_rect_height,
             DrawRectangleParams {
                 rotation: self.rotation,
                 color: self.color,
-                ..Default::default()
+                offset: Vec2::new(0.5, 0.5), 
             });
-
-        // Calculate emitter position at back of rectangle
-        let back_offset = self.size;
-        let emitter_pos = Vec2::new(
-            self.pos.x - (self.rotation.sin() * back_offset),
-            self.pos.y + (self.rotation.cos() * back_offset)
-        );
-        
-        self.emitter.draw(emitter_pos);
+            
+        self.emitter.draw(self.pos);
     }
 }
 
@@ -224,7 +288,9 @@ impl Subscriber for Player {
             },
             EventType::PlayerHit => {
                 let current_time = get_time();
-                let now = event.data.downcast_ref::<f64>().unwrap_or(&current_time);
+
+                let entry = event.data.try_lock().unwrap();
+                let now = entry.downcast_ref::<f64>().unwrap_or(&current_time);
                 
                 if self.immune_timer.can_be_set(*now){
                     self.immune_timer.set(*now, 1.5, Some(10.0));
@@ -239,6 +305,6 @@ impl Subscriber for Player {
 
 impl Publisher for Player {
     fn publish(&self, event: Event){
-        let _ = self.sender.send(event.clone());
+        let _ = self.sender.send(event);
     }
 }

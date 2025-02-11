@@ -1,7 +1,5 @@
 ==============================================
 ================== Critical ==================
-- Implement new player shape, rotate front based on direction. 
-- Implement shooting from small rects at the side
 - Implement drifting
 
 - Implement collider to each entity that can collide.
@@ -10,10 +8,6 @@
         make them adjustable, for example a triangle could have two circles or a rectangle
         thats longer on one side
 
-- Break down enemy handling in different files. Circle, Square etc and implement different AIs
-    - Attempt to create a share handling via Enemy Enum, to make testing easier
-
-- Implement EntityHandler
 - Implement communication between game components via Events
 - Refactor update loop
 
