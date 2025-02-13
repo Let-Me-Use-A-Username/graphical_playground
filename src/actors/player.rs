@@ -117,7 +117,6 @@ impl Player{
 
         let bullet= Bullet::spawn(
             BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
-            self.velocity,
             spawn_pos,
             3000.0,
             front_vector,
@@ -126,7 +125,7 @@ impl Player{
             self.sender.clone()
         );
         
-        self.publish(Event::new((bullet.get_id(), Some(Box::new(bullet))), EventType::PlayerBulletSpawn));
+        self.publish(Event::new(Some(Box::new(bullet)), EventType::PlayerBulletSpawn));
     }
 }
 
@@ -143,13 +142,7 @@ impl Updatable for Player{
                 let _ = self.move_to(delta);
                 
                 if is_mouse_button_down(MouseButton::Left){
-                    let mut timer = self.fire_timer;
-                    let time = get_time();
-
-                    if timer.can_be_set(time) || timer.has_expired(time).unwrap_or(true){
-                        self.fire();
-                        timer.set(time, 0.1, Some(0.5));
-                    }
+                    self.fire();
                 }
             },
             //player hit, bounce back
@@ -164,6 +157,7 @@ impl Updatable for Player{
                         false => {
                             //Reverse velocity vector
                             if self.bounce{
+                                //Review: Reduce impact
                                 self.velocity = -self.velocity * 0.9;
                                 self.bounce = false;
                             }

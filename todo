@@ -1,15 +1,18 @@
 ==============================================
 ================== Critical ==================
-- Implement drifting
+- Add bullets to grid (?)
+- Optimize enemy spawn because it jitters the game
+- Optimize the game in general
+    - Async, threads, etc
+- Refine communication between game components via Events
 
 - Implement collider to each entity that can collide.
     - This way the entity manager can check whether the player rect collides with an entities (by id)
         -The colliders inside an enemy can be more than one, and could have properties that 
         make them adjustable, for example a triangle could have two circles or a rectangle
         thats longer on one side
+    - Another way would be to have each element check themselves if collision occurs.
 
-- Implement communication between game components via Events
-- Refactor update loop
 
 ==============================================
 ================== General todo ==============
@@ -21,20 +24,17 @@
 
 ==============================================
 ================== Gameplay ==================
+- Implement drifting
 
 
 
 ==============================================
 ================== Gameplay Design and Ideas==
-- Implement dash with background beat ( Bloukos ) that can vary to be faster or quicker (difficulty?) and dashing on the rythem enchances it
 - Draw non-complete shapes to imitate "zombie" like creatures. I.e. circle with transparent circle top left to imitate a 3/4 circle.
 
 
 ==============================================
 ================== Implementation ideas ======
-- Add a shape to enemies. If their shape overlaps another, distance them.
-    - Trait collidable? 
-        - New game component that is dedicated to checking collitions?
 - Update enemies only when move or active or inside view(?)s
 
 - Add threads to independent tasks (grid, factory, collition detection) be careful with shared data

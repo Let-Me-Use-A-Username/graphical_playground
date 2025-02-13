@@ -4,15 +4,22 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum EventType{
+    //Player
     PlayerMoving,
     PlayerIdle,
     PlayerHit,
-
+    //Handler
+    EnemySpawn,
+    BatchEnemySpawn,
     PlayerBulletSpawn,
     PlayerBulletExpired,
-
-    EnemyHit,
-    EnemyMovedToPosition
+    //Factory
+    QueueEnemy,
+    QueueEnemyBatch,
+    //Grid
+    InsertEnemyToGrid,
+    InsertBatchEnemiesToGrid,
+    EnemyMovedToPosition,
 }
 
 #[derive(Clone, Debug)]

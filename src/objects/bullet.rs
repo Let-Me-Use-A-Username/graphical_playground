@@ -9,7 +9,6 @@ pub struct Bullet{
     id: u64,
     pos: Vec2,
     speed: f32,
-    velocity: Vec2,
     size: f32,
     direction: Vec2,
     timer: Timer,
@@ -17,13 +16,12 @@ pub struct Bullet{
     sender: Sender<Event>
 }
 impl Bullet{
-    pub fn spawn(id: u64, velocity: Vec2, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>) -> Self{
+    pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>) -> Self{
         let mut timer = Timer::new();
         timer.set(get_time(), remove_time, None);
         
         let bullet =  Bullet {
-            id: id,
-            velocity: velocity,
+            id: id, 
             pos: pos,
             speed: speed,
             size: size,
@@ -34,10 +32,6 @@ impl Bullet{
         };
 
         return bullet
-    }
-
-    pub fn collides(&self, other: &dyn Collider) -> bool{
-        return self.collider.collides_with(other)
     }
 }
 

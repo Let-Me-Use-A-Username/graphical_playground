@@ -15,13 +15,13 @@ pub enum EntityType{
 
 ///Entity represents the minimal information about an entity present in the game.
 #[derive(Clone, PartialEq, Eq)]
-pub struct Entity{
+struct Entity{
     entity_type: EntityType,
     entity_id: EntityId
 }
 
 impl Entity{
-    pub fn new(entity_type: EntityType, id: u64) -> Self{
+    fn new(entity_type: EntityType, id: u64) -> Self{
         return Entity{
             entity_type: entity_type,
             entity_id: id
@@ -165,13 +165,14 @@ impl Grid{
     pub fn insert_entity(&mut self, ent_type: EntityType, id: EntityId, pos: Vec2){
         if let Some(cell) = self.entity_table.get(&id){
             if let Some(entry) = self.cells.get_mut(cell){
+                println!("Appending entity");
                 let entity = Entity::new(ent_type.clone(), id);
                 if entry.entities.contains(&entity){
                     return;
                 }
             }
         }
-
+        
         //Add entity to table cell and to table
         if let Some(entry) = self.get_cell((pos.x, pos.y)){
             let mut cell = entry.1;
@@ -209,11 +210,27 @@ impl Publisher for Grid{
 }
 
 impl Subscriber for Grid{
-
     fn notify(&mut self, event: &Event) {
+        //Todo:: Add bullets
         match &event.event_type{
+            EventType::InsertEnemyToGrid => {
+                if let Ok(result) = event.data.lock(){
+                    if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2)>(){
+                        self.insert_entity(data.1.clone(), data.0, data.2);
+                    }
+                }
+            },
+            EventType::InsertBatchEnemiesToGrid => {
+                if let Ok(result) = event.data.lock(){
+                    if let Some(data) = result.downcast_ref::<Vec<(EntityId, EntityType, Vec2)>>(){
+                        data.iter().for_each(|entry| {
+                            self.insert_entity(entry.1.clone(), entry.0, entry.2);
+                        });
+                    }
+                }
+            },
             EventType::EnemyMovedToPosition => {
-                if let Ok(result) = event.data.try_lock(){
+                if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, Vec2)>(){
                         self.update_entity(data.0, EntityType::Enemy, data.1);
                     }

@@ -14,7 +14,7 @@ pub trait Publisher: Send + Sync{
 }
 
 //======= General traits ==========
-pub trait Object{
+pub trait Object: Send + Sync{
     fn get_pos(&self) -> Vec2;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -32,7 +32,7 @@ pub trait Drawable: Object{
     fn draw(&mut self);
 }
 
-pub trait GameEntity: Updatable + Drawable + Send + Sync{
+pub trait GameEntity: Updatable + Drawable{
     fn get_id(&self) -> u64;
 }
 

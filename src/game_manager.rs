@@ -6,9 +6,9 @@ use macroquad::ui::{hash, root_ui, widgets};
 use std::sync::{Arc, Mutex};
 
 use crate::entity_handler::entity_handler::Handler;
-use crate::event_system::interface::{Object, Drawable, Updatable};
+use crate::event_system::interface::{Drawable, GameEntity, Object, Updatable};
 use crate::globals::Global;
-use crate::grid_system::grid::Grid;
+use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::factory::Factory;
 use crate::event_system::{event::{EventType, Event}, dispatcher::Dispatcher};
@@ -64,8 +64,12 @@ impl GameManager{
         dispatcher.register_listener(EventType::PlayerMoving, player.clone());
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
 
-        dispatcher.register_listener(EventType::EnemyHit, factory.clone());
+        dispatcher.register_listener(EventType::InsertEnemyToGrid, grid.clone());
+        dispatcher.register_listener(EventType::InsertBatchEnemiesToGrid, grid.clone());
+        dispatcher.register_listener(EventType::EnemyMovedToPosition, grid.clone());
         
+        dispatcher.register_listener(EventType::EnemySpawn, handler.clone());
+        dispatcher.register_listener(EventType::BatchEnemySpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletSpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletExpired, handler.clone());
         
@@ -106,8 +110,6 @@ impl GameManager{
     async fn update_game(&mut self) {
         let mut player_pos = self.player.try_lock().unwrap().get_pos();
         let mut camera_pos = vec2(player_pos.x, player_pos.y);
-        
-        let mut grid_unlocked = self.grid.try_lock().unwrap();
 
         // Zoom variables
         let mut zoom_level = 0.002;
@@ -129,7 +131,6 @@ impl GameManager{
             }
 
             // ======= Updates ========
-
             let delta = get_frame_time();
             self.player.try_lock().unwrap().update(delta, vec!(Box::new(camera.screen_to_world(mouse_pos))));
             self.handler.try_lock().unwrap().update_all(delta, player_pos);
@@ -139,16 +140,6 @@ impl GameManager{
             camera.target = camera_pos;
             set_camera(&camera);
     
-            // Collision check
-            // for obj in grid_unlocked.get_nearby_objects(self.player.clone()) {
-            //     if let Ok(mut guard) = obj.try_lock() {
-            //         if let Some(enemy) = guard.as_any_mut().downcast_mut::<Enemy>() {
-            //             if self.player.try_lock().unwrap().collide(enemy.get_pos(), enemy.get_size()) {
-            //                 self.dispatcher.dispatch_event(Event::new(enemy.get_id(), EventType::EnemyHit));
-            //             }
-            //         }
-            //     }
-            // }
             self.dispatcher.dispatch();
     
             // ======== RENDERING ========
