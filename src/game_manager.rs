@@ -59,19 +59,26 @@ impl GameManager{
                 dispatcher.create_sender()
         )));
 
-        
+        //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
         dispatcher.register_listener(EventType::PlayerMoving, player.clone());
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
 
+        //Grid events
         dispatcher.register_listener(EventType::InsertEnemyToGrid, grid.clone());
+        dispatcher.register_listener(EventType::RemoveEnemyFromGrid, grid.clone());
         dispatcher.register_listener(EventType::InsertBatchEnemiesToGrid, grid.clone());
-        dispatcher.register_listener(EventType::EnemyMovedToPosition, grid.clone());
+        dispatcher.register_listener(EventType::UpdateEnemyPosition, grid.clone());
         
+        //Handler events
         dispatcher.register_listener(EventType::EnemySpawn, handler.clone());
         dispatcher.register_listener(EventType::BatchEnemySpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletSpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletExpired, handler.clone());
+
+        //Factory events
+        dispatcher.register_listener(EventType::QueueEnemy, factory.clone());
+        dispatcher.register_listener(EventType::QueueRandomEnemyBatch, factory.clone());
         
         return GameManager { 
             state: GameState::Playing,

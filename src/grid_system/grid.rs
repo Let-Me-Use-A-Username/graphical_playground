@@ -211,12 +211,19 @@ impl Publisher for Grid{
 
 impl Subscriber for Grid{
     fn notify(&mut self, event: &Event) {
-        //Todo:: Add bullets
+        //Todo: Add bullets
         match &event.event_type{
             EventType::InsertEnemyToGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2)>(){
                         self.insert_entity(data.1.clone(), data.0, data.2);
+                    }
+                }
+            },
+            EventType::RemoveEnemyFromGrid => {
+                if let Ok(result) = event.data.lock(){
+                    if let Some(data) = result.downcast_ref::<EntityId>(){
+                        self.remove_entity(*data);
                     }
                 }
             },
@@ -229,7 +236,7 @@ impl Subscriber for Grid{
                     }
                 }
             },
-            EventType::EnemyMovedToPosition => {
+            EventType::UpdateEnemyPosition => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, Vec2)>(){
                         self.update_entity(data.0, EntityType::Enemy, data.1);

@@ -2,7 +2,6 @@ use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::Sender;
 use std::vec;
 
-use macroquad::time::get_time;
 use rand::seq::SliceRandom;
 
 use macroquad::math::{vec2, Vec2};
@@ -12,25 +11,21 @@ use rand::{thread_rng, Rng};
 use crate::event_system::event::{Event, EventType};
 use crate::event_system::interface::{Enemy, GameEntity, Publisher, Subscriber};
 use crate::globals;
-use crate::utils::timer::Timer;
 use crate::actors::circle::{self, Circle};
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-///Factory is in charge of spawning enemies. When enemies are spawned, an event is emited
-/// towards the grid, to make new entries.
+
 pub struct Factory{
     queue: Vec<Box<dyn GameEntity>>,
-    sender: Sender<Event>,
-    spawn_timer: Timer
+    sender: Sender<Event>
 }
 
 impl Factory{
     pub fn new(sender: Sender<Event>) -> Self{
         return Factory {
             queue: Vec::with_capacity(1000),
-            sender: sender,
-            spawn_timer: Timer::new()
+            sender: sender
         }
     }
 
@@ -42,46 +37,23 @@ impl Factory{
         self.queue.push(enemy);
     }   
 
-    //Review: Perhaps remove timer, or spawn based on event or both
     pub fn queue_random_batch(&mut self, num: i32, player_pos: Vec2){
-        let time = get_time();
-        let is_set = self.spawn_timer.has_expired(time);
+        let mut rng = thread_rng();
 
-        let mut enemies: Vec<Box<dyn GameEntity>> = Vec::new();
+        for _ in 0..=num{
+            let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let pos = self.get_screen_edges_from(player_pos);
+            
+            let enemy = Box::new(circle::Circle::new(
+                id, 
+                pos, 
+                rng.gen_range(10..30) as f32,
+                RED, 
+                player_pos
+            )) as Box<dyn GameEntity>;
 
-        match is_set{
-            //Timer is set, but hasn't expired
-            Some(false) => {
-                let mut rng = thread_rng();
-                for _ in 0..=num{
-                    let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    let pos = self.get_screen_edges_from(player_pos);
-                    
-                    let enemy = Box::new(circle::Circle::new(
-                        id, 
-                        pos, 
-                        rng.gen_range(10..30) as f32,
-                        RED, 
-                        player_pos
-                    )) as Box<dyn GameEntity>;
-                    //Review: What happens when exceed length?
-                    enemies.push(enemy);
-                }
-            },
-            //Timer is set and it has expired
-            Some(true) => {
-                if self.spawn_timer.can_be_set(time){
-                    self.spawn_timer.reset();
-                }
-            },
-            //Timer isn't set, so we set it
-            None => {
-                self.spawn_timer.set(time, 1.0, Some(8.0));
-            },
-        }
-
-        if !enemies.is_empty(){
-            self.queue.extend(enemies.into_iter());
+            //Review: What happens when exceed length?
+            self.queue.push(enemy);
         }
     }
 
@@ -129,6 +101,11 @@ impl Factory{
         return vec2(generate_width, generate_height)
     }
     
+
+    pub fn get_queue_size(&self) -> usize{
+        return self.queue.len()
+    }
+
 }
 
 impl Publisher for Factory{
@@ -151,12 +128,27 @@ impl Subscriber for Factory{
                     }
                 }
             },
-            EventType::QueueEnemyBatch => {
+            EventType::QueueRandomEnemyBatch => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(i32, Vec2)>(){
                         let am = data.0;
                         let pos = data.1;
                         self.queue_random_batch(am, pos);
+                    }
+                }
+            },
+            //Review: This could cause problems because we emit an event while the dispatcher is dispatching...
+            EventType::RetrieveEnemies => {
+                if let Ok(result) = event.data.lock(){
+                    if let Some(amount) = result.downcast_ref::<usize>(){
+                        if self.queue.len() >= *amount{
+                            let len = self.queue.len();
+                            let returned_queue: Vec<Option<Box<dyn GameEntity>>> = self.queue
+                                .drain(..amount.min(&len))
+                                .map(|ent| Some(ent))
+                                .collect();
+                            self.publish(Event::new(returned_queue, EventType::BatchEnemySpawn));
+                        } 
                     }
                 }
             }

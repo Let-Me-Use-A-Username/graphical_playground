@@ -15,11 +15,13 @@ pub enum EventType{
     PlayerBulletExpired,
     //Factory
     QueueEnemy,
-    QueueEnemyBatch,
+    QueueRandomEnemyBatch,
+    RetrieveEnemies,
     //Grid
     InsertEnemyToGrid,
+    RemoveEnemyFromGrid,
     InsertBatchEnemiesToGrid,
-    EnemyMovedToPosition,
+    UpdateEnemyPosition,
 }
 
 #[derive(Clone, Debug)]

@@ -1,10 +1,17 @@
 ==============================================
 ================== Critical ==================
 - Add bullets to grid (?)
+
 - Optimize enemy spawn because it jitters the game
+
 - Optimize the game in general
     - Async, threads, etc
+
 - Refine communication between game components via Events
+    - Factory: Receives events to Queue enemies or Retrieve enemies
+    - Grid: Receives events to add, remove or update entities
+    - Handler: Received events to Spawn or Kill enemies and bullets
+
 
 - Implement collider to each entity that can collide.
     - This way the entity manager can check whether the player rect collides with an entities (by id)
