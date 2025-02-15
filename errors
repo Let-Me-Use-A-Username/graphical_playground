@@ -1,7 +1,0 @@
-
-### **Tokio and Macroquad**
-    - Tokio is incompatible with Macroquad due to architecture.
-    - Relative thread: https://github.com/not-fl3/macroquad/issues/182
-
-    - Solution: smol crate or async_std. Tokio could also be used with some configurations
-        - ChatGPT solutions: https://chatgpt.com/share/67b085a5-1abc-8004-af38-e097db7c7660
