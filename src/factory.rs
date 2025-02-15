@@ -24,7 +24,7 @@ pub struct Factory{
 impl Factory{
     pub fn new(sender: Sender<Event>) -> Self{
         return Factory {
-            queue: Vec::with_capacity(1000),
+            queue: Vec::with_capacity(1024),
             sender: sender
         }
     }
@@ -34,11 +34,17 @@ impl Factory{
 
         let enemy = Box::new(T::new(id, pos, size, color, player_pos)) as Box<dyn GameEntity>;
 
-        self.queue.push(enemy);
+        match self.queue.capacity() < 1024 {
+            true => {
+                self.queue.push(enemy);
+            },
+            false => eprintln!("|Factory|queue_enemy()| Maximum queue reached."),
+        }
     }   
 
-    pub fn queue_random_batch(&mut self, num: i32, player_pos: Vec2){
+    pub fn queue_random_batch(&mut self, num: usize, player_pos: Vec2){
         let mut rng = thread_rng();
+        let mut enemies: Vec<Box<dyn GameEntity>> = Vec::with_capacity(num);
 
         for _ in 0..=num{
             let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -52,8 +58,14 @@ impl Factory{
                 player_pos
             )) as Box<dyn GameEntity>;
 
-            //Review: What happens when exceed length?
-            self.queue.push(enemy);
+            enemies.push(enemy);
+        }
+
+        match self.queue.capacity() < 1024 {
+            true => {
+                self.queue.extend(enemies.into_iter());
+            },
+            false => eprintln!("|Factory|queue_random_batch()| Maximum queue reached."),
         }
     }
 
@@ -130,14 +142,13 @@ impl Subscriber for Factory{
             },
             EventType::QueueRandomEnemyBatch => {
                 if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<(i32, Vec2)>(){
+                    if let Some(data) = result.downcast_ref::<(usize, Vec2)>(){
                         let am = data.0;
                         let pos = data.1;
                         self.queue_random_batch(am, pos);
                     }
                 }
             },
-            //Review: This could cause problems because we emit an event while the dispatcher is dispatching...
             EventType::RetrieveEnemies => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(amount) = result.downcast_ref::<usize>(){
@@ -147,6 +158,7 @@ impl Subscriber for Factory{
                                 .drain(..amount.min(&len))
                                 .map(|ent| Some(ent))
                                 .collect();
+                            //Review: This could cause problems because we emit an event while the dispatcher is dispatching...
                             self.publish(Event::new(returned_queue, EventType::BatchEnemySpawn));
                         } 
                     }

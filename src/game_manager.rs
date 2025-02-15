@@ -65,10 +65,10 @@ impl GameManager{
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
 
         //Grid events
-        dispatcher.register_listener(EventType::InsertEnemyToGrid, grid.clone());
-        dispatcher.register_listener(EventType::RemoveEnemyFromGrid, grid.clone());
-        dispatcher.register_listener(EventType::InsertBatchEnemiesToGrid, grid.clone());
-        dispatcher.register_listener(EventType::UpdateEnemyPosition, grid.clone());
+        dispatcher.register_listener(EventType::InsertEntityToGrid, grid.clone());
+        dispatcher.register_listener(EventType::RemoveEntityFromGrid, grid.clone());
+        dispatcher.register_listener(EventType::InsertBatchEntitiesToGrid, grid.clone());
+        dispatcher.register_listener(EventType::UpdateEntityPosition, grid.clone());
         
         //Handler events
         dispatcher.register_listener(EventType::EnemySpawn, handler.clone());
@@ -79,6 +79,7 @@ impl GameManager{
         //Factory events
         dispatcher.register_listener(EventType::QueueEnemy, factory.clone());
         dispatcher.register_listener(EventType::QueueRandomEnemyBatch, factory.clone());
+        dispatcher.register_listener(EventType::RetrieveEnemies, factory.clone());
         
         return GameManager { 
             state: GameState::Playing,

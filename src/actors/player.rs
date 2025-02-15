@@ -5,7 +5,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, objects::bullet::Bullet, state_machine::machine::StateMachine, utils::timer::Timer};
+use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::Bullet, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -30,7 +30,6 @@ pub struct Player{
     //State specifics
     immune_timer: Timer,
     bounce: bool,
-    fire_timer: Timer,
     left_fire: bool
 }
 
@@ -66,7 +65,6 @@ impl Player{
             collider: RectCollider::new(x, y, size, size),
             immune_timer: Timer::new(),
             bounce: false,
-            fire_timer: Timer::new(),
             left_fire: true
         }
     }
@@ -115,9 +113,12 @@ impl Player{
 
         self.left_fire = !self.left_fire;
 
+        let id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let pos = spawn_pos;
+
         let bullet= Bullet::spawn(
-            BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst),
-            spawn_pos,
+            id,
+            pos,
             3000.0,
             front_vector,
             20.0,
@@ -126,6 +127,7 @@ impl Player{
         );
         
         self.publish(Event::new(Some(Box::new(bullet)), EventType::PlayerBulletSpawn));
+        self.publish(Event::new((id, EntityType::Projectile, pos), EventType::InsertEntityToGrid));
     }
 }
 
@@ -133,8 +135,6 @@ impl Player{
 impl Updatable for Player{
     fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any>>) {
         let state = self.machine.get_state();
-
-        let mut hit_timer = self.immune_timer;
 
         match *state.try_lock().unwrap(){
             //move player
@@ -147,6 +147,7 @@ impl Updatable for Player{
             },
             //player hit, bounce back
             StateType::Hit => {
+                let mut hit_timer = self.immune_timer;
                 //Reset timer for Hit state
                 if let Some(exp) = hit_timer.has_expired(get_time()){
                     match exp{

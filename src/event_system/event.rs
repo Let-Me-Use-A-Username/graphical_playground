@@ -18,10 +18,10 @@ pub enum EventType{
     QueueRandomEnemyBatch,
     RetrieveEnemies,
     //Grid
-    InsertEnemyToGrid,
-    RemoveEnemyFromGrid,
-    InsertBatchEnemiesToGrid,
-    UpdateEnemyPosition,
+    InsertEntityToGrid,
+    RemoveEntityFromGrid,
+    InsertBatchEntitiesToGrid,
+    UpdateEntityPosition,
 }
 
 #[derive(Clone, Debug)]

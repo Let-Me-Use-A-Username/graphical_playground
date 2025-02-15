@@ -11,6 +11,7 @@ type CellPos = (i32, i32);
 #[derive(Clone, PartialEq, Eq)]
 pub enum EntityType{
     Enemy,
+    Projectile
 }
 
 ///Entity represents the minimal information about an entity present in the game.
@@ -38,12 +39,15 @@ struct Cell{
 impl Cell{
     fn new() -> Self{
         return Cell {
-            entities: Vec::new()
+            entities: Vec::with_capacity(128)
         }
     }
 
     fn insert(&mut self, entity_type: EntityType, id: u64){
-        self.entities.push(Entity::new(entity_type, id));
+        match self.entities.capacity() < 128{
+            true => self.entities.push(Entity::new(entity_type, id)),
+            false => eprintln!("|Grid Cell|insert()| Maximum cell entities reached."),
+        }
     }
 }
 
@@ -96,7 +100,7 @@ impl Grid{
             self.entity_table.insert(id, new_pos);
         }
         else{
-            eprintln!("|Grid|update_entity()|: Cell not found for pos {:?}", new_pos);
+            eprintln!("|Grid|update_entity()| Cell not found for pos {:?}", new_pos);
         }
     }
 
@@ -123,7 +127,7 @@ impl Grid{
                 );
         }
         else{
-            eprintln!("|Grid|get_nearby_enemies()|: Cell not found for pos {:?}", cell_pos);
+            eprintln!("|Grid|get_nearby_enemies()| Cell not found for pos {:?}", cell_pos);
         }
 
         return None
@@ -142,7 +146,7 @@ impl Grid{
                     entities.extend(cell.entities.iter().map(|entity| (entity.entity_type.clone(), entity.entity_id)));
                 }
                 else{
-                    eprintln!("|Grid|get_nearby_enemies()|: Cell not found for pos {:?} and offset {:?}", cell_pos, (dx, dy));
+                    eprintln!("|Grid|get_nearby_enemies()| Cell not found for pos {:?} and offset {:?}", cell_pos, (dx, dy));
                 }
             }
         }
@@ -165,7 +169,6 @@ impl Grid{
     pub fn insert_entity(&mut self, ent_type: EntityType, id: EntityId, pos: Vec2){
         if let Some(cell) = self.entity_table.get(&id){
             if let Some(entry) = self.cells.get_mut(cell){
-                println!("Appending entity");
                 let entity = Entity::new(ent_type.clone(), id);
                 if entry.entities.contains(&entity){
                     return;
@@ -211,23 +214,22 @@ impl Publisher for Grid{
 
 impl Subscriber for Grid{
     fn notify(&mut self, event: &Event) {
-        //Todo: Add bullets
         match &event.event_type{
-            EventType::InsertEnemyToGrid => {
+            EventType::InsertEntityToGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2)>(){
                         self.insert_entity(data.1.clone(), data.0, data.2);
                     }
                 }
             },
-            EventType::RemoveEnemyFromGrid => {
+            EventType::RemoveEntityFromGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<EntityId>(){
                         self.remove_entity(*data);
                     }
                 }
             },
-            EventType::InsertBatchEnemiesToGrid => {
+            EventType::InsertBatchEntitiesToGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<Vec<(EntityId, EntityType, Vec2)>>(){
                         data.iter().for_each(|entry| {
@@ -236,7 +238,7 @@ impl Subscriber for Grid{
                     }
                 }
             },
-            EventType::UpdateEnemyPosition => {
+            EventType::UpdateEntityPosition => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, Vec2)>(){
                         self.update_entity(data.0, EntityType::Enemy, data.1);

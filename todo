@@ -1,9 +1,6 @@
 ==============================================
 ================== Critical ==================
-- Add bullets to grid (?)
-
-- Optimize enemy spawn because it jitters the game
-
+- Optimize enemy/projectile spawn because it jitters the game
 - Optimize the game in general
     - Async, threads, etc
 
@@ -11,14 +8,7 @@
     - Factory: Receives events to Queue enemies or Retrieve enemies
     - Grid: Receives events to add, remove or update entities
     - Handler: Received events to Spawn or Kill enemies and bullets
-
-
-- Implement collider to each entity that can collide.
-    - This way the entity manager can check whether the player rect collides with an entities (by id)
-        -The colliders inside an enemy can be more than one, and could have properties that 
-        make them adjustable, for example a triangle could have two circles or a rectangle
-        thats longer on one side
-    - Another way would be to have each element check themselves if collision occurs.
+    - Collision Detector: ???
 
 
 ==============================================
@@ -26,8 +16,15 @@
 - Implement fullscreen with  macroquad::prelude::Conf
     - Function macroquad::window::set_fullscreen ?
         - When settings are changed, restart game to run them (hot reload)
+        
 - Implement better UI
 
+- Implement collider to each entity that can collide.
+    - This way the entity manager can check whether the player rect collides with an entities (by id)
+        -The colliders inside an enemy can be more than one, and could have properties that 
+        make them adjustable, for example a triangle could have two circles or a rectangle
+        thats longer on one side
+    - Another way would be to have each element check themselves if collision occurs.
 
 ==============================================
 ================== Gameplay ==================
