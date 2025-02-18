@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum StateType{
     Idle,
     Moving,
@@ -22,6 +22,6 @@ impl StateMachine{
     }
 
     pub fn get_state(&self) -> Arc<Mutex<StateType>>{
-        return self.active.clone()
+        return  Arc::clone(&self.active)
     }
 }

@@ -16,11 +16,11 @@ impl Global{
 
     //Note: Old cell size was 20.0, increased a bit to provide more robust collition
     pub fn get_cell_size(&self) -> f32{
-        return 25.0
+        return 20.0
     }
 
     pub fn get_grid_size(&self) -> f32{
-        return 2000.0
+        return 1024.0
     }
 }
 

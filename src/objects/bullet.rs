@@ -1,5 +1,6 @@
 use std::sync::mpsc::Sender;
 
+use async_trait::async_trait;
 use macroquad::{color::RED, math::Vec2, shapes::draw_triangle, time::get_time};
 
 use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Publisher, Updatable}}, utils::timer::Timer};
@@ -58,8 +59,9 @@ impl Moveable for Bullet{
     }
 }
 
+#[async_trait]
 impl Drawable for Bullet{
-    fn draw(&mut self) {
+    async fn draw(&mut self) {
         let dir = self.direction;
 
         let tip = self.pos + dir * self.size;
@@ -74,8 +76,9 @@ impl Drawable for Bullet{
     }
 }
 
+#[async_trait]
 impl Updatable for Bullet{
-    fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any>>) {
+    async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
 
         if let Some(exp) = self.timer.has_expired(get_time()){
             if !exp{
@@ -84,7 +87,7 @@ impl Updatable for Bullet{
             }
             else{
                 //drop bullet
-                self.publish(Event::new(self.get_id(), EventType::PlayerBulletExpired));
+                self.publish(Event::new(self.get_id(), EventType::PlayerBulletExpired)).await;
             }
         }
     }
@@ -96,8 +99,9 @@ impl GameEntity for Bullet{
     }
 }
 
+#[async_trait]
 impl Publisher for Bullet{
-    fn publish(&self, event: crate::event_system::event::Event) {
+    async fn publish(&self, event: crate::event_system::event::Event) {
         let _ = self.sender.send(event);
     }
 }

@@ -1,6 +1,10 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
+use async_trait::async_trait;
 use macroquad::math::Vec2;
+
+use futures::future::join_all;
+use futures::StreamExt;
 
 use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, GameEntity, Publisher, Subscriber}}, objects::bullet::Bullet};
 
@@ -23,44 +27,52 @@ impl Handler{
         }
     }
 
-    pub fn update_all(&mut self, delta: f32, player_pos: Vec2){
-        self.entities.iter_mut()
-            .map(|(_, ent)| ent)
-            .for_each(|ent| {
-                ent.update(delta, vec![Box::new(player_pos)]);
-            });
-
-        self.enemies.iter_mut()
-            .map(|(_, ent)| ent)
-            .for_each(|ent| {
-                ent.update(delta, vec![Box::new(player_pos)]);
-            });
-
-        self.projectiles.iter_mut()
-            .map(|(_, ent)| ent)
-            .for_each(|ent| {
-                ent.update(delta, vec![Box::new(player_pos)]);
-            });
+    pub async fn update_all(&mut self, delta: f32, player_pos: Vec2){
+        let mut all_futures = Vec::new();
+    
+        all_futures.extend(
+            self.entities.iter_mut()
+                .map(|(_, ent)| ent)
+                .map(|ent| ent.update(delta, vec![Box::new(player_pos)]))
+        );
+    
+        all_futures.extend(
+            self.enemies.iter_mut()
+                .map(|(_, ent)| ent)
+                .map(|ent| ent.update(delta, vec![Box::new(player_pos)]))
+        );
+    
+        all_futures.extend(
+            self.projectiles.iter_mut()
+                .map(|(_, ent)| ent)
+                .map(|ent| ent.update(delta, vec![Box::new(player_pos)]))
+        );
+    
+        futures::future::join_all(all_futures).await;
     }
 
-    pub fn draw_all(&mut self){
-        self.entities.iter_mut()
-            .map(|(_, ent)| ent)
-            .for_each(|ent| {
-                ent.draw();
-            });
-
-        self.enemies.iter_mut()
-            .map(|(_, ent)| ent)
-            .for_each(|ent| {
-                ent.draw();
-            });
-        
-        self.projectiles.iter_mut()
-            .map(|(_, ent)| ent)
-            .for_each(|ent| {
-                ent.draw();
-            });
+    pub async fn draw_all(&mut self){
+        let mut all_futures = Vec::new();
+    
+        all_futures.extend(
+            self.entities.iter_mut()
+                .map(|(_, ent)| ent)
+                .map(|ent| ent.draw())
+        );
+    
+        all_futures.extend(
+            self.enemies.iter_mut()
+                .map(|(_, ent)| ent)
+                .map(|ent| ent.draw())
+        );
+    
+        all_futures.extend(
+            self.projectiles.iter_mut()
+                .map(|(_, ent)| ent)
+                .map(|ent| ent.draw())
+        );
+    
+        futures::future::join_all(all_futures).await;
     }
 
     pub fn get_entity_with_id(&mut self, id: &u64) -> Option<&Box<dyn GameEntity>>{
@@ -113,15 +125,17 @@ impl Handler{
 }   
 
 
+#[async_trait]
 impl Publisher for Handler{
-    fn publish(&self, event: Event) {
+    async fn publish(&self, event: Event) {
         let _ = self.sender.send(event.clone());
     }
 }
 
+#[async_trait]
 impl Subscriber for Handler{
 
-    fn notify(&mut self, event: &Event) {
+    async fn notify(&mut self, event: &Event) {
         //FIXME: Necessary Downcast to an Option in order to use take() method and avoid upcasting.
         match &event.event_type{
             EventType::EnemySpawn => {

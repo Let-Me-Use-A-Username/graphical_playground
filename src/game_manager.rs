@@ -6,12 +6,12 @@ use macroquad::ui::{hash, root_ui, widgets};
 use std::sync::{Arc, Mutex};
 
 use crate::entity_handler::entity_handler::Handler;
-use crate::event_system::interface::{Drawable, GameEntity, Object, Updatable};
+use crate::event_system::interface::{Drawable, Object, Updatable};
 use crate::globals::Global;
-use crate::grid_system::grid::{EntityType, Grid};
+use crate::grid_system::grid::Grid;
 use crate::actors::player::Player;
 use crate::factory::Factory;
-use crate::event_system::{event::{EventType, Event}, dispatcher::Dispatcher};
+use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 
 #[derive(Debug, Clone)]
 pub enum GameState{
@@ -140,25 +140,24 @@ impl GameManager{
 
             // ======= Updates ========
             let delta = get_frame_time();
-            self.player.try_lock().unwrap().update(delta, vec!(Box::new(camera.screen_to_world(mouse_pos))));
-            self.handler.try_lock().unwrap().update_all(delta, player_pos);
+            self.player.try_lock().unwrap().update(delta, vec!(Box::new(camera.screen_to_world(mouse_pos)))).await;
+            self.handler.try_lock().unwrap().update_all(delta, player_pos).await;
     
             // Camera
             camera_pos += (player_pos - camera_pos) * 0.05;
             camera.target = camera_pos;
             set_camera(&camera);
     
-            self.dispatcher.dispatch();
+            self.dispatcher.dispatch().await;
     
             // ======== RENDERING ========
             clear_background(LIGHTGRAY);
-            self.player.try_lock().unwrap().draw();
-            self.handler.try_lock().unwrap().draw_all();
+            self.player.try_lock().unwrap().draw().await;
+            self.handler.try_lock().unwrap().draw_all().await;
             
             //grid_unlocked.clear();
             set_default_camera();
 
-            player_pos = self.player.try_lock().unwrap().get_pos();
             next_frame().await
         }
     }

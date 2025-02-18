@@ -32,23 +32,23 @@ impl Dispatcher{
         return self.sender.clone()
     }
 
-    pub fn dispatch(&self){
+    pub async fn dispatch(&self){
         while let Ok(event) = self.receiver.try_recv() {
             if let Some(subscriber_list) = self.subscribers.get(&event.event_type) {
                 for subscriber in subscriber_list {
                     if let Ok(mut sub) = subscriber.lock() {
-                        sub.notify(&event);
+                        sub.notify(&event).await;
                     }
                 }
             }
         }
     }
 
-    pub fn dispatch_event(&self, event: Event){
+    pub async fn dispatch_event(&self, event: Event){
         if let Some(subscriber_list) = self.subscribers.get(&event.event_type) {
             for subscriber in subscriber_list {
                 if let Ok(mut sub) = subscriber.try_lock() {
-                    sub.notify(&event);
+                    sub.notify(&event).await;
                 }
             }
         }

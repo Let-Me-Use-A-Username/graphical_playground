@@ -1,16 +1,19 @@
 use std::any::Any;
 
+use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
 
 use crate::event_system::event::Event;
 
 //========= Event related interfaces ==========
+#[async_trait]
 pub trait Subscriber: Send + Sync{
-    fn notify(&mut self, event: &Event);
+    async fn notify(&mut self, event: &Event);
 }
 
+#[async_trait]
 pub trait Publisher: Send + Sync{
-    fn publish(&self, event: Event);
+    async fn publish(&self, event: Event);
 }
 
 //======= General traits ==========
@@ -20,18 +23,21 @@ pub trait Object: Send + Sync{
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+#[async_trait]
 pub trait Updatable: Object{
-    fn update(&mut self, delta: f32, params: Vec<Box<dyn Any>>);
+    async fn update(&mut self, delta: f32, params: Vec<Box<dyn Any + Send>>);
 }
 
 pub trait Moveable: Object{
     fn move_to(&mut self, delta: f32) -> (f32, f32);
 }
 
+#[async_trait]
 pub trait Drawable: Object{
-    fn draw(&mut self);
+    async fn draw(&mut self);
 }
 
+#[async_trait]
 pub trait GameEntity: Updatable + Drawable{
     fn get_id(&self) -> u64;
 }

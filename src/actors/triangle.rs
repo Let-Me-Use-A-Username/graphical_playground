@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
@@ -37,9 +38,10 @@ impl Triangle{
 
 
 //========== Triangle interfaces =========
+#[async_trait]
 impl Updatable for Triangle{
     //Review: Could be quite heavy downcasting for Any
-    fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any>>) {
+    async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if let Some(param_item) = params.pop(){
             if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
                 self.target = *player_pos;
@@ -71,8 +73,9 @@ impl Moveable for Triangle{
     }
 }
 
+#[async_trait]
 impl Drawable for Triangle{
-    fn draw(&mut self){
+    async fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
     }
 }

@@ -1,7 +1,9 @@
+use std::collections::VecDeque;
 use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::Sender;
 use std::vec;
 
+use async_trait::async_trait;
 use rand::seq::SliceRandom;
 
 use macroquad::math::{vec2, Vec2};
@@ -17,14 +19,14 @@ static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 
 pub struct Factory{
-    queue: Vec<Box<dyn GameEntity>>,
+    queue: VecDeque<Box<dyn GameEntity>>,
     sender: Sender<Event>
 }
 
 impl Factory{
     pub fn new(sender: Sender<Event>) -> Self{
         return Factory {
-            queue: Vec::with_capacity(1024),
+            queue: VecDeque::with_capacity(1024),
             sender: sender
         }
     }
@@ -36,7 +38,7 @@ impl Factory{
 
         match self.queue.capacity() < 1024 {
             true => {
-                self.queue.push(enemy);
+                self.queue.push_back(enemy);
             },
             false => eprintln!("|Factory|queue_enemy()| Maximum queue reached."),
         }
@@ -120,14 +122,16 @@ impl Factory{
 
 }
 
+#[async_trait]
 impl Publisher for Factory{
-    fn publish(&self, event: Event) {
+    async fn publish(&self, event: Event) {
         let _ = self.sender.send(event.clone());
     }
 }
 
+#[async_trait]
 impl Subscriber for Factory{
-    fn notify(&mut self, event: &Event) {
+    async fn notify(&mut self, event: &Event) {
         match event.event_type{
             EventType::QueueEnemy => {
                 if let Ok(result) = event.data.lock(){
@@ -146,21 +150,6 @@ impl Subscriber for Factory{
                         let am = data.0;
                         let pos = data.1;
                         self.queue_random_batch(am, pos);
-                    }
-                }
-            },
-            EventType::RetrieveEnemies => {
-                if let Ok(result) = event.data.lock(){
-                    if let Some(amount) = result.downcast_ref::<usize>(){
-                        if self.queue.len() >= *amount{
-                            let len = self.queue.len();
-                            let returned_queue: Vec<Option<Box<dyn GameEntity>>> = self.queue
-                                .drain(..amount.min(&len))
-                                .map(|ent| Some(ent))
-                                .collect();
-                            //Review: This could cause problems because we emit an event while the dispatcher is dispatching...
-                            self.publish(Event::new(returned_queue, EventType::BatchEnemySpawn));
-                        } 
                     }
                 }
             }

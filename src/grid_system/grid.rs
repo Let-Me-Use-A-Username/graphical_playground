@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
+use async_trait::async_trait;
 use macroquad::math::Vec2;
 
 use crate::event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}};
@@ -39,7 +40,7 @@ struct Cell{
 impl Cell{
     fn new() -> Self{
         return Cell {
-            entities: Vec::with_capacity(128)
+            entities: Vec::with_capacity(10)
         }
     }
 
@@ -198,22 +199,24 @@ impl Grid{
 
     ///Translates a (f32, f32) pair into a cell position.
     fn world_to_cell(&self, coord: (f32, f32)) -> CellPos{
-        let x = (coord.0 / self.cell_size as f32).floor() as i32;
-        let y = (coord.1 / self.cell_size as f32).floor() as i32;
+        let x = (coord.0.div_euclid(self.cell_size as f32)) as i32;
+        let y = (coord.1.div_euclid(self.cell_size as f32)) as i32;
         
         return (x, y)
     }
 }
 
 
+#[async_trait]
 impl Publisher for Grid{
-    fn publish(&self, event: Event) {
+    async fn publish(&self, event: Event) {
         let _ = self.sender.send(event.clone());
     }
 }
 
+#[async_trait]
 impl Subscriber for Grid{
-    fn notify(&mut self, event: &Event) {
+    async fn notify(&mut self, event: &Event) {
         match &event.event_type{
             EventType::InsertEntityToGrid => {
                 if let Ok(result) = event.data.lock(){

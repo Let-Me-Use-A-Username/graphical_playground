@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
@@ -15,9 +16,10 @@ pub struct Circle{
 }
 
 //========== Circle interfaces =========
+#[async_trait]
 impl Updatable for Circle{
     //Review: Could be quite heavy downcasting for Any
-    fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any>>) {
+    async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if let Some(param_item) = params.pop(){
             if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
                 self.target = *player_pos;
@@ -49,8 +51,9 @@ impl Moveable for Circle{
     }
 }
 
+#[async_trait]
 impl Drawable for Circle{
-    fn draw(&mut self){
+    async fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
     }
 }

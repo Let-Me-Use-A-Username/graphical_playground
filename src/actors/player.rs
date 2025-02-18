@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
@@ -5,7 +6,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::Bullet, state_machine::machine::StateMachine, utils::timer::Timer};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::Bullet, state_machine::machine::StateMachine, utils::timer::Timer};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -16,7 +17,7 @@ pub struct Player{
     pos: Vec2,
     direction: Vec2,
     speed: f32,
-    velocity: Vec2,
+    pub velocity: Vec2,
     acceleration: f32,
     max_acceleration: f32,
     pub size: f32,
@@ -69,17 +70,11 @@ impl Player{
         }
     }
     
-    pub fn collide(&mut self, obj_pos: Vec2, obj_size: f32) -> bool{
-        if (obj_pos - self.pos).length() < self.size * obj_size{
-            let event = Event::new(get_time(), EventType::PlayerHit);
-            
-            self.publish(event);
-            return true
-        }
-        return false
+    pub async fn collide(&mut self, other: &dyn Collider) -> bool{
+        return self.collider.collides_with(other)
     }
 
-    fn fire(&mut self){
+    async fn fire(&mut self){
         //Invert facing direction
         let front_vector = Vec2::new(
             self.rotation.sin(),
@@ -126,23 +121,25 @@ impl Player{
             self.sender.clone()
         );
         
-        self.publish(Event::new(Some(Box::new(bullet)), EventType::PlayerBulletSpawn));
-        self.publish(Event::new((id, EntityType::Projectile, pos), EventType::InsertEntityToGrid));
+        self.publish(Event::new(Some(Box::new(bullet)), EventType::PlayerBulletSpawn)).await;
+        self.publish(Event::new((id, EntityType::Projectile, pos), EventType::InsertEntityToGrid)).await;
     }
 }
 
 //======= Player interfaces ========
+#[async_trait]
 impl Updatable for Player{
-    fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any>>) {
-        let state = self.machine.get_state();
+    async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
+        let current_state = self.machine.get_state().lock().unwrap().clone();
+        drop(current_state);  // Explicitly drop the guard
 
-        match *state.try_lock().unwrap(){
+        match current_state{
             //move player
             StateType::Moving | StateType::Idle => {
                 let _ = self.move_to(delta);
                 
                 if is_mouse_button_down(MouseButton::Left){
-                    self.fire();
+                    self.fire().await;
                 }
             },
             //player hit, bounce back
@@ -153,7 +150,7 @@ impl Updatable for Player{
                     match exp{
                         true => {
                             hit_timer.reset();
-                            self.publish(Event::new(get_time(), EventType::PlayerMoving));
+                            self.publish(Event::new(get_time(), EventType::PlayerMoving)).await;
                         },
                         false => {
                             //Reverse velocity vector
@@ -249,8 +246,9 @@ impl Moveable for Player{
     }
 }
 
+#[async_trait]
 impl Drawable for Player{
-    fn draw(&mut self){
+    async fn draw(&mut self){
         let p_rect_width = self.size;
         let p_rect_height = self.size * 2.0;
 
@@ -272,8 +270,9 @@ impl Drawable for Player{
 
 
 //======== Event traits =============
+#[async_trait]
 impl Subscriber for Player {
-    fn notify(&mut self, event: &Event){
+    async fn notify(&mut self, event: &Event){
         match &event.event_type{
             EventType::PlayerIdle => {
                 self.machine.transition(StateType::Idle);
@@ -298,8 +297,9 @@ impl Subscriber for Player {
     }
 }
 
+#[async_trait]
 impl Publisher for Player {
-    fn publish(&self, event: Event){
+    async fn publish(&self, event: Event){
         let _ = self.sender.send(event);
     }
 }
