@@ -32,9 +32,8 @@ pub trait Moveable: Object{
     fn move_to(&mut self, delta: f32) -> (f32, f32);
 }
 
-#[async_trait]
 pub trait Drawable: Object{
-    async fn draw(&mut self);
+    fn draw(&mut self);
 }
 
 #[async_trait]

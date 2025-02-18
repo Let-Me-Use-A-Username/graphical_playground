@@ -73,9 +73,8 @@ impl Moveable for Rect{
     }
 }
 
-#[async_trait]
 impl Drawable for Rect{
-    async fn draw(&mut self){
+    fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
     }
 }

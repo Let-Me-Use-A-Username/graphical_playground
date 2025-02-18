@@ -36,19 +36,23 @@ impl Factory{
 
         let enemy = Box::new(T::new(id, pos, size, color, player_pos)) as Box<dyn GameEntity>;
 
-        match self.queue.capacity() < 1024 {
-            true => {
-                self.queue.push_back(enemy);
-            },
-            false => eprintln!("|Factory|queue_enemy()| Maximum queue reached."),
+        if self.queue.len() >= self.queue.capacity() {
+            self.queue.pop_front();
         }
-    }   
+
+        self.queue.push_back(enemy);
+    }
 
     pub fn queue_random_batch(&mut self, num: usize, player_pos: Vec2){
         let mut rng = thread_rng();
         let mut enemies: Vec<Box<dyn GameEntity>> = Vec::with_capacity(num);
 
         for _ in 0..=num{
+
+            if self.queue.len() >= self.queue.capacity() {
+                self.queue.pop_front();
+            }
+
             let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             let pos = self.get_screen_edges_from(player_pos);
             
@@ -63,12 +67,19 @@ impl Factory{
             enemies.push(enemy);
         }
 
-        match self.queue.capacity() < 1024 {
+        match self.queue.len() < self.queue.capacity() {
             true => {
                 self.queue.extend(enemies.into_iter());
             },
             false => eprintln!("|Factory|queue_random_batch()| Maximum queue reached."),
         }
+    }
+
+    pub fn get_enemies(&mut self, num: usize) -> Option<Vec<Box<dyn GameEntity>>>{
+        if self.queue.len() >= num{
+            return Some(self.queue.drain(0..num).collect())
+        }
+        return None
     }
 
     fn get_screen_edges_from(&self, pos: Vec2)-> Vec2{
@@ -113,11 +124,6 @@ impl Factory{
         };
 
         return vec2(generate_width, generate_height)
-    }
-    
-
-    pub fn get_queue_size(&self) -> usize{
-        return self.queue.len()
     }
 
 }

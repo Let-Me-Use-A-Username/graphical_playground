@@ -3,15 +3,19 @@
 use macroquad::prelude::*;
 use macroquad::ui::{hash, root_ui, widgets};
 
+use std::any::Any;
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
 use crate::entity_handler::entity_handler::Handler;
-use crate::event_system::interface::{Drawable, Object, Updatable};
+use crate::event_system::event::Event;
+use crate::event_system::interface::{Drawable, Object, Publisher, Updatable};
 use crate::globals::Global;
 use crate::grid_system::grid::Grid;
 use crate::actors::player::Player;
 use crate::factory::Factory;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
+use crate::utils::timer::Timer;
 
 #[derive(Debug, Clone)]
 pub enum GameState{
@@ -21,15 +25,21 @@ pub enum GameState{
     GameOver
 }
 
-pub enum GameStatus{
-    Running,
-    Stopped
+pub enum GameEventType{
+    SpawnEnemies
+}
+
+pub struct GameEvent{
+    data: Box<dyn Any>,
+    etype: GameEventType,
 }
 
 
 pub struct GameManager{
     state: GameState,
-    status: GameStatus,
+    channel: (Sender<GameEvent>, Receiver<GameEvent>),
+    timer: Timer,
+    component_sender: Sender<Event>,
     
     global: Global,
     dispatcher: Dispatcher,
@@ -41,6 +51,8 @@ pub struct GameManager{
 
 impl GameManager{
     pub fn new() -> Self{
+        let (sender, receiver) = channel::<GameEvent>();
+
         let global = Global::new();
         let mut dispatcher = Dispatcher::new();
         let factory = Arc::new(Mutex::new(Factory::new(dispatcher.create_sender())));
@@ -83,7 +95,9 @@ impl GameManager{
         
         return GameManager { 
             state: GameState::Playing,
-            status: GameStatus::Running,
+            channel: (sender, receiver),
+            timer: Timer::new(),
+            component_sender: dispatcher.create_sender(),
 
             global: global,
             dispatcher: dispatcher,
@@ -140,8 +154,39 @@ impl GameManager{
 
             // ======= Updates ========
             let delta = get_frame_time();
+            let time = get_time();
+
+            player_pos = self.player.try_lock().unwrap().get_pos();
+
+            match self.timer.has_expired(time){
+                Some(expired) => {
+                    if expired{
+                        if self.timer.can_be_set(time){
+                            self.timer.reset();
+                        }
+                    }
+                    else {
+                        let enemies = self.factory.try_lock().unwrap().get_enemies(10);
+
+                        if enemies.is_some(){
+                            if let Ok(mut handler) = self.handler.try_lock(){
+                                for enemy in enemies.unwrap() {
+                                    handler.insert_entity(enemy.get_id(), enemy);
+                                }
+                            }
+
+                        }
+                    }
+                },
+                None => {
+                    self.factory.try_lock().unwrap().queue_random_batch(30, player_pos);
+                    self.timer.set(time, 0.3, Some(10.0))
+                },
+            }
+
+
             self.player.try_lock().unwrap().update(delta, vec!(Box::new(camera.screen_to_world(mouse_pos)))).await;
-            self.handler.try_lock().unwrap().update_all(delta, player_pos).await;
+            self.handler.try_lock().unwrap().update(delta, player_pos).await;
     
             // Camera
             camera_pos += (player_pos - camera_pos) * 0.05;
@@ -152,8 +197,8 @@ impl GameManager{
     
             // ======== RENDERING ========
             clear_background(LIGHTGRAY);
-            self.player.try_lock().unwrap().draw().await;
-            self.handler.try_lock().unwrap().draw_all().await;
+            self.player.try_lock().unwrap().draw();
+            self.handler.try_lock().unwrap().draw_all();
             
             //grid_unlocked.clear();
             set_default_camera();

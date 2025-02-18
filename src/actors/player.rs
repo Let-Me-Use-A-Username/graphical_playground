@@ -74,7 +74,7 @@ impl Player{
         return self.collider.collides_with(other)
     }
 
-    async fn fire(&mut self){
+    async fn    fire(&mut self){
         //Invert facing direction
         let front_vector = Vec2::new(
             self.rotation.sin(),
@@ -246,9 +246,8 @@ impl Moveable for Player{
     }
 }
 
-#[async_trait]
 impl Drawable for Player{
-    async fn draw(&mut self){
+    fn draw(&mut self){
         let p_rect_width = self.size;
         let p_rect_height = self.size * 2.0;
 

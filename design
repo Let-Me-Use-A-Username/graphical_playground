@@ -3,22 +3,9 @@
 You are a card with machine guns on the side, you run, drift and shoot at badies. Same idea as not but without dash
 
 
-### **Abilities**:
-1. **Dash**:
-    - Provide rapid movement that can be used offsensivelly and deffensively.
-2. **Pulse**
-    - Neutralize anything nearby including enemies and projectiles.
-    - Could push back enemies who are on the edge of the hitbox.
-    - Triggers in any state, but isn't a state.
-
-This combination allows for multiple dashes with the fallback of the pulse in case the 
-dash was somehow "bad".
-
-Additionally, this can be chained with the rythim aspect of the game. 
-
-
 ### **Core Gameplay Mechanics**
-1. **Dashing**
+XXX. **Dashing**
+
 
 2. **Shooting**:
     - **Charge Shots**: Hold the shoot button to fire a more powerful shot.

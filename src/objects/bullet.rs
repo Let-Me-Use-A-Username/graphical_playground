@@ -59,9 +59,8 @@ impl Moveable for Bullet{
     }
 }
 
-#[async_trait]
 impl Drawable for Bullet{
-    async fn draw(&mut self) {
+    fn draw(&mut self) {
         let dir = self.direction;
 
         let tip = self.pos + dir * self.size;

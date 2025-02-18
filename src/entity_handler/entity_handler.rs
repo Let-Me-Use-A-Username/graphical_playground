@@ -3,9 +3,6 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::Vec2;
 
-use futures::future::join_all;
-use futures::StreamExt;
-
 use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, GameEntity, Publisher, Subscriber}}, objects::bullet::Bullet};
 
 
@@ -27,7 +24,7 @@ impl Handler{
         }
     }
 
-    pub async fn update_all(&mut self, delta: f32, player_pos: Vec2){
+    pub async fn update(&mut self, delta: f32, player_pos: Vec2){
         let mut all_futures = Vec::new();
     
         all_futures.extend(
@@ -51,28 +48,26 @@ impl Handler{
         futures::future::join_all(all_futures).await;
     }
 
-    pub async fn draw_all(&mut self){
-        let mut all_futures = Vec::new();
+    pub fn draw_all(&mut self){
     
-        all_futures.extend(
-            self.entities.iter_mut()
-                .map(|(_, ent)| ent)
-                .map(|ent| ent.draw())
-        );
+        self.entities.iter_mut()
+            .map(|(id, boxed)| boxed)
+            .for_each(|entity|{
+                entity.draw();
+            });
+            
     
-        all_futures.extend(
-            self.enemies.iter_mut()
-                .map(|(_, ent)| ent)
-                .map(|ent| ent.draw())
-        );
+        self.enemies.iter_mut()
+            .map(|(id, boxed)| boxed)
+            .for_each(|enemy|{
+                enemy.draw();
+            });
     
-        all_futures.extend(
-            self.projectiles.iter_mut()
-                .map(|(_, ent)| ent)
-                .map(|ent| ent.draw())
-        );
-    
-        futures::future::join_all(all_futures).await;
+        self.projectiles.iter_mut()
+            .map(|(id, boxed)| boxed)
+            .for_each(|projectile|{
+                projectile.draw();
+            });
     }
 
     pub fn get_entity_with_id(&mut self, id: &u64) -> Option<&Box<dyn GameEntity>>{
@@ -97,6 +92,7 @@ impl Handler{
     }
 
     pub fn insert_entity(&mut self, id: u64, entity: Box<dyn GameEntity>){
+        println!("inserting entity");
         self.entities.entry(id)
             .or_insert(entity);
     }

@@ -51,9 +51,8 @@ impl Moveable for Circle{
     }
 }
 
-#[async_trait]
 impl Drawable for Circle{
-    async fn draw(&mut self){
+    fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
     }
 }
