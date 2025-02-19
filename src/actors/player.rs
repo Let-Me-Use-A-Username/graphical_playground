@@ -6,7 +6,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::Bullet, state_machine::machine::StateMachine, utils::timer::Timer};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::{self, Bullet}, state_machine::machine::StateMachine, utils::{bullet_pool::BulletPool, timer::Timer}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -23,7 +23,7 @@ pub struct Player{
     pub size: f32,
     color: Color,
     rotation: f32,
-    //Compoennts
+    //Components
     emitter: Emitter,
     sender: Sender<Event>,
     machine: StateMachine,
@@ -31,7 +31,9 @@ pub struct Player{
     //State specifics
     immune_timer: Timer,
     bounce: bool,
-    left_fire: bool
+    //Firing specifics
+    left_fire: bool,
+    bullet_pool: BulletPool
 }
 
 impl Player{
@@ -61,12 +63,13 @@ impl Player{
                 blend_mode: BlendMode::Additive,
                 ..Default::default()
             }),
-            sender: sender,
+            sender: sender.clone(),
             machine: StateMachine::new(),
             collider: RectCollider::new(x, y, size, size),
             immune_timer: Timer::new(),
             bounce: false,
-            left_fire: true
+            left_fire: true,
+            bullet_pool: BulletPool::new(64, sender.clone())
         }
     }
     
@@ -74,8 +77,9 @@ impl Player{
         return self.collider.collides_with(other)
     }
 
-    async fn    fire(&mut self){
-        //Invert facing direction
+    async fn fire(&mut self){
+        if let Some(mut bullet) = self.bullet_pool.get(){
+            //Invert facing direction
         let front_vector = Vec2::new(
             self.rotation.sin(),
             -self.rotation.cos()
@@ -111,18 +115,21 @@ impl Player{
         let id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let pos = spawn_pos;
 
-        let bullet= Bullet::spawn(
+        bullet.set(
             id,
             pos,
             3000.0,
             front_vector,
             20.0,
             10.0,
-            self.sender.clone()
         );
         
-        self.publish(Event::new(Some(Box::new(bullet)), EventType::PlayerBulletSpawn)).await;
-        self.publish(Event::new((id, EntityType::Projectile, pos), EventType::InsertEntityToGrid)).await;
+        let bullet_spawn = Event::new(Some(Box::new(bullet)), EventType::PlayerBulletSpawn);
+        let bullet_insert = Event::new((id, EntityType::Projectile, pos), EventType::InsertEntityToGrid);
+
+        self.publish(bullet_spawn).await;
+        self.publish(bullet_insert).await;
+        }
     }
 }
 
@@ -130,8 +137,10 @@ impl Player{
 #[async_trait]
 impl Updatable for Player{
     async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
+        self.bullet_pool.update();
+
         let current_state = self.machine.get_state().lock().unwrap().clone();
-        drop(current_state);  // Explicitly drop the guard
+        let _ = current_state;  // Explicitly drop the guard
 
         match current_state{
             //move player

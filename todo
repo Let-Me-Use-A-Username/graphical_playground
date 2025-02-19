@@ -1,7 +1,8 @@
 ==============================================
 ================== Critical ==================
-- Game jitters on player fire. Most likely due to continues spawn. Create pool and draw from it.
-    - https://chatgpt.com/c/67b51c54-b0b8-8004-9e63-2918f4af2bf1
+- Game jitters on player fire. Occurs due to grid.
+    -Fix grid
+    -Change bullet pool to accept a closure and produce bullets based on that
 
 - Refine communication between game components via Events
     - Factory: Receives events to Queue enemies or Retrieve enemies

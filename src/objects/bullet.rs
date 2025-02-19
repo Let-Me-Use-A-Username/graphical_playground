@@ -14,7 +14,8 @@ pub struct Bullet{
     direction: Vec2,
     timer: Timer,
     collider: RectCollider,
-    sender: Sender<Event>
+    sender: Sender<Event>,
+    active: bool
 }
 impl Bullet{
     pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>) -> Self{
@@ -29,10 +30,39 @@ impl Bullet{
             direction: direction.normalize(), 
             timer: timer,
             collider: RectCollider::new(pos.x, pos.y, size, size),
-            sender: sender 
+            sender: sender,
+            active: true
         };
 
         return bullet
+    }
+
+    pub fn get_blank(sender: Sender<Event>) -> Self{
+        return Bullet {
+            id: 0,
+            pos: Vec2::ZERO,
+            speed: 0.0,
+            size: 0.0,
+            direction: Vec2::ZERO,
+            timer: Timer::new(),
+            collider: RectCollider::new(0.0, 0.0, 0.0, 0.0),
+            sender,
+            active: false
+        }   
+    }
+
+    pub fn set(&mut self, id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32){
+        let mut timer = Timer::new();
+        timer.set(get_time(), remove_time, None);
+
+        self.id = id;
+        self.pos = pos;
+        self.speed = speed;
+        self.size = size;
+        self.direction = direction.normalize(); 
+        self.timer = timer;
+        self.collider = RectCollider::new(pos.x, pos.y, size, size);
+        self.active = true;
     }
 }
 
@@ -79,14 +109,17 @@ impl Drawable for Bullet{
 impl Updatable for Bullet{
     async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
 
-        if let Some(exp) = self.timer.has_expired(get_time()){
-            if !exp{
-                //move bullet
-                self.move_to(delta);
-            }
-            else{
-                //drop bullet
-                self.publish(Event::new(self.get_id(), EventType::PlayerBulletExpired)).await;
+        if self.active{
+            if let Some(exp) = self.timer.has_expired(get_time()){
+                if !exp{
+                    //move bullet
+                    self.move_to(delta);
+                }
+                else{
+                    //drop bullet
+                    self.active = false;
+                    self.publish(Event::new(self.get_id(), EventType::PlayerBulletExpired)).await;
+                }
             }
         }
     }

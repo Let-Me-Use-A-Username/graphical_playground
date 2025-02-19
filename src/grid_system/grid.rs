@@ -9,7 +9,7 @@ type EntityId = u64;
 type CellPos = (i32, i32);
 
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum EntityType{
     Enemy,
     Projectile
@@ -40,12 +40,12 @@ struct Cell{
 impl Cell{
     fn new() -> Self{
         return Cell {
-            entities: Vec::with_capacity(10)
+            entities: Vec::with_capacity(30)
         }
     }
 
     fn insert(&mut self, entity_type: EntityType, id: u64){
-        match self.entities.capacity() < 128{
+        match self.entities.len() <= self.entities.capacity(){
             true => self.entities.push(Entity::new(entity_type, id)),
             false => eprintln!("|Grid Cell|insert()| Maximum cell entities reached."),
         }
@@ -185,6 +185,7 @@ impl Grid{
         }
     }
 
+    #[inline(always)]
     ///Returns an `entry` with cell position and cell object.
     fn get_cell(&self, coord: (f32, f32)) -> Option<((i32, i32), Cell)>{
         let world_to_cell = self.world_to_cell(coord);
@@ -198,6 +199,7 @@ impl Grid{
     }
 
     ///Translates a (f32, f32) pair into a cell position.
+    #[inline(always)]
     fn world_to_cell(&self, coord: (f32, f32)) -> CellPos{
         let x = (coord.0.div_euclid(self.cell_size as f32)) as i32;
         let y = (coord.1.div_euclid(self.cell_size as f32)) as i32;
@@ -221,7 +223,7 @@ impl Subscriber for Grid{
             EventType::InsertEntityToGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2)>(){
-                        self.insert_entity(data.1.clone(), data.0, data.2);
+                        self.insert_entity(data.1, data.0, data.2);
                     }
                 }
             },
@@ -236,7 +238,7 @@ impl Subscriber for Grid{
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<Vec<(EntityId, EntityType, Vec2)>>(){
                         data.iter().for_each(|entry| {
-                            self.insert_entity(entry.1.clone(), entry.0, entry.2);
+                            self.insert_entity(entry.1, entry.0, entry.2);
                         });
                     }
                 }

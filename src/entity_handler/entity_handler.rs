@@ -92,7 +92,6 @@ impl Handler{
     }
 
     pub fn insert_entity(&mut self, id: u64, entity: Box<dyn GameEntity>){
-        println!("inserting entity");
         self.entities.entry(id)
             .or_insert(entity);
     }

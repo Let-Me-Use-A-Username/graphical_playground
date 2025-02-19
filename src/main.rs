@@ -10,11 +10,15 @@ mod entity_handler;
 mod collision_system;
 mod objects;
 
-use macroquad::prelude::*;
-
 use std::env;
-
+use macroquad::prelude::*;
 use game_manager::GameManager;
+use mimalloc::MiMalloc;
+
+
+//Mimalloc is used because heap allocation is very frequent due to futures and Box-es
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 //NOTE: This should be configured in settings ideally...
 pub fn window_conf() -> Conf{

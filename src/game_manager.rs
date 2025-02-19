@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::entity_handler::entity_handler::Handler;
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Drawable, Object, Publisher, Updatable};
+use crate::event_system::interface::{Drawable, Object, Updatable};
 use crate::globals::Global;
 use crate::grid_system::grid::Grid;
 use crate::actors::player::Player;
@@ -144,8 +144,6 @@ impl GameManager{
         camera.zoom = vec2(zoom_level, zoom_level);
     
         loop {
-            // Mouse
-            let mouse_pos = Into::<Vec2>::into(mouse_position());
             // Mouse wheel
             if mouse_wheel().1 != 0.0 {
                 zoom_level = (zoom_level - mouse_wheel().1 * zoom_speed).clamp(min_zoom, max_zoom);
@@ -155,8 +153,6 @@ impl GameManager{
             // ======= Updates ========
             let delta = get_frame_time();
             let time = get_time();
-
-            player_pos = self.player.try_lock().unwrap().get_pos();
 
             match self.timer.has_expired(time){
                 Some(expired) => {
@@ -179,17 +175,21 @@ impl GameManager{
                     }
                 },
                 None => {
-                    self.factory.try_lock().unwrap().queue_random_batch(30, player_pos);
+                    let _ = self.component_sender.send(Event::new((20 as usize, player_pos), EventType::QueueRandomEnemyBatch));
                     self.timer.set(time, 0.3, Some(10.0))
                 },
             }
 
-
-            self.player.try_lock().unwrap().update(delta, vec!(Box::new(camera.screen_to_world(mouse_pos)))).await;
-            self.handler.try_lock().unwrap().update(delta, player_pos).await;
+            if let Ok(mut player) = self.player.try_lock(){
+                player.update(delta, vec!()).await;
+                player_pos = player.get_pos();
+            }
+            if let Ok(mut handler) = self.handler.try_lock(){
+                handler.update(delta, player_pos).await;
+            }
     
             // Camera
-            camera_pos += (player_pos - camera_pos) * 0.05;
+            camera_pos = camera_pos + (player_pos - camera_pos) * delta * 5.0;
             camera.target = camera_pos;
             set_camera(&camera);
     
@@ -197,8 +197,13 @@ impl GameManager{
     
             // ======== RENDERING ========
             clear_background(LIGHTGRAY);
-            self.player.try_lock().unwrap().draw();
-            self.handler.try_lock().unwrap().draw_all();
+
+            if let Ok(mut player) = self.player.try_lock(){
+                player.draw()
+            }
+            if let Ok(mut handler) = self.handler.try_lock(){
+                handler.draw_all();
+            }
             
             //grid_unlocked.clear();
             set_default_camera();

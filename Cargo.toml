@@ -9,3 +9,11 @@ macroquad-particles = "0.2.2"
 rand = "0.8.5"
 async-trait = "0.1.86"
 futures = "0.3.31"
+mimalloc = "0.1.43"     # Quicker heap allocator
+
+
+[profile.release]
+lto = "fat"             # Optimization across all crates
+opt-level = 3           # Optimization leve, 1=basic, 3=all
+panic = "abort"       # Action taken for panic.
+# codegen-units = 1     # Generation units per file, for parallel processing. Benchmark this. 
