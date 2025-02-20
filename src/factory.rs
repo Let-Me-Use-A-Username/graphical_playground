@@ -15,7 +15,7 @@ use crate::event_system::interface::{Enemy, GameEntity, Publisher, Subscriber};
 use crate::globals;
 use crate::actors::circle::{self, Circle};
 
-static COUNTER: AtomicU64 = AtomicU64::new(0);
+static COUNTER: AtomicU64 = AtomicU64::new(1000);
 
 
 pub struct Factory{
@@ -153,7 +153,6 @@ impl Subscriber for Factory{
             EventType::QueueRandomEnemyBatch => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(usize, Vec2)>(){
-                        println!("received queue");
                         let am = data.0;
                         let pos = data.1;
                         self.queue_random_batch(am, pos);

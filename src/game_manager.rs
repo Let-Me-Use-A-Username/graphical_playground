@@ -50,22 +50,27 @@ pub struct GameManager{
 }
 
 impl GameManager{
+
     pub fn new() -> Self{
         let (sender, receiver) = channel::<GameEvent>();
 
         let global = Global::new();
+
+        let map_bounds = global.get_cell_size() * global.get_grid_size();
+
         let mut dispatcher = Dispatcher::new();
         let factory = Arc::new(Mutex::new(Factory::new(dispatcher.create_sender())));
         let grid = Arc::new(Mutex::new(
             Grid::new(
                 global.get_grid_size() as i32,
-                global.get_cell_size() as i32, 
+                global.get_cell_size() as i32,
+                map_bounds,
                 dispatcher.create_sender())
             ));
         let handler = Arc::new(Mutex::new(Handler::new(dispatcher.create_sender())));
         let player = Arc::new(Mutex::new(Player::new(
-                global.get_screen_width() / 2.0,
-                global.get_screen_height() / 2.0,
+                map_bounds / 2.0,
+                map_bounds / 2.0,
                 15.0,
                 YELLOW,
                 dispatcher.create_sender()
@@ -198,6 +203,10 @@ impl GameManager{
             // ======== RENDERING ========
             clear_background(LIGHTGRAY);
 
+            if let Ok(grid) = self.grid.try_lock(){
+                grid.draw();
+            }
+            
             if let Ok(mut player) = self.player.try_lock(){
                 player.draw()
             }

@@ -48,23 +48,23 @@ impl Handler{
         futures::future::join_all(all_futures).await;
     }
 
+    #[inline(always)]
     pub fn draw_all(&mut self){
-    
         self.entities.iter_mut()
-            .map(|(id, boxed)| boxed)
+            .map(|(_, boxed)| boxed)
             .for_each(|entity|{
                 entity.draw();
             });
             
     
         self.enemies.iter_mut()
-            .map(|(id, boxed)| boxed)
+            .map(|(_, boxed)| boxed)
             .for_each(|enemy|{
                 enemy.draw();
             });
     
         self.projectiles.iter_mut()
-            .map(|(id, boxed)| boxed)
+            .map(|(_, boxed)| boxed)
             .for_each(|projectile|{
                 projectile.draw();
             });
@@ -91,29 +91,35 @@ impl Handler{
         return None
     }
 
+    #[inline(always)]
     pub fn insert_entity(&mut self, id: u64, entity: Box<dyn GameEntity>){
         self.entities.entry(id)
             .or_insert(entity);
     }
 
+    #[inline(always)]
     pub fn insert_enemy(&mut self, id: u64, enemy: Box<dyn Enemy>){
         self.enemies.entry(id)
             .or_insert(enemy);
     }
 
+    #[inline(always)]
     pub fn insert_projectile(&mut self, id: u64, projectile: Box<dyn GameEntity>){
         self.projectiles.entry(id)
         .or_insert(projectile);
     }
 
+    #[inline(always)]
     pub fn retain_entity(&mut self, rid: &u64){
         self.entities.retain(|id, _| !id.eq(rid));
     }
 
+    #[inline(always)]
     pub fn retain_enemy(&mut self, rid: &u64){
         self.enemies.retain(|id, _| !id.eq(rid));
     }
 
+    #[inline(always)]
     pub fn retain_projectiles(&mut self, rid: &u64){
         self.projectiles.retain(|id, _| !id.eq(rid));
     }

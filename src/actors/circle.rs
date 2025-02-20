@@ -30,6 +30,7 @@ impl Updatable for Circle{
 }
 
 impl Object for Circle{
+    #[inline(always)]
     fn get_pos(&self) -> Vec2{
         return self.pos
     }
@@ -44,6 +45,7 @@ impl Object for Circle{
 }
 
 impl Moveable for Circle{
+    #[inline(always)]
     fn move_to(&mut self, delta: f32) -> (f32, f32){
         let new_pos = self.pos.move_towards(self.target, self.speed * delta);
         self.pos = new_pos;
@@ -52,12 +54,14 @@ impl Moveable for Circle{
 }
 
 impl Drawable for Circle{
+    #[inline(always)]
     fn draw(&mut self){
         draw_circle(self.pos.x, self.pos.y, self.size, self.color);
     }
 }
 
 impl GameEntity for Circle{
+    #[inline(always)]
     fn get_id(&self) -> u64 {
         return self.id
     }

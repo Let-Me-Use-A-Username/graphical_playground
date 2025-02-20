@@ -6,7 +6,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::{self, Bullet}, state_machine::machine::StateMachine, utils::{bullet_pool::BulletPool, timer::Timer}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::{self, Bullet}, state_machine::machine::StateMachine, utils::{bullet_pool::BulletPool, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -33,11 +33,13 @@ pub struct Player{
     bounce: bool,
     //Firing specifics
     left_fire: bool,
-    bullet_pool: BulletPool
+    bullet_pool: BulletPool,
+    bullet_timer: SimpleTimer
 }
 
 impl Player{
     const ROTATION_SPEED: f32 = 1.0;
+    const BULLET_SPAWN: f64 = 3.0;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
@@ -69,7 +71,8 @@ impl Player{
             immune_timer: Timer::new(),
             bounce: false,
             left_fire: true,
-            bullet_pool: BulletPool::new(64, sender.clone())
+            bullet_pool: BulletPool::new(128, sender.clone()),
+            bullet_timer: SimpleTimer::blank()
         }
     }
     
@@ -136,11 +139,23 @@ impl Player{
 //======= Player interfaces ========
 #[async_trait]
 impl Updatable for Player{
-    async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
-        self.bullet_pool.update();
+    async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {        
+        let now = get_time();
+
+        self.bullet_pool.update(|current, capacity|{
+            if !self.bullet_timer.is_set(){
+                self.bullet_timer.reset(now, Self::BULLET_SPAWN);
+            }
+
+            if self.bullet_timer.expired(now) && current < capacity / 3{
+                self.bullet_timer.reset(now, Self::BULLET_SPAWN);
+                return (true, 10)
+            }
+            return (false, 0)
+        });
 
         let current_state = self.machine.get_state().lock().unwrap().clone();
-        let _ = current_state;  // Explicitly drop the guard
+        let _ = drop(current_state);  // Explicitly drop the guard
 
         match current_state{
             //move player
@@ -181,6 +196,7 @@ impl Updatable for Player{
 }
 
 impl Object for Player{
+    #[inline(always)]
     fn get_pos(&self) -> Vec2{
         return self.pos
     }
@@ -195,6 +211,7 @@ impl Object for Player{
 }
 
 impl Moveable for Player{
+    #[inline(always)]
     fn move_to(&mut self, delta: f32) -> (f32, f32) {
         self.direction = vec2(0.0, 0.0);
 
@@ -256,6 +273,7 @@ impl Moveable for Player{
 }
 
 impl Drawable for Player{
+    #[inline(always)]
     fn draw(&mut self){
         let p_rect_width = self.size;
         let p_rect_height = self.size * 2.0;

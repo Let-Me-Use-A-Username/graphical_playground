@@ -67,6 +67,7 @@ impl Bullet{
 }
 
 impl Object for Bullet{
+    #[inline(always)]
     fn get_pos(&self) -> Vec2 {
         return self.pos
     }
@@ -81,6 +82,7 @@ impl Object for Bullet{
 }
 
 impl Moveable for Bullet{
+    #[inline(always)]
     fn move_to(&mut self, delta: f32) -> (f32, f32) {
         self.pos += self.direction * self.speed * delta;
         self.collider.update(self.pos);
@@ -90,6 +92,7 @@ impl Moveable for Bullet{
 }
 
 impl Drawable for Bullet{
+    #[inline(always)]
     fn draw(&mut self) {
         let dir = self.direction;
 
@@ -108,7 +111,6 @@ impl Drawable for Bullet{
 #[async_trait]
 impl Updatable for Bullet{
     async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
-
         if self.active{
             if let Some(exp) = self.timer.has_expired(get_time()){
                 if !exp{
@@ -126,6 +128,7 @@ impl Updatable for Bullet{
 }
 
 impl GameEntity for Bullet{
+    #[inline(always)]
     fn get_id(&self) -> u64 {
         return self.id
     }

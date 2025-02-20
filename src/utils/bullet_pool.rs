@@ -22,16 +22,25 @@ impl BulletPool{
         }
     }
 
+    #[inline(always)]
     pub fn get(&mut self) ->Option<Bullet>{
         return self.available.pop_front();
     }
 
-    pub fn update<F>(&mut self, condition: F){
-        let available = &mut self.available;
+    #[inline(always)]
+    pub fn update<F>(&mut self, mut condition: F)
+        where F: FnMut(usize, usize) -> (bool, usize)
+    {
+        let current = self.available.len();
+        let capacity = self.available.capacity();
 
-        if available.len() < available.capacity() / 2{
-            while available.len() < available.capacity(){
-                available.push_back(Bullet::get_blank(self.sender.clone()));
+        let (refill, amount) = condition(current, capacity);
+
+        if refill{
+            for _ in 0..amount{
+                if self.available.len() < self.available.capacity(){
+                    self.available.push_back(Bullet::get_blank(self.sender.clone()));
+                }
             }
         }
     }
