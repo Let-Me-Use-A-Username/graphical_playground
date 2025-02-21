@@ -84,10 +84,15 @@ impl SimpleTimer{
     }
 
     pub fn expired(&mut self, now: f64) -> bool{
-        return now >= self.end
+        let expired =  now >= self.end;
+        
+        if expired{
+            self.set = false;
+        }
+        return expired
     }
 
-    pub fn reset(&mut self, now: f64, new_exp: f64){
+    pub fn set(&mut self, now: f64, new_exp: f64){
         self.start = now;
         self.end = self.start + new_exp;
         self.set = true;

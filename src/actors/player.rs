@@ -20,14 +20,14 @@ pub struct Player{
     pub velocity: Vec2,
     acceleration: f32,
     max_acceleration: f32,
-    pub size: f32,
+    size: f32,
     color: Color,
     rotation: f32,
     //Components
     emitter: Emitter,
     sender: Sender<Event>,
     machine: StateMachine,
-    collider: RectCollider,
+    pub collider: RectCollider,
     //State specifics
     immune_timer: Timer,
     bounce: bool,
@@ -39,7 +39,7 @@ pub struct Player{
 
 impl Player{
     const ROTATION_SPEED: f32 = 1.0;
-    const BULLET_SPAWN: f64 = 3.0;
+    const BULLET_SPAWN: f64 = 1.2;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
@@ -71,7 +71,7 @@ impl Player{
             immune_timer: Timer::new(),
             bounce: false,
             left_fire: true,
-            bullet_pool: BulletPool::new(128, sender.clone()),
+            bullet_pool: BulletPool::new(1000, sender.clone()),
             bullet_timer: SimpleTimer::blank()
         }
     }
@@ -142,13 +142,15 @@ impl Updatable for Player{
     async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {        
         let now = get_time();
 
+        self.collider.update(self.pos);
+
         self.bullet_pool.update(|current, capacity|{
             if !self.bullet_timer.is_set(){
-                self.bullet_timer.reset(now, Self::BULLET_SPAWN);
+                self.bullet_timer.set(now, Self::BULLET_SPAWN);
             }
 
             if self.bullet_timer.expired(now) && current < capacity / 3{
-                self.bullet_timer.reset(now, Self::BULLET_SPAWN);
+                self.bullet_timer.set(now, Self::BULLET_SPAWN);
                 return (true, 10)
             }
             return (false, 0)
@@ -310,13 +312,21 @@ impl Subscriber for Player {
                 let current_time = get_time();
 
                 let entry = event.data.try_lock().unwrap();
-                let now = entry.downcast_ref::<f64>().unwrap_or(&current_time);
-                
-                if self.immune_timer.can_be_set(*now){
-                    self.immune_timer.set(*now, 1.5, Some(10.0));
-                    self.bounce = true;
-                    self.machine.transition(StateType::Hit);
+
+                //Hit by normal enemy
+                if let Some(now) = entry.downcast_ref::<f64>(){
+                    if self.immune_timer.can_be_set(*now){
+                        self.immune_timer.set(*now, 1.5, Some(10.0));
+                    }
                 }
+                //Restrict by Wall
+                else if let Some(invurnerable) = entry.downcast_ref::<bool>(){
+                    if *invurnerable{
+                        self.immune_timer.set(current_time, 1.5, Some(0.5));
+                    }
+                }
+                self.bounce = true;
+                self.machine.transition(StateType::Hit);
             },
             _ => {}
         }

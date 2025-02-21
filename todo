@@ -15,6 +15,7 @@
     - Implement fullscreen with  macroquad::prelude::Conf
         - Function macroquad::window::set_fullscreen ?
             - When settings are changed, restart game to run them (hot reload)
+    - Draw bullet ammunition UI
             
 
 - Implement collider to each entity that can collide.

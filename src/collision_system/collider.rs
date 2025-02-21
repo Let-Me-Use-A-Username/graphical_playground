@@ -1,4 +1,4 @@
-use macroquad::math::Vec2;
+use macroquad::math::{Rect, Vec2};
 
 
 fn distance_squared(x1: f32, y1: f32, x2:f32, y2: f32 ) -> f32{
@@ -61,6 +61,15 @@ impl RectCollider{
     //it return a Collider obj.
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self{
         return RectCollider { x, y, w, h }
+    }
+
+    pub fn as_rect(&self) -> Rect{
+        return Rect{
+            x: self.x,
+            y: self.y,
+            w: self.w,
+            h: self.h
+        }
     }
 }
 impl Collider for RectCollider{

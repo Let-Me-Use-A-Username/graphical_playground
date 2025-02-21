@@ -15,6 +15,7 @@ use crate::grid_system::grid::Grid;
 use crate::actors::player::Player;
 use crate::factory::Factory;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
+use crate::grid_system::wall::Wall;
 use crate::utils::timer::Timer;
 
 #[derive(Debug, Clone)]
@@ -42,6 +43,8 @@ pub struct GameManager{
     component_sender: Sender<Event>,
     
     global: Global,
+    wall: Wall,
+
     dispatcher: Dispatcher,
     factory: Arc<Mutex<Factory>>,
     grid: Arc<Mutex<Grid>>,
@@ -55,7 +58,6 @@ impl GameManager{
         let (sender, receiver) = channel::<GameEvent>();
 
         let global = Global::new();
-
         let map_bounds = global.get_cell_size() * global.get_grid_size();
 
         let mut dispatcher = Dispatcher::new();
@@ -69,12 +71,15 @@ impl GameManager{
             ));
         let handler = Arc::new(Mutex::new(Handler::new(dispatcher.create_sender())));
         let player = Arc::new(Mutex::new(Player::new(
-                map_bounds / 2.0,
-                map_bounds / 2.0,
+                // map_bounds / 2.0,
+                // map_bounds / 2.0,
+                50.0,
+                50.0,
                 15.0,
                 YELLOW,
                 dispatcher.create_sender()
         )));
+        let wall = Wall::new(map_bounds, dispatcher.create_sender());
 
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -105,6 +110,8 @@ impl GameManager{
             component_sender: dispatcher.create_sender(),
 
             global: global,
+            wall: wall,
+
             dispatcher: dispatcher,
             factory: factory,
             grid: grid,
@@ -188,6 +195,7 @@ impl GameManager{
             if let Ok(mut player) = self.player.try_lock(){
                 player.update(delta, vec!()).await;
                 player_pos = player.get_pos();
+                self.wall.update(player.collider.as_rect()).await;
             }
             if let Ok(mut handler) = self.handler.try_lock(){
                 handler.update(delta, player_pos).await;
@@ -205,8 +213,8 @@ impl GameManager{
 
             if let Ok(grid) = self.grid.try_lock(){
                 grid.draw();
+                self.wall.draw();
             }
-            
             if let Ok(mut player) = self.player.try_lock(){
                 player.draw()
             }
