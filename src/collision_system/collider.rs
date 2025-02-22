@@ -50,6 +50,7 @@ impl Collider for CircleCollider{
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct RectCollider{
     x: f32, 
     y: f32,

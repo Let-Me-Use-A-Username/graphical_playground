@@ -10,6 +10,7 @@ pub enum EventType{
     PlayerHit,
     //Handler
     EnemySpawn,
+    EnemyDied,
     BatchEnemySpawn,
     PlayerBulletSpawn,
     PlayerBulletExpired,
@@ -18,10 +19,9 @@ pub enum EventType{
     QueueRandomEnemyBatch,
     RetrieveEnemies,
     //Grid
-    InsertEntityToGrid,
+    InsertOrUpdateToGrid,
     RemoveEntityFromGrid,
-    InsertBatchEntitiesToGrid,
-    UpdateEntityPosition,
+    BatchInsertOrUpdateToGrid,
 }
 
 #[derive(Clone, Debug)]

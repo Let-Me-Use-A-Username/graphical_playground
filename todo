@@ -1,6 +1,7 @@
 ==============================================
 ================== Critical ==================
-- Restrict players movement to grid space
+- Implement collision detector
+    - Emit EnemyDied signals for entity handler
 
 - Refine communication between game components via Events
     - Factory: Receives events to Queue enemies or Retrieve enemies

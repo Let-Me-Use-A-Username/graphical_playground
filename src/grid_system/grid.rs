@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::mpsc::Sender};
+use std::{collections::{HashMap, HashSet}, sync::mpsc::Sender};
 
 use async_trait::async_trait;
 use macroquad::{color::{DARKGRAY, ORANGE}, math::Vec2, shapes::{draw_line, draw_rectangle}};
@@ -9,14 +9,14 @@ type EntityId = u64;
 type CellPos = (i32, i32);
 
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EntityType{
     Enemy,
     Projectile
 }
 
 ///Entity represents the minimal information about an entity present in the game.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct Entity{
     entity_type: EntityType,
     entity_id: EntityId
@@ -34,21 +34,36 @@ impl Entity{
 /// Grid cell that holds entity vector.
 #[derive(Clone)]
 struct Cell{
-    entities: Vec<Entity>
+    entities: HashSet<Entity>,
+    capacity: usize
 }
 
 impl Cell{
     fn new() -> Self{
         return Cell {
-            entities: Vec::with_capacity(30)
+            entities: HashSet::<Entity>::with_capacity(30),
+            capacity: 30
         }
     }
-
+ 
     #[inline(always)]
     fn insert(&mut self, entity_type: EntityType, id: u64){
         match self.entities.len() <= self.entities.capacity(){
-            true => self.entities.push(Entity::new(entity_type, id)),
-            false => eprintln!("|Grid Cell|insert()| Maximum cell entities reached."),
+            true => {
+                self.entities.insert(Entity::new(entity_type, id));
+            },
+            //If maximum length is exceeded, double the capacity.
+            false => {
+                self.capacity *= 2;
+                let mut new_entities: HashSet<Entity> = HashSet::with_capacity(self.capacity);
+
+                self.entities.iter().for_each(|ent| {
+                    new_entities.insert(ent.clone());
+                });
+
+                self.entities = new_entities;
+                eprintln!("|Grid Cell|insert()| Maximum cell entities reached. Doubling size")
+            },
         }
     }
 }
@@ -101,7 +116,7 @@ impl Grid{
             }
         }
 
-        // Add to new position
+        //Add to new position
         if let Some(new_cell) = self.cells.get_mut(&new_pos) {
             new_cell.insert(entity_type, id);
             self.entity_table.insert(id, new_pos);
@@ -111,12 +126,15 @@ impl Grid{
         }
     }
 
-    ///Removes first occurance of an element by id.
+    ///Removes first occurance of an element from a cell.
+    /// Also removes from cataloged entities.
     /// Doesn't check for double references.
+    #[inline(always)]
     pub fn remove_entity(&mut self, id: EntityId) {
         if let Some(ent) = self.entity_table.get(&id){
             if let Some(cell) = self.cells.get_mut(ent){
                 cell.entities.retain(|entity| entity.entity_id != id);
+                self.entity_table.remove(&id);
             }
         }
     }
@@ -172,19 +190,6 @@ impl Grid{
             .collect()
     }
 
-    #[inline]
-    ///Returns an `entry` with cell position and cell object.
-    fn get_cell(&self, coord: (f32, f32)) -> Option<((i32, i32), Cell)>{
-        let world_to_cell = self.world_to_cell(coord);
-        
-        for (key, val) in self.cells.iter(){
-            if key.eq(&world_to_cell){
-                return Some((*key, val.clone()))
-            }
-        }
-        return None
-    }
-
     ///Translates a (f32, f32) pair into a cell position.
     #[inline(always)]
     fn world_to_cell(&self, coord: (f32, f32)) -> CellPos{
@@ -206,7 +211,7 @@ impl Grid{
         
         let cell_size = self.cell_size as f32;
         let grid_size = self.grid_size as f32;
-        let grid_max = grid_size * cell_size; // Total grid size in world units
+        let grid_max = self.bounds;
 
         // Draw vertical lines
         for x in 0..=grid_size as i32 {
@@ -246,7 +251,7 @@ impl Publisher for Grid{
 impl Subscriber for Grid{
     async fn notify(&mut self, event: &Event) {
         match &event.event_type{
-            EventType::InsertEntityToGrid => {
+            EventType::InsertOrUpdateToGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2)>(){
                         self.update_entity(data.0, data.1, data.2);
@@ -260,7 +265,7 @@ impl Subscriber for Grid{
                     }
                 }
             },
-            EventType::InsertBatchEntitiesToGrid => {
+            EventType::BatchInsertOrUpdateToGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<Vec<(EntityId, EntityType, Vec2)>>(){
                         data.iter().for_each(|entry| {

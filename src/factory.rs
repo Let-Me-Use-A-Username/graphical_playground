@@ -20,21 +20,30 @@ static COUNTER: AtomicU64 = AtomicU64::new(1000);
 
 pub struct Factory{
     queue: VecDeque<Box<dyn GameEntity>>,
-    sender: Sender<Event>
+    sender: Sender<Event>,
+    enemy_sender: Sender<Event>
 }
 
 impl Factory{
-    pub fn new(sender: Sender<Event>) -> Self{
+    pub fn new(sender: Sender<Event>, enemy_sender: Sender<Event>) -> Self{
         return Factory {
             queue: VecDeque::with_capacity(1024),
-            sender: sender
+            sender: sender,
+            enemy_sender: enemy_sender
         }
     }
 
     pub fn queue_enemy<T: Enemy + 'static>(&mut self, pos: Vec2, size: f32, color: Color, player_pos: Vec2){
         let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
-        let enemy = Box::new(T::new(id, pos, size, color, player_pos)) as Box<dyn GameEntity>;
+        let enemy = Box::new(T::new(
+                id, 
+                pos, 
+                size, 
+                color, 
+                player_pos, 
+                self.enemy_sender.clone()
+            )) as Box<dyn GameEntity>;
 
         if self.queue.len() >= self.queue.capacity() {
             self.queue.pop_front();
@@ -61,7 +70,8 @@ impl Factory{
                 pos, 
                 rng.gen_range(10..30) as f32,
                 RED, 
-                player_pos
+                player_pos,
+                self.enemy_sender.clone()
             )) as Box<dyn GameEntity>;
 
             enemies.push(enemy);

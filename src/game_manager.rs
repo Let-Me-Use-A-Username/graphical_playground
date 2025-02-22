@@ -61,7 +61,11 @@ impl GameManager{
         let map_bounds = global.get_cell_size() * global.get_grid_size();
 
         let mut dispatcher = Dispatcher::new();
-        let factory = Arc::new(Mutex::new(Factory::new(dispatcher.create_sender())));
+        let factory = Arc::new(Mutex::new(
+            Factory::new(
+                dispatcher.create_sender(), 
+                dispatcher.create_sender())
+            ));
         let grid = Arc::new(Mutex::new(
             Grid::new(
                 global.get_grid_size() as i32,
@@ -71,10 +75,8 @@ impl GameManager{
             ));
         let handler = Arc::new(Mutex::new(Handler::new(dispatcher.create_sender())));
         let player = Arc::new(Mutex::new(Player::new(
-                // map_bounds / 2.0,
-                // map_bounds / 2.0,
-                50.0,
-                50.0,
+                map_bounds / 2.0,
+                map_bounds / 2.0,
                 15.0,
                 YELLOW,
                 dispatcher.create_sender()
@@ -87,13 +89,13 @@ impl GameManager{
         dispatcher.register_listener(EventType::PlayerIdle, player.clone());
 
         //Grid events
-        dispatcher.register_listener(EventType::InsertEntityToGrid, grid.clone());
+        dispatcher.register_listener(EventType::InsertOrUpdateToGrid, grid.clone());
         dispatcher.register_listener(EventType::RemoveEntityFromGrid, grid.clone());
-        dispatcher.register_listener(EventType::InsertBatchEntitiesToGrid, grid.clone());
-        dispatcher.register_listener(EventType::UpdateEntityPosition, grid.clone());
+        dispatcher.register_listener(EventType::BatchInsertOrUpdateToGrid, grid.clone());
         
         //Handler events
         dispatcher.register_listener(EventType::EnemySpawn, handler.clone());
+        dispatcher.register_listener(EventType::EnemyDied, handler.clone());
         dispatcher.register_listener(EventType::BatchEnemySpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletSpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletExpired, handler.clone());
@@ -195,7 +197,7 @@ impl GameManager{
             if let Ok(mut player) = self.player.try_lock(){
                 player.update(delta, vec!()).await;
                 player_pos = player.get_pos();
-                self.wall.update(player.collider.as_rect()).await;
+                self.wall.update((player_pos, player.size)).await;
             }
             if let Ok(mut handler) = self.handler.try_lock(){
                 handler.update(delta, player_pos).await;

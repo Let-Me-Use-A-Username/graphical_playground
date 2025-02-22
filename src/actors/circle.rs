@@ -1,18 +1,22 @@
+use std::sync::mpsc::Sender;
+
 use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::event_system::interface::{Drawable, Enemy, GameEntity, Moveable, Object, Updatable};   
+use crate::{event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType};   
 
-#[derive(Clone, Copy)]
 pub struct Circle{
     id: u64,
     pos: Vec2,
     size: f32,
     speed: f32,
     color: Color,
-    target: Vec2
+    target: Vec2,
+    sender: Sender<Event>,
+    pub is_alive: bool,
+    emited: bool
 }
 
 //========== Circle interfaces =========
@@ -20,10 +24,20 @@ pub struct Circle{
 impl Updatable for Circle{
     //Review: Could be quite heavy downcasting for Any
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
-        if let Some(param_item) = params.pop(){
-            if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
-                self.target = *player_pos;
-                self.move_to(delta);
+        if self.is_alive{
+            if let Some(param_item) = params.pop(){
+                if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
+                    self.target = *player_pos;
+                    self.move_to(delta);
+                    self.publish(Event::new((self.id, EntityType::Enemy, self.pos), EventType::InsertOrUpdateToGrid)).await
+                }
+            }
+        }
+        else{
+            if !self.emited{
+                self.emited = true;
+                self.publish(Event::new(self.id, EventType::EnemyDied)).await;
+                self.publish(Event::new(self.id, EventType::RemoveEntityFromGrid)).await;
             }
         }
     }
@@ -69,19 +83,25 @@ impl GameEntity for Circle{
 
 
 impl Enemy for Circle{
-    fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2) -> Self where Self: Sized {
+    fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
         return Circle {
             id: id,
             pos: pos, 
             size: size, 
             speed: 100.0,
             color: color,
-            target: player_pos
+            target: player_pos,
+            sender: sender,
+            is_alive: true, 
+            emited: false
         }
     }
-    
-    fn get_size(&self) -> f32 {
-        return self.size
+}
+
+#[async_trait]
+impl Publisher for Circle{
+    async fn publish(&self, event: Event){
+        let _ = self.sender.send(event);
     }
 }
 

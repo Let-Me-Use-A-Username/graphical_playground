@@ -22,6 +22,10 @@ impl Timer{
         self.last_set = Some(start);
     }
 
+    pub fn is_set(&self) -> bool{
+        return self.set
+    }
+
     #[inline(always)]
     pub fn has_expired(&self, now: f64) -> Option<bool>{
         if self.set{

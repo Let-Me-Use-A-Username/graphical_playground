@@ -6,7 +6,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Updatable}}, grid_system::grid::EntityType, objects::bullet::{self, Bullet}, state_machine::machine::StateMachine, utils::{bullet_pool::BulletPool, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Projectile, Updatable}}, grid_system::grid::EntityType, objects::bullet::{self, Bullet}, state_machine::machine::StateMachine, utils::{bullet_pool::BulletPool, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
@@ -20,7 +20,7 @@ pub struct Player{
     pub velocity: Vec2,
     acceleration: f32,
     max_acceleration: f32,
-    size: f32,
+    pub size: f32,
     color: Color,
     rotation: f32,
     //Components
@@ -127,11 +127,9 @@ impl Player{
             10.0,
         );
         
-        let bullet_spawn = Event::new(Some(Box::new(bullet)), EventType::PlayerBulletSpawn);
-        let bullet_insert = Event::new((id, EntityType::Projectile, pos), EventType::InsertEntityToGrid);
+        let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
 
         self.publish(bullet_spawn).await;
-        self.publish(bullet_insert).await;
         }
     }
 }
@@ -149,7 +147,7 @@ impl Updatable for Player{
                 self.bullet_timer.set(now, Self::BULLET_SPAWN);
             }
 
-            if self.bullet_timer.expired(now) && current < capacity / 3{
+            if self.bullet_timer.expired(now) && current < capacity{
                 self.bullet_timer.set(now, Self::BULLET_SPAWN);
                 return (true, 10)
             }
@@ -157,7 +155,6 @@ impl Updatable for Player{
         });
 
         let current_state = self.machine.get_state().lock().unwrap().clone();
-        let _ = drop(current_state);  // Explicitly drop the guard
 
         match current_state{
             //move player
@@ -320,13 +317,17 @@ impl Subscriber for Player {
                     }
                 }
                 //Restrict by Wall
-                else if let Some(invurnerable) = entry.downcast_ref::<bool>(){
-                    if *invurnerable{
-                        self.immune_timer.set(current_time, 1.5, Some(0.5));
+                else if let Some(wall_hit) = entry.downcast_ref::<bool>(){
+                    if *wall_hit{
+                        if self.immune_timer.can_be_set(current_time){
+                            self.immune_timer.set(current_time, 1.5, Some(1.0));
+                        }
                     }
                 }
-                self.bounce = true;
-                self.machine.transition(StateType::Hit);
+                if self.immune_timer.is_set(){
+                    self.bounce = true;
+                    self.machine.transition(StateType::Hit);
+                }
             },
             _ => {}
         }

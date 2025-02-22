@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use async_trait::async_trait;
 use macroquad::{color::RED, math::Vec2, shapes::draw_triangle, time::get_time};
 
-use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Publisher, Updatable}}, utils::timer::Timer};
+use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, utils::timer::Timer};
 use crate::collision_system::collider::Collider;
 
 pub struct Bullet{
@@ -116,11 +116,13 @@ impl Updatable for Bullet{
                 if !exp{
                     //move bullet
                     self.move_to(delta);
+                    self.publish(Event::new((self.id, EntityType::Projectile, self.pos), EventType::InsertOrUpdateToGrid)).await
                 }
                 else{
                     //drop bullet
                     self.active = false;
                     self.publish(Event::new(self.get_id(), EventType::PlayerBulletExpired)).await;
+                    self.publish(Event::new(self.id, EventType::RemoveEntityFromGrid)).await
                 }
             }
         }
@@ -133,6 +135,8 @@ impl GameEntity for Bullet{
         return self.id
     }
 }
+
+impl Projectile for Bullet{}
 
 #[async_trait]
 impl Publisher for Bullet{

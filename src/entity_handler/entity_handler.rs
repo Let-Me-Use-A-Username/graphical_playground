@@ -3,18 +3,18 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::Vec2;
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, GameEntity, Publisher, Subscriber}}, objects::bullet::Bullet};
+use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, GameEntity, Projectile, Publisher, Subscriber}}, objects::bullet::Bullet};
 
 
 pub struct Handler{
     entities: HashMap<u64, Box<dyn GameEntity>>,
     enemies: HashMap<u64, Box<dyn Enemy>>,
-    projectiles: HashMap<u64, Box<dyn GameEntity>>,
+    //Review: Cannot differentiate between player and enemy projectiles. Create separate collection? Implement an origin type, Enemy, Player etc?
+    projectiles: HashMap<u64, Box<dyn Projectile>>,
     sender: Sender<Event>
 }
 
 impl Handler{
-
     pub fn new(sender: Sender<Event>) -> Self{
         return Handler{
             entities: HashMap::new(),       //All active entities
@@ -70,27 +70,6 @@ impl Handler{
             });
     }
 
-    pub fn get_entity_with_id(&mut self, id: &u64) -> Option<&Box<dyn GameEntity>>{
-        if let Some(boxxed) = self.entities.get(&id){
-            return Some(boxxed)
-        }
-        return None
-    }
-
-    pub fn get_enemy_with_id(&mut self, id: &u64) -> Option<&Box<dyn Enemy>>{
-        if let Some(boxxed) = self.enemies.get(&id){
-            return Some(boxxed)
-        }
-        return None
-    }
-
-    pub fn get_projectile_with_id(&mut self, id: &u64) -> Option<&Box<dyn GameEntity>>{
-        if let Some(boxxed) = self.projectiles.get(&id){
-            return Some(boxxed)
-        }
-        return None
-    }
-
     #[inline(always)]
     pub fn insert_entity(&mut self, id: u64, entity: Box<dyn GameEntity>){
         self.entities.entry(id)
@@ -104,7 +83,7 @@ impl Handler{
     }
 
     #[inline(always)]
-    pub fn insert_projectile(&mut self, id: u64, projectile: Box<dyn GameEntity>){
+    pub fn insert_projectile(&mut self, id: u64, projectile: Box<dyn Projectile>){
         self.projectiles.entry(id)
         .or_insert(projectile);
     }
@@ -135,33 +114,38 @@ impl Publisher for Handler{
 
 #[async_trait]
 impl Subscriber for Handler{
-
     async fn notify(&mut self, event: &Event) {
-        //FIXME: Necessary Downcast to an Option in order to use take() method and avoid upcasting.
         match &event.event_type{
             EventType::EnemySpawn => {
                 if let Ok(mut entry) = event.data.lock(){
-                    if let Some(data) = entry.downcast_mut::<Option<Box<dyn GameEntity>>>(){
+                    if let Some(data) = entry.downcast_mut::<Option<Box<dyn Enemy>>>(){
                         let entity = data.take().unwrap();
                         let id = entity.get_id();
-                        self.insert_entity(id, entity);
+                        self.insert_enemy(id, entity);
                     }
                 }
             },
+            EventType::EnemyDied => {
+                if let Ok(entry) = event.data.lock(){
+                    if let Some(data) = entry.downcast_ref::<u64>(){
+                        self.retain_enemy(data);
+                    }
+                }
+            }
             EventType::BatchEnemySpawn => {
                 if let Ok(mut entry) = event.data.lock(){
-                    if let Some(data) = entry.downcast_mut::<Vec<Option<Box<dyn GameEntity>>>>(){
+                    if let Some(data) = entry.downcast_mut::<Vec<Option<Box<dyn Enemy>>>>(){
                         data.iter_mut().for_each(|entry| {
                             let entity = entry.take().unwrap();
                             let id = entity.get_id();
-                            self.insert_entity(id, entity);
+                            self.insert_enemy(id, entity);
                         });
                     }
                 }
             },
             EventType::PlayerBulletSpawn => {
                 if let Ok(mut entry) = event.data.lock(){
-                    if let Some(data) = entry.downcast_mut::<Option<Box<Bullet>>>(){
+                    if let Some(data) = entry.downcast_mut::<Option<Box<dyn Projectile>>>(){
                         let entity = data.take().unwrap();
                         let id = entity.get_id();
                         self.insert_projectile(id, entity);
