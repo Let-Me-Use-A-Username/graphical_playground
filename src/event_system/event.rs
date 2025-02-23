@@ -17,7 +17,7 @@ pub enum EventType{
     //Factory
     QueueEnemy,
     QueueRandomEnemyBatch,
-    RetrieveEnemies,
+    ForwardEnemiesToHandler,
     //Grid
     InsertOrUpdateToGrid,
     RemoveEntityFromGrid,

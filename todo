@@ -3,12 +3,17 @@
 - Implement collision detector
     - Emit EnemyDied signals for entity handler
 
+- WHY IS THE GAME USING 1.5GB OF MEMORY??
+
 - Refine communication between game components via Events
-    - Factory: Receives events to Queue enemies or Retrieve enemies
-    - Grid: Receives events to add, remove or update entities
-    - Handler: Received events to Spawn or Kill enemies and bullets
+    - Factory: Receives events to queue/retrieve enemies
+    - Grid: Receives events to update/remove entities
+    - Handler: Received events to spawn/remove enemies/projectiles
     - Collision Detector: ???
 
+
+- Implement restriction to draw, based on range from player, with its field of view. 
+    - Enemies , Grid, Wall
 
 ==============================================
 ================== General todo ==============

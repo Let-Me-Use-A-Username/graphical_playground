@@ -16,6 +16,7 @@ pub trait Collider{
     fn collide_with_rect(&self, rect: &RectCollider) -> bool;
 }
 
+#[derive(Clone, Copy)]
 pub struct CircleCollider{
     x: f32,
     y: f32,
@@ -62,15 +63,6 @@ impl RectCollider{
     //it return a Collider obj.
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self{
         return RectCollider { x, y, w, h }
-    }
-
-    pub fn as_rect(&self) -> Rect{
-        return Rect{
-            x: self.x,
-            y: self.y,
-            w: self.w,
-            h: self.h
-        }
     }
 }
 impl Collider for RectCollider{

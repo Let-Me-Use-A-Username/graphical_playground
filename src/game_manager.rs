@@ -103,7 +103,7 @@ impl GameManager{
         //Factory events
         dispatcher.register_listener(EventType::QueueEnemy, factory.clone());
         dispatcher.register_listener(EventType::QueueRandomEnemyBatch, factory.clone());
-        dispatcher.register_listener(EventType::RetrieveEnemies, factory.clone());
+        dispatcher.register_listener(EventType::ForwardEnemiesToHandler, factory.clone());
         
         return GameManager { 
             state: GameState::Playing,
@@ -176,16 +176,7 @@ impl GameManager{
                         }
                     }
                     else {
-                        let enemies = self.factory.try_lock().unwrap().get_enemies(10);
-
-                        if enemies.is_some(){
-                            if let Ok(mut handler) = self.handler.try_lock(){
-                                for enemy in enemies.unwrap() {
-                                    handler.insert_entity(enemy.get_id(), enemy);
-                                }
-                            }
-
-                        }
+                        let _ = self.component_sender.send(Event::new(10 as usize, EventType::ForwardEnemiesToHandler));
                     }
                 },
                 None => {

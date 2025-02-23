@@ -11,7 +11,7 @@ use macroquad::color::{Color, RED};
 use rand::{thread_rng, Rng};
 
 use crate::event_system::event::{Event, EventType};
-use crate::event_system::interface::{Enemy, GameEntity, Publisher, Subscriber};
+use crate::event_system::interface::{Enemy, Publisher, Subscriber};
 use crate::globals;
 use crate::actors::circle::{self, Circle};
 
@@ -19,7 +19,7 @@ static COUNTER: AtomicU64 = AtomicU64::new(1000);
 
 
 pub struct Factory{
-    queue: VecDeque<Box<dyn GameEntity>>,
+    queue: VecDeque<Box<dyn Enemy>>,
     sender: Sender<Event>,
     enemy_sender: Sender<Event>
 }
@@ -43,7 +43,7 @@ impl Factory{
                 color, 
                 player_pos, 
                 self.enemy_sender.clone()
-            )) as Box<dyn GameEntity>;
+            ));
 
         if self.queue.len() >= self.queue.capacity() {
             self.queue.pop_front();
@@ -54,7 +54,7 @@ impl Factory{
 
     pub fn queue_random_batch(&mut self, num: usize, player_pos: Vec2){
         let mut rng = thread_rng();
-        let mut enemies: Vec<Box<dyn GameEntity>> = Vec::with_capacity(num);
+        let mut enemies: Vec<Box<dyn Enemy>> = Vec::with_capacity(num);
 
         for _ in 0..=num{
 
@@ -72,7 +72,7 @@ impl Factory{
                 RED, 
                 player_pos,
                 self.enemy_sender.clone()
-            )) as Box<dyn GameEntity>;
+            ));
 
             enemies.push(enemy);
         }
@@ -85,7 +85,7 @@ impl Factory{
         }
     }
 
-    pub fn get_enemies(&mut self, num: usize) -> Option<Vec<Box<dyn GameEntity>>>{
+    pub fn get_enemies(&mut self, num: usize) -> Option<Vec<Box<dyn Enemy>>>{
         if self.queue.len() >= num{
             return Some(self.queue.drain(0..num).collect())
         }
@@ -168,6 +168,21 @@ impl Subscriber for Factory{
                         self.queue_random_batch(am, pos);
                     }
                 }
+            },
+            EventType::ForwardEnemiesToHandler => {
+                let mut queue: Vec<Option<Box<dyn Enemy>>> = Vec::new();
+
+                if let Ok(result) = event.data.lock(){
+                    if let Some(data) = result.downcast_ref::<usize>(){
+                        if self.queue.len() > *data{
+                            queue = self.queue
+                            .drain(0..*data)
+                            .map(|enemy| Some(enemy))
+                            .collect();
+                        }            
+                    }
+                }
+                self.publish(Event::new(queue, EventType::BatchEnemySpawn)).await;
             }
             _ => {}
         }
