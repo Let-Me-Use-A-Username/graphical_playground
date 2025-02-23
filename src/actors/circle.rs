@@ -5,7 +5,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType};   
+use crate::{collision_system::collider::{self, CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType};   
 
 pub struct Circle{
     id: u64,
@@ -16,7 +16,8 @@ pub struct Circle{
     target: Vec2,
     sender: Sender<Event>,
     pub is_alive: bool,
-    emited: bool
+    emited: bool,
+    collider: CircleCollider
 }
 
 //========== Circle interfaces =========
@@ -25,6 +26,7 @@ impl Updatable for Circle{
     //Review: Could be quite heavy downcasting for Any
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
+            self.collider.update(self.pos);
             if let Some(param_item) = params.pop(){
                 if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
                     self.target = *player_pos;
@@ -92,9 +94,14 @@ impl Enemy for Circle{
             color: color,
             target: player_pos,
             sender: sender,
-            is_alive: true, 
-            emited: false
+            is_alive: true,
+            emited: false,
+            collider: CircleCollider::new(pos.x, pos.y, size)
         }
+    }
+    
+    fn collides(&self, other: &dyn Collider) -> bool {
+        return self.collider.collides_with(other)
     }
 }
 

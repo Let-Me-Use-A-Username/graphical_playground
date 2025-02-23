@@ -3,7 +3,7 @@ use std::{any::Any, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
 
-use crate::event_system::event::Event;
+use crate::{collision_system::collider::Collider, event_system::event::Event};
 
 //========= Event related interfaces ==========
 #[async_trait]
@@ -45,6 +45,7 @@ pub trait GameEntity: Updatable + Drawable{
 //Review: This could lead to a problem with the entity manager, since he handles game entities
 pub trait Enemy: GameEntity{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender: Sender<Event>) -> Self where Self: Sized;
+    fn collides(&self, other: &dyn Collider) -> bool;
 }
 
 pub trait Projectile: GameEntity{}
