@@ -10,7 +10,7 @@ use crate::{collision_system::collider::{Collider, RectCollider}, event_system::
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 use crate::state_machine::machine::StateType;
 
-static BULLETCOUNTER: AtomicU64 = AtomicU64::new(0);
+static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
 
 pub struct Player{
     //Attributes
@@ -71,12 +71,12 @@ impl Player{
             immune_timer: Timer::new(),
             bounce: false,
             left_fire: true,
-            bullet_pool: BulletPool::new(1000, sender.clone()),
+            bullet_pool: BulletPool::new(1000, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank()
         }
     }
     
-    pub async fn collide(&mut self, other: &dyn Collider) -> bool{
+    pub fn collide(&mut self, other: &dyn Collider) -> bool{
         return self.collider.collides_with(other)
     }
 
@@ -324,6 +324,7 @@ impl Subscriber for Player {
                         }
                     }
                 }
+                //Note: Player enters hit state even when he shouldn't
                 if self.immune_timer.is_set(){
                     self.bounce = true;
                     self.machine.transition(StateType::Hit);

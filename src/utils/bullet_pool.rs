@@ -1,24 +1,26 @@
 use std::{collections::VecDeque, sync::mpsc::Sender};
 
-use crate::{event_system::event::Event, objects::bullet::Bullet};
+use crate::{event_system::event::Event, objects::bullet::{Bullet, ProjectileType}};
 
 
 pub struct BulletPool{
     available: VecDeque<Bullet>,
-    sender: Sender<Event>
+    sender: Sender<Event>,
+    origin: ProjectileType
 }
 
 impl BulletPool{
-    pub fn new(size: usize, sender: Sender<Event>) -> Self{
+    pub fn new(size: usize, sender: Sender<Event>, ptype: ProjectileType) -> Self{
         let mut blank_bullets = VecDeque::with_capacity(size);
 
         for _ in 0..size {
-            blank_bullets.push_back(Bullet::get_blank(sender.clone()));
+            blank_bullets.push_back(Bullet::get_blank(sender.clone(), ptype));
         }
 
         return BulletPool { 
             available: blank_bullets,
-            sender: sender
+            sender: sender,
+            origin: ptype
         }
     }
 
@@ -39,7 +41,7 @@ impl BulletPool{
         if refill{
             for _ in 0..amount{
                 if self.available.len() < self.available.capacity(){
-                    self.available.push_back(Bullet::get_blank(self.sender.clone()));
+                    self.available.push_back(Bullet::get_blank(self.sender.clone(), self.origin));
                 }
             }
         }

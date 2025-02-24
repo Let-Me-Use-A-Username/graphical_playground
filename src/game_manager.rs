@@ -7,15 +7,17 @@ use std::any::Any;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
+use crate::collision_system::collision_detector::CollisionDetector;
 use crate::entity_handler::entity_handler::Handler;
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Drawable, Object, Updatable};
+use crate::event_system::interface::{Drawable, Enemy, Object, Updatable};
 use crate::globals::Global;
-use crate::grid_system::grid::Grid;
+use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::factory::Factory;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
+use crate::objects::bullet::ProjectileType;
 use crate::utils::timer::Timer;
 
 #[derive(Debug, Clone)]
@@ -49,6 +51,7 @@ pub struct GameManager{
     factory: Arc<Mutex<Factory>>,
     grid: Arc<Mutex<Grid>>,
     handler: Arc<Mutex<Handler>>,
+    detector: CollisionDetector,
     player: Arc<Mutex<Player>>,
 }
 
@@ -74,6 +77,7 @@ impl GameManager{
                 dispatcher.create_sender())
             ));
         let handler = Arc::new(Mutex::new(Handler::new(dispatcher.create_sender())));
+        let detector = CollisionDetector::new(dispatcher.create_sender());
         let player = Arc::new(Mutex::new(Player::new(
                 map_bounds / 2.0,
                 map_bounds / 2.0,
@@ -118,6 +122,7 @@ impl GameManager{
             factory: factory,
             grid: grid,
             handler: handler,
+            detector: detector,
             player: player
         }
     }
@@ -185,13 +190,58 @@ impl GameManager{
                 },
             }
 
+            let mut player_collider = None;
+
             if let Ok(mut player) = self.player.try_lock(){
                 player.update(delta, vec!()).await;
                 player_pos = player.get_pos();
                 self.wall.update((player_pos, player.size)).await;
+                player_collider = Some(player.collider);
             }
+
             if let Ok(mut handler) = self.handler.try_lock(){
                 handler.update(delta, player_pos).await;
+            
+                if let Ok(grid) = self.grid.try_lock(){
+                    //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
+                    let nearby_entities_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
+                    //Retrieve enemies based on Ids
+                    let nearby_entities: Vec<Option<&Box<dyn Enemy>>> = nearby_entities_ids
+                        .iter()
+                        .map(|id| handler.get_enemy(id))
+                        .collect();
+                    
+                    //Update collision detector
+                    if player_collider.is_some(){
+                        self.detector.detect_player_collision(player_collider.unwrap(), nearby_entities).await;
+                    }
+
+                    //Fetch all projectiles
+                    for projectile in handler.get_projectiles(){
+                        //For each projectile, if approximate entities exist
+                        if let Some(approximate) = grid.get_approximate_entities(projectile.get_pos()){
+                            
+                            let player_projectiles = approximate.iter()
+                                .filter(|(etype, _)| {
+                                    //Player origin, Enemy entities
+                                    projectile.get_ptype() == ProjectileType::Player && *etype == EntityType::Enemy
+                                })
+                                .map(|(etype, id)| (*etype, *id))
+                                .collect::<Vec<(EntityType, u64)>>();
+                            //Todo: Implement the same filtering as above, for enemy projectiles and player collider.
+
+                            //Collect enemies from handler
+                            let enemies: Vec<Option<&Box<dyn Enemy>>> = player_projectiles.iter()
+                                .map(|(_, id)| {
+                                    handler.get_enemy(id)
+                                })
+                                .collect();
+
+                            //Check for collision on each enemy
+                            self.detector.detect_players_projectile_collision(projectile.get_collider(), enemies).await;
+                        }
+                    }
+                }
             }
     
             // Camera

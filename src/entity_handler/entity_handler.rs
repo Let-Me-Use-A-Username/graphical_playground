@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::Vec2;
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, GameEntity, Projectile, Publisher, Subscriber}}, objects::bullet::Bullet};
+use crate::event_system::{event::{Event, EventType}, interface::{Enemy, GameEntity, Projectile, Publisher, Subscriber}};
 
 
 pub struct Handler{
@@ -102,6 +102,24 @@ impl Handler{
     pub fn retain_projectiles(&mut self, rid: &u64){
         self.projectiles.retain(|id, _| !id.eq(rid));
     }
+
+    #[inline(always)]
+    pub fn get_enemy(&self, id: &u64) -> Option<&Box<dyn Enemy>>{
+        if let Some((_, entry)) = self.enemies.get_key_value(&id){
+            return Some(entry)
+        }
+        return None
+    }
+
+    #[inline(always)]
+    pub fn get_projectiles(&self) -> Vec<&Box<dyn Projectile>>{
+        let projectiles: Vec<&Box<dyn Projectile>> = self.projectiles
+            .iter()
+            .map(|(_, projectile)| projectile)
+            .collect();
+
+        return projectiles
+    }
 }   
 
 
@@ -128,7 +146,10 @@ impl Subscriber for Handler{
             EventType::EnemyDied => {
                 if let Ok(entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_ref::<u64>(){
-                        self.retain_enemy(data);
+                        if let Some(enemy) = self.enemies.get_mut(data){
+                            enemy.set_alive(false);
+                            self.retain_enemy(data);
+                        }
                     }
                 }
             }

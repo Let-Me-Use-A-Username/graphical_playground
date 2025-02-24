@@ -6,6 +6,12 @@ use macroquad::{color::RED, math::Vec2, shapes::draw_triangle, time::get_time};
 use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, utils::timer::Timer};
 use crate::collision_system::collider::Collider;
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum ProjectileType{
+    Player,
+    Enemy
+}
+
 pub struct Bullet{
     id: u64,
     pos: Vec2,
@@ -15,10 +21,11 @@ pub struct Bullet{
     timer: Timer,
     collider: RectCollider,
     sender: Sender<Event>,
-    active: bool
+    active: bool,
+    origin: ProjectileType
 }
 impl Bullet{
-    pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>) -> Self{
+    pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>, ptype: ProjectileType) -> Self{
         let mut timer = Timer::new();
         timer.set(get_time(), remove_time, None);
         
@@ -31,13 +38,14 @@ impl Bullet{
             timer: timer,
             collider: RectCollider::new(pos.x, pos.y, size, size),
             sender: sender,
-            active: true
+            active: true,
+            origin: ptype
         };
 
         return bullet
     }
 
-    pub fn get_blank(sender: Sender<Event>) -> Self{
+    pub fn get_blank(sender: Sender<Event>, ptype: ProjectileType) -> Self{
         return Bullet {
             id: 0,
             pos: Vec2::ZERO,
@@ -47,7 +55,8 @@ impl Bullet{
             timer: Timer::new(),
             collider: RectCollider::new(0.0, 0.0, 0.0, 0.0),
             sender,
-            active: false
+            active: false,
+            origin: ptype
         }   
     }
 
@@ -136,7 +145,19 @@ impl GameEntity for Bullet{
     }
 }
 
-impl Projectile for Bullet{}
+impl Projectile for Bullet{
+    fn collides(&self, other: &dyn Collider) -> bool {
+        return self.collider.collides_with(other)
+    }
+
+    fn get_ptype(&self) -> ProjectileType{
+        return self.origin
+    }
+    
+    fn get_collider(&self) -> Box<&dyn Collider> {
+        return Box::new(&self.collider)
+    }
+}
 
 #[async_trait]
 impl Publisher for Bullet{
