@@ -39,7 +39,7 @@ pub struct Player{
 
 impl Player{
     const ROTATION_SPEED: f32 = 1.0;
-    const BULLET_SPAWN: f64 = 1.2;
+    const BULLET_SPAWN: f64 = 0.3;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
@@ -157,15 +157,28 @@ impl Updatable for Player{
         let current_state = self.machine.get_state().lock().unwrap().clone();
 
         match current_state{
-            //move player
-            StateType::Moving | StateType::Idle => {
+            StateType::Idle => {
+                //If input, go to Move state
+                if is_key_down(KeyCode::W) | is_key_down(KeyCode::S){
+                    self.publish(Event::new((), EventType::PlayerMoving)).await
+                }
+
+                if is_mouse_button_down(MouseButton::Left){
+                    self.fire().await;
+                } 
+            }
+            StateType::Moving => {
                 let _ = self.move_to(delta);
+
+                //If velocity is ZERO (assigned from move_to), go to Idle state
+                if self.velocity == Vec2::ZERO{
+                    self.publish(Event::new((), EventType::PlayerIdle)).await
+                }
                 
                 if is_mouse_button_down(MouseButton::Left){
                     self.fire().await;
                 }
             },
-            //player hit, bounce back
             StateType::Hit => {
                 let mut hit_timer = self.immune_timer;
                 //Reset timer for Hit state
@@ -182,12 +195,18 @@ impl Updatable for Player{
                                 self.velocity = -self.velocity * 0.9;
                                 self.bounce = false;
                             }
-                            //apply bounce impact
-                            self.velocity *= 0.98;
-                            self.direction = self.velocity.normalize();
-                            self.pos += self.velocity * delta;
                         }
                     }
+                    //Apply loss of velocity over frame
+                    if !self.bounce{
+                        self.velocity *= 0.98;
+                    }
+                    //Apply drag when entering hit state but timer can't be set 
+                    else{
+                        self.velocity *= 0.3;
+                    }
+                    self.direction = self.velocity.normalize();
+                    self.pos += self.velocity * delta;
                 }                
             }
         };
@@ -216,12 +235,17 @@ impl Moveable for Player{
 
         //If player has momentum, allow rotation
         if self.velocity.length() > 7.5{
+            let mut rotation_speed = Self::ROTATION_SPEED;
+
+            if is_key_down(KeyCode::Space){
+                rotation_speed *= 3.0;
+            }
             //Rotate
             if is_key_down(KeyCode::D) {
-                self.rotation += Self::ROTATION_SPEED * delta;
+                self.rotation += rotation_speed * delta;
             }
             if is_key_down(KeyCode::A) {
-                self.rotation -= Self::ROTATION_SPEED * delta;
+                self.rotation -= rotation_speed * delta;
             }
         }
 
@@ -325,6 +349,7 @@ impl Subscriber for Player {
                     }
                 }
                 //Note: Player enters hit state even when he shouldn't
+                //Note: If it momenterally slows don't the player, keep as mechanic
                 if self.immune_timer.is_set(){
                     self.bounce = true;
                     self.machine.transition(StateType::Hit);
