@@ -5,9 +5,6 @@
 - Implement restriction to draw, based on range from player, with its field of view. 
     - Enemies, Grid, Wall
 
-- Implement more idiomatic way to queue and retrieve enemies.
-
-- Implement players idle state
 
 ==============================================
 ================== General todo ==============
@@ -16,20 +13,15 @@
         - Function macroquad::window::set_fullscreen ?
             - When settings are changed, restart game to run them (hot reload)
     - Draw bullet ammunition UI
-            
 
-- Implement collider to each entity that can collide.
-    - This way the entity manager can check whether the player rect collides with an entities (by id)
-        -The colliders inside an enemy can be more than one, and could have properties that 
-        make them adjustable, for example a triangle could have two circles or a rectangle
-        thats longer on one side
-    - Another way would be to have each element check themselves if collision occurs.
+- Implement correct ids for entities.
 
-- Implement correct ids for entities. Currently enemies start from 1000 and bullets from 0.
+- Implement ErrorHandler 
+
+- Implement different kind of enemies.
 
 ==============================================
 ================== Gameplay ==================
-- Implement drifting
 - Implement firing angle modifier based on zoom. Instead of literally zooming.
 
 
@@ -40,16 +32,9 @@
 
 ==============================================
 ================== Implementation ideas ======
-- Update enemies only when move or active or inside view(?)s
-
-- Add threads to independent tasks (grid, factory, collition detection) be careful with shared data
-- Use a thread per cell grid. Assign a structure per cell that gived information on either: Enemy pos and last pos, or cell status (populated, not)
-    -When enemies exceed a certai number in a cell, divide the cell (and only this cell) with size 32 into 4 sub cells with size 8. One thread per subcell
-    - Dynamic cell resize? 
 
 
 ==============================================
 ================== Study =====================
 - Entity component system
 - https://domwillia.ms/devlog1/
-- https://mq.agical.se/ch3-smooth-movement.html

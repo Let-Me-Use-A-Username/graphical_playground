@@ -41,8 +41,6 @@ pub trait GameEntity: Updatable + Drawable{
     fn get_id(&self) -> u64;
 }
 
-
-//Review: This could lead to a problem with the entity manager, since he handles game entities
 pub trait Enemy: GameEntity{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender: Sender<Event>) -> Self where Self: Sized;
     fn collides(&self, other: &dyn Collider) -> bool;

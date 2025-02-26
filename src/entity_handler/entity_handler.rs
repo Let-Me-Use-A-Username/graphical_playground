@@ -3,13 +3,11 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::Vec2;
 
-use crate::event_system::{event::{Event, EventType}, interface::{Enemy, GameEntity, Projectile, Publisher, Subscriber}};
+use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}};
 
 
 pub struct Handler{
-    entities: HashMap<u64, Box<dyn GameEntity>>,
     enemies: HashMap<u64, Box<dyn Enemy>>,
-    //Review: Cannot differentiate between player and enemy projectiles. Create separate collection? Implement an origin type, Enemy, Player etc?
     projectiles: HashMap<u64, Box<dyn Projectile>>,
     sender: Sender<Event>
 }
@@ -17,7 +15,6 @@ pub struct Handler{
 impl Handler{
     pub fn new(sender: Sender<Event>) -> Self{
         return Handler{
-            entities: HashMap::new(),       //All active entities
             enemies: HashMap::new(),        //All active enemies
             projectiles: HashMap::new(),    //All active projectiles
             sender: sender
@@ -26,12 +23,6 @@ impl Handler{
 
     pub async fn update(&mut self, delta: f32, player_pos: Vec2){
         let mut all_futures = Vec::new();
-    
-        all_futures.extend(
-            self.entities.iter_mut()
-                .map(|(_, ent)| ent)
-                .map(|ent| ent.update(delta, vec![Box::new(player_pos)]))
-        );
     
         all_futures.extend(
             self.enemies.iter_mut()
@@ -50,13 +41,6 @@ impl Handler{
 
     #[inline(always)]
     pub fn draw_all(&mut self){
-        self.entities.iter_mut()
-            .map(|(_, boxed)| boxed)
-            .for_each(|entity|{
-                entity.draw();
-            });
-            
-    
         self.enemies.iter_mut()
             .map(|(_, boxed)| boxed)
             .for_each(|enemy|{
@@ -71,35 +55,24 @@ impl Handler{
     }
 
     #[inline(always)]
-    pub fn insert_entity(&mut self, id: u64, entity: Box<dyn GameEntity>){
-        self.entities.entry(id)
-            .or_insert(entity);
-    }
-
-    #[inline(always)]
-    pub fn insert_enemy(&mut self, id: u64, enemy: Box<dyn Enemy>){
+    fn insert_enemy(&mut self, id: u64, enemy: Box<dyn Enemy>){
         self.enemies.entry(id)
             .or_insert(enemy);
     }
 
     #[inline(always)]
-    pub fn insert_projectile(&mut self, id: u64, projectile: Box<dyn Projectile>){
+    fn insert_projectile(&mut self, id: u64, projectile: Box<dyn Projectile>){
         self.projectiles.entry(id)
         .or_insert(projectile);
     }
 
     #[inline(always)]
-    pub fn retain_entity(&mut self, rid: &u64){
-        self.entities.retain(|id, _| !id.eq(rid));
-    }
-
-    #[inline(always)]
-    pub fn retain_enemy(&mut self, rid: &u64){
+    fn retain_enemy(&mut self, rid: &u64){
         self.enemies.retain(|id, _| !id.eq(rid));
     }
 
     #[inline(always)]
-    pub fn retain_projectiles(&mut self, rid: &u64){
+    fn retain_projectiles(&mut self, rid: &u64){
         self.projectiles.retain(|id, _| !id.eq(rid));
     }
 
@@ -119,6 +92,11 @@ impl Handler{
             .collect();
 
         return projectiles
+    }
+
+    #[inline(always)]
+    pub fn get_active_enemy_count(&self) -> usize{
+        return self.enemies.len()
     }
 }   
 

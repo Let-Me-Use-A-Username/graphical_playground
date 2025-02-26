@@ -16,12 +16,11 @@ pub enum EventType{
     PlayerBulletExpired,
     //Factory
     QueueEnemy,
-    QueueRandomEnemyBatch,
+    QueueTemplate,
     ForwardEnemiesToHandler,
     //Grid
     InsertOrUpdateToGrid,
     RemoveEntityFromGrid,
-    BatchInsertOrUpdateToGrid,
 }
 
 #[derive(Clone, Debug)]

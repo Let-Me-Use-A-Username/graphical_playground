@@ -265,15 +265,6 @@ impl Subscriber for Grid{
                     }
                 }
             },
-            EventType::BatchInsertOrUpdateToGrid => {
-                if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<Vec<(EntityId, EntityType, Vec2)>>(){
-                        data.iter().for_each(|entry| {
-                            self.update_entity(entry.0, entry.1, entry.2);
-                        });
-                    }
-                }
-            },
             _ => {
                 todo!()
             }

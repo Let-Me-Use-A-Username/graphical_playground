@@ -7,13 +7,15 @@ use async_trait::async_trait;
 use rand::seq::SliceRandom;
 
 use macroquad::math::{vec2, Vec2};
-use macroquad::color::{Color, RED};
+use macroquad::color::Color;
 use rand::{thread_rng, Rng};
 
 use crate::event_system::event::{Event, EventType};
 use crate::event_system::interface::{Enemy, Publisher, Subscriber};
-use crate::globals;
-use crate::actors::circle::{self, Circle};
+use crate::actors::circle::Circle;
+use crate::utils::globals;
+
+use super::enemy_type::EnemyType;
 
 static COUNTER: AtomicU64 = AtomicU64::new(1000);
 
@@ -27,7 +29,7 @@ pub struct Factory{
 impl Factory{
     pub fn new(sender: Sender<Event>, enemy_sender: Sender<Event>) -> Self{
         return Factory {
-            queue: VecDeque::with_capacity(1024),
+            queue: VecDeque::with_capacity(128),
             sender: sender,
             enemy_sender: enemy_sender
         }
@@ -52,44 +54,23 @@ impl Factory{
         self.queue.push_back(enemy);
     }
 
-    pub fn queue_random_batch(&mut self, num: usize, player_pos: Vec2){
-        let mut rng = thread_rng();
-        let mut enemies: Vec<Box<dyn Enemy>> = Vec::with_capacity(num);
+    fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color){
+        while template.len() > 0{
+            if let Some(etype) = template.pop_front(){
+                let pos = self.get_screen_edges_from(player_pos);
+                let size = thread_rng().gen_range(10..30) as f32;
 
-        for _ in 0..=num{
-
-            if self.queue.len() >= self.queue.capacity() {
-                self.queue.pop_front();
+                match etype{
+                    EnemyType::Circle => {
+                        self.queue_enemy::<Circle>(pos, size, color, player_pos);
+                    },
+                    EnemyType::Ellipse => todo!(),
+                    EnemyType::Triangle => todo!(),
+                    EnemyType::Rect => todo!(),
+                    EnemyType::Hexagon => todo!(),
+                }
             }
-
-            let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            let pos = self.get_screen_edges_from(player_pos);
-            
-            let enemy = Box::new(circle::Circle::new(
-                id, 
-                pos, 
-                rng.gen_range(10..30) as f32,
-                RED, 
-                player_pos,
-                self.enemy_sender.clone()
-            ));
-
-            enemies.push(enemy);
         }
-
-        match self.queue.len() < self.queue.capacity() {
-            true => {
-                self.queue.extend(enemies.into_iter());
-            },
-            false => eprintln!("|Factory|queue_random_batch()| Maximum queue reached."),
-        }
-    }
-
-    pub fn get_enemies(&mut self, num: usize) -> Option<Vec<Box<dyn Enemy>>>{
-        if self.queue.len() >= num{
-            return Some(self.queue.drain(0..num).collect())
-        }
-        return None
     }
 
     fn get_screen_edges_from(&self, pos: Vec2)-> Vec2{
@@ -151,21 +132,30 @@ impl Subscriber for Factory{
         match event.event_type{
             EventType::QueueEnemy => {
                 if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<(Vec2, f32, Color, Vec2)>(){
-                        let pos = data.0;
-                        let size = data.1;
-                        let color = data.2;
-                        let ppos = data.3;
-                        self.queue_enemy::<Circle>(pos, size, color, ppos);
+                    if let Some(data) = result.downcast_ref::<(EnemyType, Vec2, f32, Color, Vec2)>(){
+                        let enemy_type = data.0;
+                        let pos = data.1;
+                        let size = data.2;
+                        let color = data.3;
+                        let player_pos = data.4;
+                        
+                        match enemy_type{
+                            EnemyType::Circle => self.queue_enemy::<Circle>(pos, size, color, player_pos),
+                            EnemyType::Ellipse => todo!(),
+                            EnemyType::Triangle => todo!(),
+                            EnemyType::Rect => todo!(),
+                            EnemyType::Hexagon => todo!(),
+                        }
                     }
                 }
             },
-            EventType::QueueRandomEnemyBatch => {
+            EventType::QueueTemplate => {
                 if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<(usize, Vec2)>(){
-                        let am = data.0;
-                        let pos = data.1;
-                        self.queue_random_batch(am, pos);
+                    if let Some(data) = result.downcast_ref::<(VecDeque<EnemyType>, Vec2, Color)>(){
+                        let template = data.0.clone();
+                        let ppos = data.1;
+                        let color = data.2;
+                        self.queue_template(template, ppos, color);
                     }
                 }
             },
@@ -174,7 +164,7 @@ impl Subscriber for Factory{
 
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<usize>(){
-                        if self.queue.len() > *data{
+                        if self.queue.len() >= *data{
                             queue = self.queue
                             .drain(0..*data)
                             .map(|enemy| Some(enemy))

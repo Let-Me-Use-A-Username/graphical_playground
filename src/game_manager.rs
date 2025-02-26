@@ -9,15 +9,16 @@ use std::sync::{Arc, Mutex};
 
 use crate::collision_system::collision_detector::CollisionDetector;
 use crate::entity_handler::entity_handler::Handler;
+use crate::entity_handler::factory::Factory;
+use crate::entity_handler::spawn_manager::SpawnManager;
 use crate::event_system::event::Event;
 use crate::event_system::interface::{Drawable, Enemy, Object, Updatable};
-use crate::globals::Global;
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
-use crate::factory::Factory;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
 use crate::objects::bullet::ProjectileType;
+use crate::utils::globals::Global;
 use crate::utils::timer::Timer;
 
 #[derive(Debug, Clone)]
@@ -48,6 +49,7 @@ pub struct GameManager{
     wall: Wall,
 
     dispatcher: Dispatcher,
+    spawner: Arc<Mutex<SpawnManager>>,
     factory: Arc<Mutex<Factory>>,
     grid: Arc<Mutex<Grid>>,
     handler: Arc<Mutex<Handler>>,
@@ -64,6 +66,12 @@ impl GameManager{
         let map_bounds = global.get_cell_size() * global.get_grid_size();
 
         let mut dispatcher = Dispatcher::new();
+        let spawner = Arc::new(Mutex::new(
+            SpawnManager::new(
+                dispatcher.create_sender(), 
+                180.0,
+                10.0
+            )));
         let factory = Arc::new(Mutex::new(
             Factory::new(
                 dispatcher.create_sender(), 
@@ -95,7 +103,6 @@ impl GameManager{
         //Grid events
         dispatcher.register_listener(EventType::InsertOrUpdateToGrid, grid.clone());
         dispatcher.register_listener(EventType::RemoveEntityFromGrid, grid.clone());
-        dispatcher.register_listener(EventType::BatchInsertOrUpdateToGrid, grid.clone());
         
         //Handler events
         dispatcher.register_listener(EventType::EnemySpawn, handler.clone());
@@ -106,7 +113,7 @@ impl GameManager{
 
         //Factory events
         dispatcher.register_listener(EventType::QueueEnemy, factory.clone());
-        dispatcher.register_listener(EventType::QueueRandomEnemyBatch, factory.clone());
+        dispatcher.register_listener(EventType::QueueTemplate, factory.clone());
         dispatcher.register_listener(EventType::ForwardEnemiesToHandler, factory.clone());
         
         return GameManager { 
@@ -119,6 +126,7 @@ impl GameManager{
             wall: wall,
 
             dispatcher: dispatcher,
+            spawner: spawner,
             factory: factory,
             grid: grid,
             handler: handler,
@@ -171,24 +179,6 @@ impl GameManager{
 
             // ======= Updates ========
             let delta = get_frame_time();
-            let time = get_time();
-
-            match self.timer.has_expired(time){
-                Some(expired) => {
-                    if expired{
-                        if self.timer.can_be_set(time){
-                            self.timer.reset();
-                        }
-                    }
-                    else {
-                        let _ = self.component_sender.send(Event::new(10 as usize, EventType::ForwardEnemiesToHandler));
-                    }
-                },
-                None => {
-                    let _ = self.component_sender.send(Event::new((20 as usize, player_pos), EventType::QueueRandomEnemyBatch));
-                    self.timer.set(time, 0.3, Some(10.0))
-                },
-            }
 
             let mut player_collider = None;
 
@@ -201,6 +191,10 @@ impl GameManager{
 
             if let Ok(mut handler) = self.handler.try_lock(){
                 handler.update(delta, player_pos).await;
+
+                if let Ok(mut spawner) = self.spawner.try_lock(){
+                    spawner.update(player_pos, handler.get_active_enemy_count()).await;
+                }
             
                 if let Ok(grid) = self.grid.try_lock(){
                     //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
