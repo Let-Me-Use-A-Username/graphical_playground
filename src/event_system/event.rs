@@ -10,10 +10,11 @@ pub enum EventType{
     PlayerHit,
     //Handler
     EnemySpawn,
-    EnemyDied,
+    EnemyHit,
     BatchEnemySpawn,
     PlayerBulletSpawn,
     PlayerBulletExpired,
+    CollidingEnemies,
     //Factory
     QueueEnemy,
     QueueTemplate,

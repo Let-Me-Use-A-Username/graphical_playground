@@ -1,7 +1,6 @@
 mod actors;
 mod event_system;
 mod grid_system;
-mod state_machine;
 mod utils;
 mod game_manager;
 mod entity_handler;

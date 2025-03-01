@@ -141,6 +141,7 @@ impl Grid{
 
 
     ///Returns entities in the cell that `pos` belongs to.
+    #[inline(always)]
     pub fn get_approximate_entities(&self, pos: Vec2) -> Option<Vec<(EntityType, EntityId)>>{
         let cell_pos = self.world_to_cell(pos.into());
         
@@ -175,8 +176,6 @@ impl Grid{
                 }
             }
         }
-
-
         return entities
     }
 
@@ -198,6 +197,26 @@ impl Grid{
         
         return (x, y)
     }
+
+    ///Returns a vector that represents cells
+    /// Each inner vector represents entities inside a single cell
+    /// mapped to the entities id
+    #[inline]
+    pub fn get_populated_cells(&self) -> Vec<Vec<u64>>{
+        return self.cells
+            .iter()
+            .map(|(_, cell)| cell)
+            .filter(|cell| !cell.entities.is_empty())
+            .map(|cell| {
+                cell.entities
+                    .iter()
+                    .map(|entity| &entity.entity_id)
+                    .cloned()
+                    .collect()
+            })
+            .collect()
+    }
+
 
     #[inline(always)]
     pub fn draw(&self){

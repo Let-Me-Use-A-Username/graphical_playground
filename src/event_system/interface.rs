@@ -39,16 +39,18 @@ pub trait Drawable: Object{
 #[async_trait]
 pub trait GameEntity: Updatable + Drawable{
     fn get_id(&self) -> u64;
+    fn get_size(&self) -> f32;
+    fn collides(&self, other: &dyn Collider) -> bool;
+    fn get_collider(&self) -> Box<&dyn Collider>;
 }
 
+#[async_trait]
 pub trait Enemy: GameEntity{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender: Sender<Event>) -> Self where Self: Sized;
-    fn collides(&self, other: &dyn Collider) -> bool;
     fn set_alive(&mut self, alive: bool);
 }
 
+#[async_trait]
 pub trait Projectile: GameEntity{
-    fn collides(&self, other: &dyn Collider) -> bool;
     fn get_ptype(&self) -> ProjectileType;
-    fn get_collider(&self) -> Box<&dyn Collider>;
 }

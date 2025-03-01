@@ -121,7 +121,7 @@ impl Subscriber for Handler{
                     }
                 }
             },
-            EventType::EnemyDied => {
+            EventType::EnemyHit => {
                 if let Ok(entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_ref::<u64>(){
                         if let Some(enemy) = self.enemies.get_mut(data){
@@ -157,6 +157,39 @@ impl Subscriber for Handler{
                         self.retain_projectiles(data);
                     }
                 }
+            },
+            EventType::CollidingEnemies => {
+                if let Ok(entry) = event.data.lock(){
+                    if let Some(data) = entry.downcast_ref::<(u64, u64)>(){
+                        if let Some(enemyx) = self.enemies.get_mut(&data.0){
+                            let posx = enemyx.get_pos();
+                            let sizex = enemyx.get_size();
+
+                            if let Some(enemyy) = self.enemies.get_mut(&data.1){
+                                let posy = enemyy.get_pos();
+                                let sizey = enemyy.get_size();
+
+                                let direction = Vec2::new(posy.x - posx.x, posy.y - posx.y);
+                                let distance = direction.length();
+                                let com_radius = sizex + sizey;
+
+                                if distance < com_radius{
+                                    let normalized_dir = direction.normalize();
+                                    let overlap = com_radius - distance;
+                                    let move_distance = overlap / 2.0 + 1.0;
+                                    
+                                    // circle1.pos -= normalized_dir * move_distance;
+                                    // circle2.pos += normalized_dir * move_distance;
+                                    
+                                    // Update colliders
+                                    // circle1.collider.update(circle1.pos);
+                                    // circle2.collider.update(circle2.pos);
+                                }
+                            }
+                        }
+            
+                    }
+                } 
             }
             _ => {
                 todo!()

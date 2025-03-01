@@ -6,9 +6,8 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Projectile, Updatable}}, grid_system::grid::EntityType, objects::bullet::{self, Bullet}, state_machine::machine::StateMachine, utils::{bullet_pool::BulletPool, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Projectile, Updatable}}, objects::bullet, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
-use crate::state_machine::machine::StateType;
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
 

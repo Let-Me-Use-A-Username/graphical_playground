@@ -106,10 +106,11 @@ impl GameManager{
         
         //Handler events
         dispatcher.register_listener(EventType::EnemySpawn, handler.clone());
-        dispatcher.register_listener(EventType::EnemyDied, handler.clone());
+        dispatcher.register_listener(EventType::EnemyHit, handler.clone());
         dispatcher.register_listener(EventType::BatchEnemySpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletSpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletExpired, handler.clone());
+        dispatcher.register_listener(EventType::CollidingEnemies, handler.clone());
 
         //Factory events
         dispatcher.register_listener(EventType::QueueEnemy, factory.clone());
@@ -206,8 +207,8 @@ impl GameManager{
                         .collect();
                     
                     //Update collision detector
-                    if player_collider.is_some(){
-                        self.detector.detect_player_collision(player_collider.unwrap(), nearby_entities).await;
+                    if let Some(collider) = player_collider{
+                        self.detector.detect_player_collision(collider, nearby_entities).await;
                     }
 
                     //Fetch all projectiles
@@ -234,6 +235,21 @@ impl GameManager{
                             //Check for collision on each enemy
                             self.detector.detect_players_projectile_collision(projectile.get_collider(), enemies).await;
                         }
+                    }
+                    
+                    //Get populated cells
+                    let populated_cells = grid.get_populated_cells();
+                    //Iterate ids and map to enemies
+                    for cell in populated_cells{
+                        let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
+
+                        for id in cell{
+                            if let Some(enemy) = handler.get_enemy(&id){
+                                cell_enemies.push(enemy);
+                            }
+                        }
+                        //Trigger collision detector
+                        self.detector.detect_enemy_collision(cell_enemies).await;
                     }
                 }
             }

@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::event_system::interface::{Drawable, GameEntity, Moveable, Object, Updatable};   
+use crate::{collision_system::collider::Collider, event_system::interface::{Drawable, GameEntity, Moveable, Object, Updatable}};   
 
 #[derive(Clone, Copy)]
 pub struct Ellipse{
@@ -82,6 +82,18 @@ impl Drawable for Ellipse{
 impl GameEntity for Ellipse{
     fn get_id(&self) -> u64 {
         return self.id
+    }
+    
+    fn get_size(&self) -> f32 {
+        todo!()
+    }
+    
+    fn collides(&self,other: &dyn Collider) -> bool {
+        todo!()
+    }
+
+    fn get_collider(&self) -> Box<&dyn Collider> {
+        todo!()
     }
 }
 

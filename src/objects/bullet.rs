@@ -143,19 +143,24 @@ impl GameEntity for Bullet{
     fn get_id(&self) -> u64 {
         return self.id
     }
-}
-
-impl Projectile for Bullet{
+    
+    fn get_size(&self) -> f32 {
+        return self.size
+    }
+    
     fn collides(&self, other: &dyn Collider) -> bool {
         return self.collider.collides_with(other)
     }
 
-    fn get_ptype(&self) -> ProjectileType{
-        return self.origin
-    }
-    
     fn get_collider(&self) -> Box<&dyn Collider> {
         return Box::new(&self.collider)
+    }
+    
+}
+
+impl Projectile for Bullet{
+    fn get_ptype(&self) -> ProjectileType{
+        return self.origin
     }
 }
 
