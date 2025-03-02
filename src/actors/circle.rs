@@ -131,9 +131,17 @@ impl Enemy for Circle{
             emited: false,
         }
     }
+
+    fn is_alive(&self) -> bool{
+        return self.is_alive
+    }
     
     fn set_alive(&mut self, alive: bool) {
         self.is_alive = alive;
+    }
+
+    fn force_state(&mut self, state: StateType){
+        self.machine.transition(state);
     }
 
 }

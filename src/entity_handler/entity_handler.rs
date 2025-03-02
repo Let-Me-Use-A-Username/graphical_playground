@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::Vec2;
 
-use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}};
+use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, utils::machine::StateType};
 
 
 pub struct Handler{
@@ -125,8 +125,11 @@ impl Subscriber for Handler{
                 if let Ok(entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_ref::<u64>(){
                         if let Some(enemy) = self.enemies.get_mut(data){
-                            enemy.set_alive(false);
-                            self.retain_enemy(data);
+                            enemy.force_state(StateType::Hit);
+
+                            if !enemy.is_alive(){
+                                self.retain_enemy(data);
+                            }
                         }
                     }
                 }

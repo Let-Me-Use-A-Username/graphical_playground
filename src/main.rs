@@ -11,11 +11,16 @@ use std::env;
 use macroquad::prelude::*;
 use game_manager::GameManager;
 use mimalloc::MiMalloc;
+use tracy_client::{Client, ProfiledAllocator};
 
 
 //Mimalloc is used because heap allocation is very frequent due to futures and Box-es
+// #[global_allocator]
+// static GLOBAL: MiMalloc = MiMalloc;
+
 #[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
+static GLOBAL: ProfiledAllocator<std::alloc::System> =
+    ProfiledAllocator::new(std::alloc::System, 100);
 
 //NOTE: This should be configured in settings ideally...
 pub fn window_conf() -> Conf{
@@ -33,10 +38,14 @@ pub fn window_conf() -> Conf{
 #[macroquad::main(window_conf)]
 async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
-
+    
+    let _client = Client::start();
+    println!("Tracy profiler initialized...");
+    
     let mut game_manager = GameManager::new();
+    tracy_client::set_thread_name!("Main Thread");
 
-    loop{
+    loop {
         game_manager.update().await;
     }
 }

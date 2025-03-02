@@ -1,19 +1,29 @@
 ==============================================
 ================== Critical ==================
+- Resource optimazation
+    - Memory
+        - Replace some Arc mutex in game manager
+        - Implement enemy pooling
+        - ECS?
+    - CPU
+        - Replace some async functions with synchronous ones
+    - GPU
+        X Viewport didn't work.
+        - Batch drawing instead of separate draw calls
+
+
 - Implement enemy collision
     - Enemies now implement a state machine.
         -When the detector emits a CollidingEnemies event, the handler forces the enemies to move in a certain way
         to avoid overlapping
             - Force state change to move and change move_to target?
-        -When the detector emits a EnemyHit event, change so that the handler forces a state change to Hit
-        and have the handler check if he the is_alive is false to remote it 
-
-- WHY IS THE GAME USING 1.5GB OF MEMORY??
-    - Implement restriction to draw, based on range from player, with its field of view. 
-        - Enemies, Grid, Wall
 
 ==============================================
 ================== General todo ==============
+- Implement build parameters
+    - Debug mode
+        - Enable/Disable tracy
+
 - Implement better UI
     - Implement fullscreen with  macroquad::prelude::Conf
         - Function macroquad::window::set_fullscreen ?
@@ -28,7 +38,7 @@
 
 ==============================================
 ================== Gameplay ==================
-- Implement firing angle modifier based on zoom. Instead of literally zooming.
+- Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
 
 
 ==============================================

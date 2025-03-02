@@ -60,6 +60,7 @@ pub struct GameManager{
 impl GameManager{
 
     pub fn new() -> Self{
+        let _span = tracy_client::span!("Initializing game components");
         let (sender, receiver) = channel::<GameEvent>();
 
         let global = Global::new();
@@ -172,6 +173,9 @@ impl GameManager{
         camera.zoom = vec2(zoom_level, zoom_level);
     
         loop {
+            tracy_client::frame_mark();
+            let _span = tracy_client::span!("Game Loop");
+
             // Mouse wheel
             if mouse_wheel().1 != 0.0 {
                 zoom_level = (zoom_level - mouse_wheel().1 * zoom_speed).clamp(min_zoom, max_zoom);
@@ -183,74 +187,89 @@ impl GameManager{
 
             let mut player_collider = None;
 
-            if let Ok(mut player) = self.player.try_lock(){
-                player.update(delta, vec!()).await;
-                player_pos = player.get_pos();
-                self.wall.update((player_pos, player.size)).await;
-                player_collider = Some(player.collider);
+            {
+                let _span = tracy_client::span!("Player/Wall updates");
+                if let Ok(mut player) = self.player.try_lock(){
+                    player.update(delta, vec!()).await;
+                    player_pos = player.get_pos();
+                    self.wall.update((player_pos, player.size)).await;
+                    player_collider = Some(player.collider);
+                }
             }
 
             if let Ok(mut handler) = self.handler.try_lock(){
-                handler.update(delta, player_pos).await;
+                {
+                    let _span = tracy_client::span!("Handler updating");
+                    handler.update(delta, player_pos).await;
+                }
 
                 if let Ok(mut spawner) = self.spawner.try_lock(){
-                    spawner.update(player_pos, handler.get_active_enemy_count()).await;
+                    {
+                        let _span = tracy_client::span!("Spawner updating");
+                        spawner.update(player_pos, handler.get_active_enemy_count()).await;
+                    }
                 }
             
                 if let Ok(grid) = self.grid.try_lock(){
-                    //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
-                    let nearby_entities_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
-                    //Retrieve enemies based on Ids
-                    let nearby_entities: Vec<Option<&Box<dyn Enemy>>> = nearby_entities_ids
-                        .iter()
-                        .map(|id| handler.get_enemy(id))
-                        .collect();
-                    
-                    //Update collision detector
-                    if let Some(collider) = player_collider{
-                        self.detector.detect_player_collision(collider, nearby_entities).await;
-                    }
-
-                    //Fetch all projectiles
-                    for projectile in handler.get_projectiles(){
-                        //For each projectile, if approximate entities exist
-                        if let Some(approximate) = grid.get_approximate_entities(projectile.get_pos()){
-                            
-                            let player_projectiles = approximate.iter()
-                                .filter(|(etype, _)| {
-                                    //Player origin, Enemy entities
-                                    projectile.get_ptype() == ProjectileType::Player && *etype == EntityType::Enemy
-                                })
-                                .map(|(etype, id)| (*etype, *id))
-                                .collect::<Vec<(EntityType, u64)>>();
-                            //Todo: Implement the same filtering as above, for enemy projectiles and player collider.
-
-                            //Collect enemies from handler
-                            let enemies: Vec<Option<&Box<dyn Enemy>>> = player_projectiles.iter()
-                                .map(|(_, id)| {
-                                    handler.get_enemy(id)
-                                })
-                                .collect();
-
-                            //Check for collision on each enemy
-                            self.detector.detect_players_projectile_collision(projectile.get_collider(), enemies).await;
+                    {
+                        let _span = tracy_client::span!("Detecting players collision with enemies");
+                        //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
+                        let nearby_entities_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
+                        //Retrieve enemies based on Ids
+                        let nearby_entities: Vec<Option<&Box<dyn Enemy>>> = nearby_entities_ids
+                            .iter()
+                            .map(|id| handler.get_enemy(id))
+                            .collect();
+                        
+                        //Update collision detector
+                        if let Some(collider) = player_collider{
+                            self.detector.detect_player_collision(collider, nearby_entities).await;
                         }
                     }
-                    
-                    //Get populated cells
-                    let populated_cells = grid.get_populated_cells();
-                    //Iterate ids and map to enemies
-                    for cell in populated_cells{
-                        let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
 
-                        for id in cell{
-                            if let Some(enemy) = handler.get_enemy(&id){
-                                cell_enemies.push(enemy);
+                    {
+                        let _span = tracy_client::span!("Detecting players projectile collision");
+                        //Fetch all projectiles
+                        for projectile in handler.get_projectiles(){
+                            //For each projectile, if approximate entities exist
+                            if let Some(approximate) = grid.get_approximate_entities(projectile.get_pos()){
+                                
+                                let player_projectiles = approximate.iter()
+                                    .filter(|(etype, _)| {
+                                        //Player origin, Enemy entities
+                                        projectile.get_ptype() == ProjectileType::Player && *etype == EntityType::Enemy
+                                    })
+                                    .map(|(etype, id)| (*etype, *id))
+                                    .collect::<Vec<(EntityType, u64)>>();
+                                //Todo: Implement the same filtering as above, for enemy projectiles and player collider.
+
+                                //Collect enemies from handler
+                                let enemies: Vec<Option<&Box<dyn Enemy>>> = player_projectiles.iter()
+                                    .map(|(_, id)| {
+                                        handler.get_enemy(id)
+                                    })
+                                    .collect();
+
+                                //Check for collision on each enemy
+                                self.detector.detect_players_projectile_collision(projectile.get_collider(), enemies).await;
                             }
                         }
-                        //Trigger collision detector
-                        self.detector.detect_enemy_collision(cell_enemies).await;
                     }
+                    
+                    // //Get populated cells
+                    // let populated_cells = grid.get_populated_cells();
+                    // //Iterate ids and map to enemies
+                    // for cell in populated_cells{
+                    //     let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
+
+                    //     for id in cell{
+                    //         if let Some(enemy) = handler.get_enemy(&id){
+                    //             cell_enemies.push(enemy);
+                    //         }
+                    //     }
+                    //     //Trigger collision detector
+                    //     self.detector.detect_enemy_collision(cell_enemies).await;
+                    // }
                 }
             }
     
@@ -259,20 +278,27 @@ impl GameManager{
             camera.target = camera_pos;
             set_camera(&camera);
     
-            self.dispatcher.dispatch().await;
+            {
+                let _span = tracy_client::span!("Dispatching");
+                self.dispatcher.dispatch().await;
+            }
     
             // ======== RENDERING ========
-            clear_background(LIGHTGRAY);
+            {
+                let _span = tracy_client::span!("Rendering");
 
-            if let Ok(grid) = self.grid.try_lock(){
-                grid.draw();
-                self.wall.draw();
-            }
-            if let Ok(mut player) = self.player.try_lock(){
-                player.draw()
-            }
-            if let Ok(mut handler) = self.handler.try_lock(){
-                handler.draw_all();
+                clear_background(LIGHTGRAY);
+
+                if let Ok(grid) = self.grid.try_lock(){
+                    grid.draw();
+                    self.wall.draw();
+                }
+                if let Ok(mut player) = self.player.try_lock(){
+                    player.draw()
+                }
+                if let Ok(mut handler) = self.handler.try_lock(){
+                    handler.draw_all();
+                }
             }
             
             //grid_unlocked.clear();
