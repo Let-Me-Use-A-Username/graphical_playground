@@ -53,19 +53,42 @@ impl Wall{
     }
 
     #[inline(always)]
-    pub fn draw(&self){
+    pub fn draw(&self, viewport: Rect){
         let width = self.bounds.w;
         let height = self.bounds.h;
-
-        //LEFT
-        draw_line(0.0, 0.0, 0.0, height, 8.0, RED);
-        //TOP
-        draw_line(0.0, height, width, height, 8.0, RED);
+        
+        let intersects_left = viewport.x <= 0.0 && viewport.x + viewport.w > 0.0;
+        let intersects_right = viewport.x < width && viewport.x + viewport.w >= width;
+        let intersects_top = viewport.y < height && viewport.y + viewport.h >= height;
+        let intersects_bottom = viewport.y <= 0.0 && viewport.y + viewport.h > 0.0;
+        
+        //Left
+        if intersects_left {
+            let y_start = f32::max(viewport.y, 0.0);
+            let y_end = f32::min(viewport.y + viewport.h, height);
+            draw_line(0.0, y_start, 0.0, y_end, 8.0, RED);
+        }
+        
+        //Top
+        if intersects_top {
+            let x_start = f32::max(viewport.x, 0.0);
+            let x_end = f32::min(viewport.x + viewport.w, width);
+            draw_line(x_start, height, x_end, height, 8.0, RED);
+        }
+        
         //Right
-        draw_line(width, height, width, 0.0, 8.0, RED);
+        if intersects_right {
+            let y_start = f32::max(viewport.y, 0.0);
+            let y_end = f32::min(viewport.y + viewport.h, height);
+            draw_line(width, y_start, width, y_end, 8.0, RED);
+        }
+        
         //Bottom
-        draw_line(width, 0.0, 0.0, 0.0, 8.0, RED);
-
+        if intersects_bottom {
+            let x_start = f32::max(viewport.x, 0.0);
+            let x_end = f32::min(viewport.x + viewport.w, width);
+            draw_line(x_start, 0.0, x_end, 0.0, 8.0, RED);
+        }
     }
 }
 

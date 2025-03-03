@@ -1,7 +1,7 @@
 use std::{collections::{HashMap, HashSet}, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::{color::{DARKGRAY, ORANGE}, math::Vec2, shapes::{draw_line, draw_rectangle}};
+use macroquad::{color::{DARKGRAY, ORANGE}, math::{Rect, Vec2}, shapes::{draw_line, draw_rectangle}};
 
 use crate::event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}};
 
@@ -39,10 +39,10 @@ struct Cell{
 }
 
 impl Cell{
-    fn new() -> Self{
+    fn new(capacity: usize) -> Self{
         return Cell {
-            entities: HashSet::<Entity>::with_capacity(30),
-            capacity: 30
+            entities: HashSet::<Entity>::with_capacity(capacity),
+            capacity: capacity
         }
     }
  
@@ -68,6 +68,15 @@ impl Cell{
     }
 }
 
+
+//Represents an operation to queue
+#[derive(Clone)]
+enum GridOperation{
+    Update(EntityId, EntityType, Vec2),
+    Remove(EntityId)
+}
+
+
 ///Grid that keeps track of entities by having entries in a hashmap and which cell they belong to.
 /// Each cell position has a cell that holds a vec of entities. Where entity is entity_type and id.
 pub struct Grid{
@@ -75,17 +84,17 @@ pub struct Grid{
     cells: HashMap<CellPos, Cell>,
     cell_size: i32,
     grid_size: i32,
-    bounds: f32,
     sender: Sender<Event>,
+    op_queue: Vec<GridOperation>
 }
 
 impl Grid{
-    pub fn new(grid_size: i32, cell_size: i32, bounds: f32, sender: Sender<Event>) -> Self{
+    pub fn new(grid_size: i32, cell_size: i32, cell_capacity: usize, sender: Sender<Event>) -> Self{
         let mut cells = HashMap::new();
 
         for dx in 0..grid_size{
             for dy in 0..grid_size{
-                cells.insert((dx, dy), Cell::new());
+                cells.insert((dx, dy), Cell::new(cell_capacity));
             }
         }
         
@@ -94,9 +103,82 @@ impl Grid{
             cells: cells,
             cell_size: cell_size,
             grid_size: grid_size,
-            bounds: bounds,
             sender: sender,
+            op_queue: Vec::new()
         }
+    }
+
+    #[inline(always)]
+    pub fn update(&mut self) {
+        let mut updates = Vec::new();
+        let mut removals = Vec::new();
+        
+        for op in self.op_queue.drain(..) {
+            match op {
+                GridOperation::Update(id, etype, pos) => {
+                    updates.push((id, etype, pos));
+                },
+                GridOperation::Remove(id) => {
+                    removals.push(id);
+                },
+            }
+        }
+        
+        for (id, etype, pos) in updates {
+            self.update_entity(id, etype, pos);
+        }
+        
+        for id in removals {
+            self.remove_entity(id);
+        }
+    }
+
+    pub fn check_entity_consistency(&self) -> bool {
+        let mut entity_count = 0;
+        let mut entity_locations = HashMap::new();
+        
+        // Count entities in all cells
+        for (pos, cell) in &self.cells {
+            for entity in &cell.entities {
+                entity_count += 1;
+                entity_locations
+                    .entry(entity.entity_id)
+                    .or_insert_with(Vec::new)
+                    .push(*pos);
+            }
+        }
+        
+        // Check for entities in multiple cells
+        let mut duplicates = 0;
+        for (id, locations) in &entity_locations {
+            if locations.len() > 1 {
+                duplicates += 1;
+                println!("Entity {} found in multiple cells: {:?}", id, locations);
+            }
+        }
+        
+        // Check for entities in entity_table but not in any cell
+        let mut missing = 0;
+        for id in self.entity_table.keys() {
+            if !entity_locations.contains_key(id) {
+                missing += 1;
+                println!("Entity {} in entity_table but not in any cell", id);
+            }
+        }
+        
+        // Check for entities in cells but not in entity_table
+        let mut orphaned = 0;
+        for id in entity_locations.keys() {
+            if !self.entity_table.contains_key(id) {
+                orphaned += 1;
+                println!("Entity {} in cells but not in entity_table", id);
+            }
+        }
+        
+        println!("Grid consistency check: {} entities, {} duplicates, {} missing, {} orphaned",
+                 entity_count, duplicates, missing, orphaned);
+        
+        duplicates == 0 && missing == 0 && orphaned == 0
     }
 
     /// Updates an entity by first checking if it present inside the grid.
@@ -135,6 +217,9 @@ impl Grid{
             if let Some(cell) = self.cells.get_mut(ent){
                 cell.entities.retain(|entity| entity.entity_id != id);
                 self.entity_table.remove(&id);
+            }
+            else{
+                eprintln!("|Grid|remove_entity()| Cell not found for pos: {:?} ", ent);
             }
         }
     }
@@ -219,37 +304,48 @@ impl Grid{
 
 
     #[inline(always)]
-    pub fn draw(&self){
+    pub fn draw(&self, viewport: Rect){
+        // Draw background
         draw_rectangle(
-            0.0,
-            0.0,
-            self.bounds as f32,
-            self.bounds as f32,
+            viewport.x,
+            viewport.y,
+            viewport.w,
+            viewport.h,
             ORANGE
         );
         
+        // Calculate visible cell range
+        let start_x = (viewport.x / self.cell_size as f32).floor() as i32;
+        let start_y = (viewport.y / self.cell_size as f32).floor() as i32;
+        let end_x = ((viewport.x + viewport.w) / self.cell_size as f32).ceil() as i32;
+        let end_y = ((viewport.y + viewport.h) / self.cell_size as f32).ceil() as i32;
+        
+        // Clamp to grid boundaries
+        let start_x = start_x.max(0).min(self.grid_size);
+        let start_y = start_y.max(0).min(self.grid_size);
+        let end_x = end_x.max(0).min(self.grid_size);
+        let end_y = end_y.max(0).min(self.grid_size);
+        
         let cell_size = self.cell_size as f32;
-        let grid_size = self.grid_size as f32;
-        let grid_max = self.bounds;
-
-        // Draw vertical lines
-        for x in 0..=grid_size as i32 {
+        
+        // Draw only visible vertical lines
+        for x in start_x..=end_x {
             draw_line(
                 x as f32 * cell_size,
-                0.0,
+                viewport.y,
                 x as f32 * cell_size,
-                grid_max,
+                viewport.y + viewport.h,
                 1.0,
                 DARKGRAY
             );
         }
 
-        // Draw horizontal lines
-        for y in 0..=grid_size as i32 {
+        // Draw only visible horizontal lines
+        for y in start_y..=end_y {
             draw_line(
-                0.0,
+                viewport.x,
                 y as f32 * cell_size,
-                grid_max,
+                viewport.x + viewport.w,
                 y as f32 * cell_size,
                 1.0,
                 DARKGRAY
@@ -273,14 +369,14 @@ impl Subscriber for Grid{
             EventType::InsertOrUpdateToGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2)>(){
-                        self.update_entity(data.0, data.1, data.2);
+                        self.op_queue.push(GridOperation::Update(data.0, data.1, data.2));
                     }
                 }
             },
             EventType::RemoveEntityFromGrid => {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<EntityId>(){
-                        self.remove_entity(*data);
+                        self.op_queue.push(GridOperation::Remove(*data));
                     }
                 }
             },

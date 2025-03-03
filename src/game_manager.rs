@@ -64,7 +64,7 @@ impl GameManager{
         let (sender, receiver) = channel::<GameEvent>();
 
         let global = Global::new();
-        let map_bounds = global.get_cell_size() * global.get_grid_size();
+        let map_bounds = (global.get_cell_size() * global.get_grid_size()) as f32;
 
         let mut dispatcher = Dispatcher::new();
         let spawner = Arc::new(Mutex::new(
@@ -80,9 +80,9 @@ impl GameManager{
             ));
         let grid = Arc::new(Mutex::new(
             Grid::new(
-                global.get_grid_size() as i32,
-                global.get_cell_size() as i32,
-                map_bounds,
+                global.get_grid_size(),
+                global.get_cell_size(),
+                global.get_cell_capacity(),
                 dispatcher.create_sender())
             ));
         let handler = Arc::new(Mutex::new(Handler::new(dispatcher.create_sender())));
@@ -171,7 +171,7 @@ impl GameManager{
         let mut camera = Camera2D::default();
         camera.target = camera_pos;
         camera.zoom = vec2(zoom_level, zoom_level);
-    
+        
         loop {
             tracy_client::frame_mark();
             let _span = tracy_client::span!("Game Loop");
@@ -181,6 +181,23 @@ impl GameManager{
                 zoom_level = (zoom_level - mouse_wheel().1 * zoom_speed).clamp(min_zoom, max_zoom);
                 camera.zoom = vec2(zoom_level, zoom_level);
             }
+
+            let viewport = {
+                let screen_width = screen_width();
+                let screen_height = screen_height();
+                let viewport_width = screen_width * (3000.0 * camera.zoom.x);
+                let viewport_height = screen_height * (3000.0 * camera.zoom.y);
+                
+                let half_width = viewport_width / 2.0;
+                let half_height = viewport_height / 2.0;
+                
+                Rect::new(
+                    camera.target.x - half_width,
+                    camera.target.y - half_height,
+                    viewport_width,
+                    viewport_height
+                )
+            };
 
             // ======= Updates ========
             let delta = get_frame_time();
@@ -206,13 +223,21 @@ impl GameManager{
                 if let Ok(mut spawner) = self.spawner.try_lock(){
                     {
                         let _span = tracy_client::span!("Spawner updating");
-                        spawner.update(player_pos, handler.get_active_enemy_count()).await;
+                        
+                        if let Ok(factory) = self.factory.try_lock(){
+                            spawner.update(player_pos, 
+                                handler.get_active_enemy_count(), 
+                                viewport,
+                                factory.get_queue_size()).await;
+                        }
                     }
                 }
             
-                if let Ok(grid) = self.grid.try_lock(){
+                if let Ok(mut grid) = self.grid.try_lock(){
                     {
                         let _span = tracy_client::span!("Detecting players collision with enemies");
+                        
+                        grid.update();
                         //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
                         let nearby_entities_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
                         //Retrieve enemies based on Ids
@@ -256,19 +281,22 @@ impl GameManager{
                         }
                     }
                     
-                    // //Get populated cells
-                    // let populated_cells = grid.get_populated_cells();
-                    // //Iterate ids and map to enemies
-                    // for cell in populated_cells{
-                    //     let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
+                    // {
+                    //     let _span = tracy_client::span!("Detecting enemy inter-collision");
+                    //     //Get populated cells
+                    //     let populated_cells = grid.get_populated_cells();
+                    //     //Iterate ids and map to enemies
+                    //     for cell in populated_cells{
+                    //         let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
 
-                    //     for id in cell{
-                    //         if let Some(enemy) = handler.get_enemy(&id){
-                    //             cell_enemies.push(enemy);
+                    //         for id in cell{
+                    //             if let Some(enemy) = handler.get_enemy(&id){
+                    //                 cell_enemies.push(enemy);
+                    //             }
                     //         }
+                    //         //Trigger collision detector
+                    //         self.detector.detect_enemy_collision(cell_enemies).await;
                     //     }
-                    //     //Trigger collision detector
-                    //     self.detector.detect_enemy_collision(cell_enemies).await;
                     // }
                 }
             }
@@ -290,14 +318,14 @@ impl GameManager{
                 clear_background(LIGHTGRAY);
 
                 if let Ok(grid) = self.grid.try_lock(){
-                    grid.draw();
-                    self.wall.draw();
+                    grid.draw(viewport);
+                    self.wall.draw(viewport);
                 }
                 if let Ok(mut player) = self.player.try_lock(){
                     player.draw()
                 }
                 if let Ok(mut handler) = self.handler.try_lock(){
-                    handler.draw_all();
+                    handler.draw_all(viewport);
                 }
             }
             

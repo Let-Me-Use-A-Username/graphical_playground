@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::math::Vec2;
+use macroquad::math::{Rect, Vec2};
 
 use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, utils::machine::StateType};
 
@@ -22,8 +22,9 @@ impl Handler{
     }
 
     pub async fn update(&mut self, delta: f32, player_pos: Vec2){
+        self.remove_expired_entities().await;
+
         let mut all_futures = Vec::new();
-    
         all_futures.extend(
             self.enemies.iter_mut()
                 .map(|(_, ent)| ent)
@@ -39,16 +40,49 @@ impl Handler{
         futures::future::join_all(all_futures).await;
     }
 
+    async fn remove_expired_entities(&mut self){
+        let enemies_remove = self.enemies
+            .iter()
+            .filter(|(_, enemy)| !enemy.is_alive())
+            .map(|(id, _)| *id)
+            .collect::<Vec<u64>>();
+        
+        let projecitles_remove = self.projectiles
+            .iter()
+            .filter(|(_, proj)| !proj.is_active())
+            .map(|(id, _)| *id)
+            .collect::<Vec<u64>>();
+
+        
+        for id in enemies_remove{
+            if let Some(_) = self.enemies.remove(&id){
+                self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await
+            }
+        }
+
+        for id in projecitles_remove{
+            if let Some(_) = self.projectiles.remove(&id){
+                self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await
+            }
+        }
+    }
+
     #[inline(always)]
-    pub fn draw_all(&mut self){
+    pub fn draw_all(&mut self, viewport: Rect){
         self.enemies.iter_mut()
             .map(|(_, boxed)| boxed)
+            .filter(|enemy| {
+                viewport.contains(enemy.get_pos())
+            })
             .for_each(|enemy|{
                 enemy.draw();
             });
     
         self.projectiles.iter_mut()
             .map(|(_, boxed)| boxed)
+            .filter(|proj| {
+                viewport.contains(proj.get_pos())
+            })
             .for_each(|projectile|{
                 projectile.draw();
             });
@@ -64,16 +98,6 @@ impl Handler{
     fn insert_projectile(&mut self, id: u64, projectile: Box<dyn Projectile>){
         self.projectiles.entry(id)
         .or_insert(projectile);
-    }
-
-    #[inline(always)]
-    fn retain_enemy(&mut self, rid: &u64){
-        self.enemies.retain(|id, _| !id.eq(rid));
-    }
-
-    #[inline(always)]
-    fn retain_projectiles(&mut self, rid: &u64){
-        self.projectiles.retain(|id, _| !id.eq(rid));
     }
 
     #[inline(always)]
@@ -125,10 +149,9 @@ impl Subscriber for Handler{
                 if let Ok(entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_ref::<u64>(){
                         if let Some(enemy) = self.enemies.get_mut(data){
-                            enemy.force_state(StateType::Hit);
-
-                            if !enemy.is_alive(){
-                                self.retain_enemy(data);
+                            
+                            if enemy.is_alive(){
+                                enemy.force_state(StateType::Hit);
                             }
                         }
                     }
@@ -151,13 +174,6 @@ impl Subscriber for Handler{
                         let entity = data.take().unwrap();
                         let id = entity.get_id();
                         self.insert_projectile(id, entity);
-                    }
-                }
-            },
-            EventType::PlayerBulletExpired => {
-                if let Ok(entry) = event.data.lock(){
-                    if let Some(data) = entry.downcast_ref::<u64>(){
-                        self.retain_projectiles(data);
                     }
                 }
             },

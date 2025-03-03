@@ -55,4 +55,6 @@ pub trait Enemy: GameEntity{
 #[async_trait]
 pub trait Projectile: GameEntity{
     fn get_ptype(&self) -> ProjectileType;
+    fn is_active(&self) -> bool;
+    fn set_active(&mut self, alive: bool);
 }

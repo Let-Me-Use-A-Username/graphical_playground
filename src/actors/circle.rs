@@ -21,7 +21,6 @@ pub struct Circle{
     machine: StateMachine,
     //State specifics
     is_alive: bool,
-    emited: bool,
 }
 
 //========== Circle interfaces =========
@@ -36,6 +35,7 @@ impl Updatable for Circle{
                 }
             }
 
+            //Update based on state machine
             if let Ok(state) = self.machine.get_state().try_lock(){
                 match *state{
                     StateType::Idle => {
@@ -52,12 +52,6 @@ impl Updatable for Circle{
 
             self.collider.update(self.pos);
             self.publish(Event::new((self.id, EntityType::Enemy, self.pos), EventType::InsertOrUpdateToGrid)).await
-        }
-        else{
-            if !self.emited{
-                self.emited = true;
-                self.publish(Event::new(self.id, EventType::RemoveEntityFromGrid)).await;
-            }
         }
     }
 }
@@ -128,7 +122,6 @@ impl Enemy for Circle{
             machine: StateMachine::new(),
 
             is_alive: true,
-            emited: false,
         }
     }
 

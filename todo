@@ -2,14 +2,16 @@
 ================== Critical ==================
 - Resource optimazation
     - Memory
-        - Replace some Arc mutex in game manager
         - Implement enemy pooling
         - ECS?
     - CPU
         - Replace some async functions with synchronous ones
     - GPU
-        X Viewport didn't work.
+        - Separation of draw calls (circle, rect etc)
         - Batch drawing instead of separate draw calls
+
+
+- Unregister listeners from the Dispatcher
 
 
 - Implement enemy collision

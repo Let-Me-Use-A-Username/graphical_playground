@@ -70,7 +70,7 @@ impl Player{
             immune_timer: Timer::new(),
             bounce: false,
             left_fire: true,
-            bullet_pool: BulletPool::new(1000, sender.clone(), bullet::ProjectileType::Player),
+            bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank()
         }
     }
@@ -82,53 +82,53 @@ impl Player{
     async fn fire(&mut self){
         if let Some(mut bullet) = self.bullet_pool.get(){
             //Invert facing direction
-        let front_vector = Vec2::new(
-            self.rotation.sin(),
-            -self.rotation.cos()
-        ).normalize();
+            let front_vector = Vec2::new(
+                self.rotation.sin(),
+                -self.rotation.cos()
+            ).normalize();
 
-        //Calculate side vector
-        let side_vector = Vec2::new(
-            self.rotation.cos(),
-            self.rotation.sin()
-        ).normalize();
+            //Calculate side vector
+            let side_vector = Vec2::new(
+                self.rotation.cos(),
+                self.rotation.sin()
+            ).normalize();
 
-        //Apply rotation
-        let rotation = Vec2::new(
-            self.size * side_vector.x,
-            self.size * side_vector.y
-        );
+            //Apply rotation
+            let rotation = Vec2::new(
+                self.size * side_vector.x,
+                self.size * side_vector.y
+            );
 
-        //Add offset to position at middle of rect
-        let vertical_offset = front_vector * self.size / 2.0;
-        let base_pos = self.pos - vertical_offset;
-        
-        let spawn_pos: Vec2;
+            //Add offset to position at middle of rect
+            let vertical_offset = front_vector * self.size / 2.0;
+            let base_pos = self.pos - vertical_offset;
+            
+            let spawn_pos: Vec2;
 
-        if self.left_fire{
-            spawn_pos = base_pos - rotation;
-        }
-        else{
-            spawn_pos = base_pos + rotation;
-        }
+            if self.left_fire{
+                spawn_pos = base_pos - rotation;
+            }
+            else{
+                spawn_pos = base_pos + rotation;
+            }
 
-        self.left_fire = !self.left_fire;
+            self.left_fire = !self.left_fire;
 
-        let id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        let pos = spawn_pos;
+            let id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let pos = spawn_pos;
 
-        bullet.set(
-            id,
-            pos,
-            3000.0,
-            front_vector,
-            20.0,
-            10.0,
-        );
-        
-        let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
+            bullet.set(
+                id,
+                pos,
+                3000.0,
+                front_vector,
+                3.0,
+                10.0,
+            );
+            
+            let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
 
-        self.publish(bullet_spawn).await;
+            self.publish(bullet_spawn).await;
         }
     }
 }

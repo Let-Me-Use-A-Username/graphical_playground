@@ -1,12 +1,10 @@
 use std::collections::VecDeque;
 use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::Sender;
-use std::vec;
 
 use async_trait::async_trait;
-use rand::seq::SliceRandom;
 
-use macroquad::math::{vec2, Vec2};
+use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::color::Color;
 use rand::{thread_rng, Rng};
 
@@ -17,7 +15,7 @@ use crate::utils::globals;
 
 use super::enemy_type::EnemyType;
 
-static COUNTER: AtomicU64 = AtomicU64::new(1000);
+static COUNTER: AtomicU64 = AtomicU64::new(0);
 
 
 pub struct Factory{
@@ -54,10 +52,10 @@ impl Factory{
         self.queue.push_back(enemy);
     }
 
-    fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color){
+    fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color, viewport: Rect){
         while template.len() > 0{
             if let Some(etype) = template.pop_front(){
-                let pos = self.get_screen_edges_from(player_pos);
+                let pos = self.get_enemy_spawn_position(viewport);
                 let size = thread_rng().gen_range(10..30) as f32;
 
                 match etype{
@@ -73,48 +71,61 @@ impl Factory{
         }
     }
 
-    fn get_screen_edges_from(&self, pos: Vec2)-> Vec2{
+    fn get_enemy_spawn_position(&self, viewport: Rect) -> Vec2 {
         let mut rng = thread_rng();
         let global = globals::Global::new();
+        
+        let world_width = (global.get_grid_size() * global.get_cell_size()) as f32;
+        let world_height = world_width;
+        
+        let min_offset = 50.0;
+        let max_offset = 150.0;
+        let spawn_area = rng.gen_range(0..4);
+        
+        match spawn_area {
+            0 => { // Left
+                let x = f32::max(0.0, viewport.x - rng.gen_range(min_offset..max_offset));
+                let y = rng.gen_range(
+                    f32::max(0.0, viewport.y - max_offset)..
+                    f32::min(world_height, viewport.y + viewport.h + max_offset)
+                );
+                vec2(x, y)
+            },
+            1 => { // Right
+                let x = f32::min(
+                    world_width, 
+                    viewport.x + viewport.w + rng.gen_range(min_offset..max_offset)
+                );
+                let y = rng.gen_range(
+                    f32::max(0.0, viewport.y - max_offset)..
+                    f32::min(world_height, viewport.y + viewport.h + max_offset)
+                );
+                vec2(x, y)
+            },
+            2 => { // Above
+                let x = rng.gen_range(
+                    f32::max(0.0, viewport.x - max_offset)..
+                    f32::min(world_width, viewport.x + viewport.w + max_offset)
+                );
+                let y = f32::max(0.0, viewport.y - rng.gen_range(min_offset..max_offset));
+                vec2(x, y)
+            },
+            _ => { // Below
+                let x = rng.gen_range(
+                    f32::max(0.0, viewport.x - max_offset)..
+                    f32::min(world_width, viewport.x + viewport.w + max_offset)
+                );
+                let y = f32::min(
+                    world_height, 
+                    viewport.y + viewport.h + rng.gen_range(min_offset..max_offset)
+                );
+                vec2(x, y)
+            }
+        }
+    }
 
-        let generate_height = {
-            let height = vec!(
-                pos.y - global.get_screen_height() * 2.0, 
-                pos.y + global.get_screen_height() * 2.0
-            );
-
-            let random_heigh = *height.choose(&mut rng).unwrap_or(&0.0);
-
-            //TODO: Refine salt generation.
-            let salt = {
-                if random_heigh > global.get_screen_height(){
-                    rng.gen_range(0.0..(global.get_screen_width() * 2.0))
-                }
-                else{
-                    rng.gen_range((-global.get_screen_width() * 2.0)..0.0)
-                }
-            };
-            random_heigh + salt
-        };
-        let generate_width = {
-            let width = vec!(
-                pos.x - global.get_screen_width() * 2.0,
-                pos.x + global.get_screen_width() * 2.0
-            );
-            let random_width = *width.choose(&mut rng).unwrap_or(&0.0);
-
-            let salt = {
-                if random_width > global.get_screen_width() {
-                    rng.gen_range(0.0..(global.get_screen_height() * 2.0))
-                }
-                else{
-                    rng.gen_range((-global.get_screen_height() * 2.0)..0.0)
-                }
-            };
-            random_width + salt
-        };
-
-        return vec2(generate_width, generate_height)
+    pub fn get_queue_size(&self) -> usize{
+        return self.queue.len()
     }
 
 }
@@ -151,11 +162,12 @@ impl Subscriber for Factory{
             },
             EventType::QueueTemplate => {
                 if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<(VecDeque<EnemyType>, Vec2, Color)>(){
+                    if let Some(data) = result.downcast_ref::<(VecDeque<EnemyType>, Vec2, Color, Rect)>(){
                         let template = data.0.clone();
                         let ppos = data.1;
                         let color = data.2;
-                        self.queue_template(template, ppos, color);
+                        let viewport = data.3;
+                        self.queue_template(template, ppos, color, viewport);
                     }
                 }
             },

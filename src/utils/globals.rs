@@ -14,13 +14,18 @@ impl Global{
         return screen_height();
     }
 
-    //Note: Old cell size was 20.0, increased a bit to provide more robust collition
-    pub fn get_cell_size(&self) -> f32{
-        return 180.0
+    pub fn get_cell_size(&self) -> i32{
+        return 720
     }
 
-    pub fn get_grid_size(&self) -> f32{
-        return 1024.0
+    pub fn get_grid_size(&self) -> i32{
+        return 256
     }
+
+    pub fn get_cell_capacity(&self) -> usize{
+        return 0
+    }
+
+    //180 * 1024 = 184.320
 }
 

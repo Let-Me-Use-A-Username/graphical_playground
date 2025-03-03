@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use async_trait::async_trait;
 use macroquad::{color::RED, math::Vec2, shapes::draw_triangle, time::get_time};
 
-use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, utils::timer::Timer};
+use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, utils::timer::{SimpleTimer, Timer}};
 use crate::collision_system::collider::Collider;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -13,36 +13,33 @@ pub enum ProjectileType{
 }
 
 pub struct Bullet{
+    //Attributes
     id: u64,
     pos: Vec2,
     speed: f32,
     size: f32,
     direction: Vec2,
-    timer: Timer,
+    is_active: bool,
+    origin: ProjectileType,
+    //Components
+    timer: SimpleTimer,
     collider: RectCollider,
     sender: Sender<Event>,
-    active: bool,
-    origin: ProjectileType
 }
 impl Bullet{
     pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>, ptype: ProjectileType) -> Self{
-        let mut timer = Timer::new();
-        timer.set(get_time(), remove_time, None);
-        
-        let bullet =  Bullet {
+        return Bullet {
             id: id, 
             pos: pos,
             speed: speed,
             size: size,
             direction: direction.normalize(), 
-            timer: timer,
+            timer: SimpleTimer::new(remove_time),
             collider: RectCollider::new(pos.x, pos.y, size, size),
             sender: sender,
-            active: true,
+            is_active: true,
             origin: ptype
         };
-
-        return bullet
     }
 
     pub fn get_blank(sender: Sender<Event>, ptype: ProjectileType) -> Self{
@@ -52,10 +49,10 @@ impl Bullet{
             speed: 0.0,
             size: 0.0,
             direction: Vec2::ZERO,
-            timer: Timer::new(),
+            timer: SimpleTimer::blank(),
             collider: RectCollider::new(0.0, 0.0, 0.0, 0.0),
             sender,
-            active: false,
+            is_active: false,
             origin: ptype
         }   
     }
@@ -69,9 +66,9 @@ impl Bullet{
         self.speed = speed;
         self.size = size;
         self.direction = direction.normalize(); 
-        self.timer = timer;
+        self.timer = SimpleTimer::new(remove_time);
         self.collider = RectCollider::new(pos.x, pos.y, size, size);
-        self.active = true;
+        self.is_active = true;
     }
 }
 
@@ -120,19 +117,14 @@ impl Drawable for Bullet{
 #[async_trait]
 impl Updatable for Bullet{
     async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
-        if self.active{
-            if let Some(exp) = self.timer.has_expired(get_time()){
-                if !exp{
-                    //move bullet
-                    self.move_to(delta);
-                    self.publish(Event::new((self.id, EntityType::Projectile, self.pos), EventType::InsertOrUpdateToGrid)).await
-                }
-                else{
-                    //drop bullet
-                    self.active = false;
-                    self.publish(Event::new(self.get_id(), EventType::PlayerBulletExpired)).await;
-                    self.publish(Event::new(self.id, EventType::RemoveEntityFromGrid)).await
-                }
+        if self.is_active{
+            if !self.timer.expired(get_time()) {
+                self.move_to(delta);
+                self.publish(Event::new((self.id, EntityType::Projectile, self.pos), EventType::InsertOrUpdateToGrid)).await
+            }
+            else{
+                //drop bullet
+                self.is_active = false;
             }
         }
     }
@@ -161,6 +153,14 @@ impl GameEntity for Bullet{
 impl Projectile for Bullet{
     fn get_ptype(&self) -> ProjectileType{
         return self.origin
+    }
+    
+    fn is_active(&self) -> bool {
+        return self.is_active
+    }
+    
+    fn set_active(&mut self, alive:bool) {
+        self.is_active = alive
     }
 }
 
