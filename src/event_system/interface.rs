@@ -29,7 +29,7 @@ pub trait Updatable: Object{
 }
 
 pub trait Moveable: Object{
-    fn move_to(&mut self, delta: f32) -> (f32, f32);
+    fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32);
 }
 
 pub trait Drawable: Object{

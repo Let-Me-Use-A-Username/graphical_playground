@@ -167,7 +167,7 @@ impl Updatable for Player{
                 } 
             }
             StateType::Moving => {
-                let _ = self.move_to(delta);
+                let _ = self.move_to(delta, None);
 
                 //If velocity is ZERO (assigned from move_to), go to Idle state
                 if self.velocity == Vec2::ZERO{
@@ -207,7 +207,7 @@ impl Updatable for Player{
                     self.direction = self.velocity.normalize();
                     self.pos += self.velocity * delta;
                 }                
-            }
+            },
         };
     }
 }
@@ -229,7 +229,7 @@ impl Object for Player{
 
 impl Moveable for Player{
     #[inline(always)]
-    fn move_to(&mut self, delta: f32) -> (f32, f32) {
+    fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32) {
         self.direction = vec2(0.0, 0.0);
 
         //If player has momentum, allow rotation

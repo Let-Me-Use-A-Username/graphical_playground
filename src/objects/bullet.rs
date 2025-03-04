@@ -89,7 +89,7 @@ impl Object for Bullet{
 
 impl Moveable for Bullet{
     #[inline(always)]
-    fn move_to(&mut self, delta: f32) -> (f32, f32) {
+    fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32) {
         self.pos += self.direction * self.speed * delta;
         self.collider.update(self.pos);
 
@@ -119,7 +119,7 @@ impl Updatable for Bullet{
     async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_active{
             if !self.timer.expired(get_time()) {
-                self.move_to(delta);
+                self.move_to(delta, None);
                 self.publish(Event::new((self.id, EntityType::Projectile, self.pos), EventType::InsertOrUpdateToGrid)).await
             }
             else{

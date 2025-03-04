@@ -1,8 +1,13 @@
 # Changelog
 
 
+### 0.2.4 Changes 4/3/2025
+- v.0.2.4 Changed allocator to MiMalloc. The ***Memoryleak*** was due to the tracy allocator.
+- v.0.2.4 Changed Enemy move_to function to take an overide position
+- v.0.2.4 Handler can now overide entities, only movement destination at the moment.
+- v.0.2.4 Handler now has a collection to store overides.
 
-### 0.2.4 Changes
+### 0.2.4 Changes 3/3/2025
 - v.0.2.4 Implemented Viewport culling
 - v.0.2.4 Removed Projectile/Enemy responsibility to emit events to handler and grid
 - v.0.2.4 Implemented centralized enemy handling

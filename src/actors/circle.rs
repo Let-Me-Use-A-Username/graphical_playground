@@ -29,9 +29,14 @@ impl Updatable for Circle{
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
             //Update target position
-            if let Some(param_item) = params.pop(){
+            let mut overide = None;
+
+            while let Some(param_item) = params.pop(){
                 if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
                     self.target = *player_pos;
+                }
+                if let Some(overide_pos) = param_item.downcast_ref::<Option<Vec2>>(){
+                    overide = *overide_pos;
                 }
             }
 
@@ -42,7 +47,7 @@ impl Updatable for Circle{
                         self.machine.transition(StateType::Moving)
                     },
                     StateType::Moving => {
-                        self.move_to(delta);
+                        self.move_to(delta, overide);
                     },
                     StateType::Hit => {
                         self.set_alive(false);
@@ -73,8 +78,14 @@ impl Object for Circle{
 
 impl Moveable for Circle{
     #[inline(always)]
-    fn move_to(&mut self, delta: f32) -> (f32, f32){
-        let new_pos = self.pos.move_towards(self.target, self.speed * delta);
+    fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32){
+        
+        let mut new_pos = self.pos.move_towards(self.target, self.speed * delta);
+        
+        if overide.is_some(){
+            new_pos = self.pos.move_towards(overide.unwrap(), self.speed * delta);
+        }
+
         self.pos = new_pos;
         return self.pos.into()
     }

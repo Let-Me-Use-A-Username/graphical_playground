@@ -15,12 +15,12 @@ use tracy_client::{Client, ProfiledAllocator};
 
 
 //Mimalloc is used because heap allocation is very frequent due to futures and Box-es
-// #[global_allocator]
-// static GLOBAL: MiMalloc = MiMalloc;
-
 #[global_allocator]
-static GLOBAL: ProfiledAllocator<std::alloc::System> =
-    ProfiledAllocator::new(std::alloc::System, 100);
+static GLOBAL: MiMalloc = MiMalloc;
+
+// #[global_allocator]
+// static GLOBAL: ProfiledAllocator<std::alloc::System> =
+//     ProfiledAllocator::new(std::alloc::System, 100);
 
 //NOTE: This should be configured in settings ideally...
 pub fn window_conf() -> Conf{

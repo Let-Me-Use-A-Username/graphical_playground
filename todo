@@ -1,24 +1,11 @@
 ==============================================
 ================== Critical ==================
-- Resource optimazation
-    - Memory
-        - Implement enemy pooling
-        - ECS?
-    - CPU
-        - Replace some async functions with synchronous ones
-    - GPU
-        - Separation of draw calls (circle, rect etc)
-        - Batch drawing instead of separate draw calls
-
-
-- Unregister listeners from the Dispatcher
-
-
 - Implement enemy collision
-    - Enemies now implement a state machine.
-        -When the detector emits a CollidingEnemies event, the handler forces the enemies to move in a certain way
-        to avoid overlapping
-            - Force state change to move and change move_to target?
+    - Handler now has a hashmap (change to Vecdeque) that queue overides 
+    - Enemies have their move_to overides to a different target
+    - Either 
+        1) This overide needs to be timed for a few seconds
+        2) The radius check inside Handler is small/wrong
 
 ==============================================
 ================== General todo ==============
@@ -38,9 +25,20 @@
 
 - Implement different kind of enemies.
 
+- Resource optimazation
+    - Memory
+        - Implement enemy pooling
+        - ECS?
+    - CPU
+        - Replace some async functions with synchronous ones
+    - GPU
+        - Separation of draw calls (circle, rect etc)
+        - Batch drawing instead of separate draw calls
+
 ==============================================
 ================== Gameplay ==================
 - Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
+- Refine handbrake
 
 
 ==============================================

@@ -5,10 +5,22 @@ use macroquad::math::{Rect, Vec2};
 
 use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, utils::machine::StateType};
 
+pub enum OverideType{
+    ForveMoveTo(Vec2)
+}
+impl OverideType{
+    fn get_vec(&self) -> Vec2{
+        match self{
+            OverideType::ForveMoveTo(vec) => *vec,
+        }
+    }
+}
+
 
 pub struct Handler{
     enemies: HashMap<u64, Box<dyn Enemy>>,
     projectiles: HashMap<u64, Box<dyn Projectile>>,
+    enemy_overides: HashMap<u64, OverideType>,
     sender: Sender<Event>
 }
 
@@ -17,6 +29,7 @@ impl Handler{
         return Handler{
             enemies: HashMap::new(),        //All active enemies
             projectiles: HashMap::new(),    //All active projectiles
+            enemy_overides: HashMap::new(),
             sender: sender
         }
     }
@@ -28,8 +41,20 @@ impl Handler{
         all_futures.extend(
             self.enemies.iter_mut()
                 .map(|(_, ent)| ent)
-                .map(|ent| ent.update(delta, vec![Box::new(player_pos)]))
-        );
+                .map(|ent| {
+                    let entid = ent.get_id();
+                    let mut overide: Option<Vec2> = None;
+                    
+                    if self.enemy_overides.contains_key(&entid){
+                        match self.enemy_overides.remove(&entid){
+                            Some(val) => overide = Some(val.get_vec()),
+                            None => unreachable!("Removed `None` overide from queue, when entry existed."),
+                        }
+
+                    }
+                    ent.update(delta, vec![Box::new(player_pos), Box::new(overide)])
+                }));
+        
     
         all_futures.extend(
             self.projectiles.iter_mut()
@@ -40,6 +65,7 @@ impl Handler{
         futures::future::join_all(all_futures).await;
     }
 
+    //TODO: Remove overides from removed ids
     async fn remove_expired_entities(&mut self){
         let enemies_remove = self.enemies
             .iter()
@@ -181,10 +207,12 @@ impl Subscriber for Handler{
                 if let Ok(entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_ref::<(u64, u64)>(){
                         if let Some(enemyx) = self.enemies.get_mut(&data.0){
+                            let idx = enemyx.get_id();
                             let posx = enemyx.get_pos();
                             let sizex = enemyx.get_size();
 
                             if let Some(enemyy) = self.enemies.get_mut(&data.1){
+                                let idy = enemyy.get_id();
                                 let posy = enemyy.get_pos();
                                 let sizey = enemyy.get_size();
 
@@ -196,13 +224,11 @@ impl Subscriber for Handler{
                                     let normalized_dir = direction.normalize();
                                     let overlap = com_radius - distance;
                                     let move_distance = overlap / 2.0 + 1.0;
-                                    
-                                    // circle1.pos -= normalized_dir * move_distance;
-                                    // circle2.pos += normalized_dir * move_distance;
-                                    
-                                    // Update colliders
-                                    // circle1.collider.update(circle1.pos);
-                                    // circle2.collider.update(circle2.pos);
+
+                                    //Move in negative
+                                    self.enemy_overides.insert(idx, OverideType::ForveMoveTo(-(normalized_dir * move_distance)));
+                                    //Move in positive
+                                    self.enemy_overides.insert(idy, OverideType::ForveMoveTo(normalized_dir * move_distance));
                                 }
                             }
                         }
