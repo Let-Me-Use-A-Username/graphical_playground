@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{color::RED, math::Vec2, shapes::draw_triangle, time::get_time};
+use macroquad::{color::{BLUE, RED, YELLOW}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time};
 
 use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, utils::timer::{SimpleTimer, Timer}};
 use crate::collision_system::collider::Collider;
@@ -66,7 +66,7 @@ impl Bullet{
         self.speed = speed;
         self.size = size;
         self.direction = direction.normalize(); 
-        self.timer = SimpleTimer::new(remove_time);
+        self.timer = SimpleTimer::new(remove_time); //FIXME: PASS CONFIG TO ROTATE COLLIDER
         self.collider = RectCollider::new(pos.x, pos.y, size, size);
         self.is_active = true;
     }
@@ -103,14 +103,39 @@ impl Drawable for Bullet{
         let dir = self.direction;
 
         let tip = self.pos + dir * self.size;
+        let size_mod = self.size * 0.25;
 
-        let left = Vec2::new(-dir.y, dir.x) * (self.size * 0.25);
-        let right = Vec2::new(dir.y, -dir.x) * (self.size * 0.25);
+        let left = Vec2::new(-dir.y, dir.x) * size_mod;
+        let right = Vec2::new(dir.y, -dir.x) * size_mod;
 
-        let base_left = self.pos - dir * (self.size * 0.25) + left;
-        let base_right = self.pos - dir * (self.size * 0.25) + right;
+        let base_left = self.pos - dir * size_mod + left;
+        let base_right = self.pos - dir * size_mod + right;
 
         draw_triangle(tip, base_left, base_right, RED);
+        //DRAW COLLIDER TEST
+        // let half_size = self.size * 0.5;
+
+        // // Calculate rotation from direction vector
+        // let rotation = self.direction.y.atan2(self.direction.x);
+
+        // // Draw rotated rectangle
+        // draw_rectangle_ex(
+        //     base_right.x, 
+        //     base_right.y,
+        //     half_size * 2.0,
+        //     half_size,
+        //     DrawRectangleParams {
+        //         rotation: rotation,
+        //         color: BLUE,
+        //         ..Default::default()
+        //     });
+
+        // draw_rectangle(
+        //     base_right.x, 
+        //     base_right.y, 
+        //     half_size * 2.0, 
+        //     half_size, 
+        //     YELLOW);
     }
 }
 

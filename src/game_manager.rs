@@ -210,7 +210,7 @@ impl GameManager{
                     player.update(delta, vec!()).await;
                     player_pos = player.get_pos();
                     self.wall.update((player_pos, player.size)).await;
-                    player_collider = Some(player.collider);
+                    player_collider = Some(player.collider.clone());
                 }
             }
 
@@ -281,23 +281,23 @@ impl GameManager{
                         }
                     }
                     
-                    // {
-                    //     let _span = tracy_client::span!("Detecting enemy inter-collision");
-                    //     //Get populated cells
-                    //     let populated_cells = grid.get_populated_cells();
-                    //     //Iterate ids and map to enemies
-                    //     for cell in populated_cells{
-                    //         let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
+                    {
+                        let _span = tracy_client::span!("Detecting enemy inter-collision");
+                        //Get populated cells
+                        let populated_cells = grid.get_populated_cells();
+                        //Iterate ids and map to enemies
+                        for cell in populated_cells{
+                            let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
 
-                    //         for id in cell{
-                    //             if let Some(enemy) = handler.get_enemy(&id){
-                    //                 cell_enemies.push(enemy);
-                    //             }
-                    //         }
-                    //         //Trigger collision detector
-                    //         self.detector.detect_enemy_collision(cell_enemies).await;
-                    //     }
-                    // }
+                            for id in cell{
+                                if let Some(enemy) = handler.get_enemy(&id){
+                                    cell_enemies.push(enemy);
+                                }
+                            }
+                            //Trigger collision detector
+                            self.detector.detect_enemy_collision(cell_enemies).await;
+                        }
+                    }
                 }
             }
     

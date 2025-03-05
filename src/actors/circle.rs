@@ -79,14 +79,11 @@ impl Object for Circle{
 impl Moveable for Circle{
     #[inline(always)]
     fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32){
+        let mut new_pos = overide.unwrap_or(self.target);
         
-        let mut new_pos = self.pos.move_towards(self.target, self.speed * delta);
-        
-        if overide.is_some(){
-            new_pos = self.pos.move_towards(overide.unwrap(), self.speed * delta);
-        }
-
+        new_pos = self.pos.move_towards(new_pos, self.speed * delta);
         self.pos = new_pos;
+
         return self.pos.into()
     }
 }

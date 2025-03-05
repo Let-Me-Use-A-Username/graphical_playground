@@ -32,13 +32,14 @@ pub struct Player{
     bounce: bool,
     //Firing specifics
     left_fire: bool,
+    attack_speed: SimpleTimer,
     bullet_pool: BulletPool,
     bullet_timer: SimpleTimer
 }
 
 impl Player{
     const ROTATION_SPEED: f32 = 1.0;
-    const BULLET_SPAWN: f64 = 0.3;
+    const BULLET_SPAWN: f64 = 5.0;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
@@ -70,6 +71,7 @@ impl Player{
             immune_timer: Timer::new(),
             bounce: false,
             left_fire: true,
+            attack_speed: SimpleTimer::blank(),
             bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank()
         }
@@ -155,6 +157,19 @@ impl Updatable for Player{
 
         let current_state = self.machine.get_state().lock().unwrap().clone();
 
+        let can_fire: bool = {
+            if !self.attack_speed.is_set(){
+                self.attack_speed.set(now, 1.0);    //0.3
+            }
+
+            if !self.attack_speed.expired(now){ //remove negative
+                true
+            }
+            else{
+                false
+            }
+        };
+
         match current_state{
             StateType::Idle => {
                 //If input, go to Move state
@@ -162,7 +177,7 @@ impl Updatable for Player{
                     self.publish(Event::new((), EventType::PlayerMoving)).await
                 }
 
-                if is_mouse_button_down(MouseButton::Left){
+                if is_mouse_button_down(MouseButton::Left) && can_fire{
                     self.fire().await;
                 } 
             }
@@ -174,7 +189,7 @@ impl Updatable for Player{
                     self.publish(Event::new((), EventType::PlayerIdle)).await
                 }
                 
-                if is_mouse_button_down(MouseButton::Left){
+                if is_mouse_button_down(MouseButton::Left) && can_fire{
                     self.fire().await;
                 }
             },

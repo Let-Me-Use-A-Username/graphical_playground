@@ -1,12 +1,9 @@
-use std::{collections::HashMap, sync::mpsc::Sender};
+use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{math::Vec2, time::get_time, rand};
+use macroquad::time::get_time;
 
-use crate::{
-    actors::circle::Circle,
-    event_system::{event::{Event, EventType}, interface::{Enemy, Publisher}}
-};
+use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Publisher}};
 
 use super::collider::{Collider, RectCollider};
 
@@ -26,10 +23,10 @@ impl CollisionDetector{
     pub async fn detect_player_collision(&self, player: RectCollider, enemies: Vec<Option<&Box<dyn Enemy>>>){
         for entry in enemies{
             if let Some(enemy) = entry{
-                if enemy.collides(&player){
-                    let _ = self.publish(Event::new(enemy.get_id(), EventType::EnemyHit)).await;
-                    let _ = self.publish(Event::new(get_time(), EventType::PlayerHit)).await;
-                }
+                // if enemy.collides(&player){
+                //     let _ = self.publish(Event::new(enemy.get_id(), EventType::EnemyHit)).await;
+                //     let _ = self.publish(Event::new(get_time(), EventType::PlayerHit)).await;
+                //}
             }
         }
     }
@@ -53,7 +50,7 @@ impl CollisionDetector{
         
         while enemies.len() != 0{
             if let Some(enemy_i) = enemies.pop(){
-                enemies_cloned.pop();
+                enemies_cloned.retain(|enemy| enemy.get_id() != enemy_i.get_id());
                 
                 enemies_cloned.iter()
                     .for_each(|enemy| {
@@ -63,7 +60,8 @@ impl CollisionDetector{
                             //move one or both enemies
                             let _ = self.publish(Event::new((enemy_i.get_id(), enemy.get_id()), EventType::CollidingEnemies));
                         }
-                    });
+                    }
+                );
             }
         }
     }

@@ -1,6 +1,9 @@
 # Changelog
 
 
+### 0.2.4 Changes 5/3/2025
+- v.0.2.4 Implemented a simple attack speed pattern in player.
+
 ### 0.2.4 Changes 4/3/2025
 - v.0.2.4 Changed allocator to MiMalloc. The ***Memoryleak*** was due to the tracy allocator.
 - v.0.2.4 Changed Enemy move_to function to take an overide position
