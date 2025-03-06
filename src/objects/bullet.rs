@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{color::{BLUE, RED, YELLOW}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time};
+use macroquad::{color::{BLUE, PURPLE, RED, YELLOW}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time};
 
 use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, utils::timer::{SimpleTimer, Timer}};
 use crate::collision_system::collider::Collider;
@@ -66,7 +66,7 @@ impl Bullet{
         self.speed = speed;
         self.size = size;
         self.direction = direction.normalize(); 
-        self.timer = SimpleTimer::new(remove_time); //FIXME: PASS CONFIG TO ROTATE COLLIDER
+        self.timer = SimpleTimer::new(remove_time); 
         self.collider = RectCollider::new(pos.x, pos.y, size, size);
         self.is_active = true;
     }
@@ -91,7 +91,6 @@ impl Moveable for Bullet{
     #[inline(always)]
     fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32) {
         self.pos += self.direction * self.speed * delta;
-        self.collider.update(self.pos);
 
         return (self.pos.x, self.pos.y)
     }
@@ -112,30 +111,7 @@ impl Drawable for Bullet{
         let base_right = self.pos - dir * size_mod + right;
 
         draw_triangle(tip, base_left, base_right, RED);
-        //DRAW COLLIDER TEST
-        // let half_size = self.size * 0.5;
-
-        // // Calculate rotation from direction vector
-        // let rotation = self.direction.y.atan2(self.direction.x);
-
-        // // Draw rotated rectangle
-        // draw_rectangle_ex(
-        //     base_right.x, 
-        //     base_right.y,
-        //     half_size * 2.0,
-        //     half_size,
-        //     DrawRectangleParams {
-        //         rotation: rotation,
-        //         color: BLUE,
-        //         ..Default::default()
-        //     });
-
-        // draw_rectangle(
-        //     base_right.x, 
-        //     base_right.y, 
-        //     half_size * 2.0, 
-        //     half_size, 
-        //     YELLOW);
+        //self.collider.draw();
     }
 }
 
@@ -145,6 +121,10 @@ impl Updatable for Bullet{
         if self.is_active{
             if !self.timer.expired(get_time()) {
                 self.move_to(delta, None);
+
+                self.collider.update(self.pos);
+                self.collider.set_rotation(self.direction.y.atan2(self.direction.x));
+
                 self.publish(Event::new((self.id, EntityType::Projectile, self.pos), EventType::InsertOrUpdateToGrid)).await
             }
             else{

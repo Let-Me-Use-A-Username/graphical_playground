@@ -1,7 +1,6 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::time::get_time;
 
 use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Publisher}};
 
@@ -52,16 +51,14 @@ impl CollisionDetector{
             if let Some(enemy_i) = enemies.pop(){
                 enemies_cloned.retain(|enemy| enemy.get_id() != enemy_i.get_id());
                 
-                enemies_cloned.iter()
-                    .for_each(|enemy| {
-                        let collider = *enemy.get_collider();
-
-                        if enemy_i.collides(collider){
-                            //move one or both enemies
-                            let _ = self.publish(Event::new((enemy_i.get_id(), enemy.get_id()), EventType::CollidingEnemies));
-                        }
+                for enemy in &enemies_cloned {
+                    let collider = *enemy.get_collider();
+    
+                    if enemy_i.collides(collider) {
+                        // Now we can use await here
+                        let _ = self.publish(Event::new((enemy_i.get_id(), enemy.get_id()), EventType::CollidingEnemies)).await;
                     }
-                );
+                }
             }
         }
     }

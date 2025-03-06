@@ -1,15 +1,7 @@
 ==============================================
 ================== Critical ==================
-- RectCollider could be wrong due to there being no rotation 
-    - Affects bullet
-- Circles implementation of overide might be bad, or distance in handler should be increased
-
-- Implement enemy collision
-    - Handler now has a hashmap (change to Vecdeque) that queue overides 
-    - Enemies have their move_to overides to a different target
-    - Either 
-        1) This overide needs to be timed for a few seconds
-        2) The radius check inside Handler is small/wrong
+- Fix bullet pool regen
+- Refine enemy collision
 
 ==============================================
 ================== General todo ==============

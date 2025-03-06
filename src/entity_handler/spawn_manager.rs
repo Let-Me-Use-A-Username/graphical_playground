@@ -115,7 +115,7 @@ pub struct SpawnManager{
 }
 
 impl SpawnManager{
-    const ENEMY_MULTIPLIER: usize = 20;
+    const ENEMY_MULTIPLIER: usize = 80;
 
     pub fn new(sender: Sender<Event>, level_interval: f64, spawn_interval: f64) -> SpawnManager{
         return SpawnManager{

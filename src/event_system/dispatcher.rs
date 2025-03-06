@@ -47,7 +47,7 @@ impl Dispatcher{
     pub async fn dispatch_event(&self, event: Event){
         if let Some(subscriber_list) = self.subscribers.get(&event.event_type) {
             for subscriber in subscriber_list {
-                if let Ok(mut sub) = subscriber.try_lock() {
+                if let Ok(mut sub) = subscriber.lock() {
                     sub.notify(&event).await;
                 }
             }

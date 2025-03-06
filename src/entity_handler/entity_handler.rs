@@ -220,14 +220,13 @@ impl Subscriber for Handler{
                                 let distance = direction.length();
                                 let com_radius = sizex + sizey;
 
-                                if distance < com_radius{
-                                    let normalized_dir = direction.normalize();
-                                    let overlap = com_radius - distance;
-                                    //Move in negative
-                                    self.enemy_overides.insert(idx, OverideType::ForveMoveTo(-(normalized_dir * overlap)));
-                                    //Move in positive
-                                    self.enemy_overides.insert(idy, OverideType::ForveMoveTo(normalized_dir * overlap));
-                                }
+                                let normalized_dir = direction.normalize();
+                                let overlap = (com_radius - distance) / 2.0 + 1.0;
+                                //Move in negative
+                                self.enemy_overides.insert(idx, OverideType::ForveMoveTo(-(normalized_dir * overlap)));
+                                //Move in positive
+                                self.enemy_overides.insert(idy, OverideType::ForveMoveTo(normalized_dir * overlap));
+                                
                             }
                         }
             
