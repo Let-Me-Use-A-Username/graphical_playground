@@ -85,16 +85,17 @@ impl Artist{
     #[inline(always)]
     ///Draws all entities inside each queue.
     pub fn draw(&mut self){
-        while let Some(line) = self.lines.pop_front(){
-            line.draw();
+
+        while let Some(rectangle) = self.rectangles.pop_front(){
+            rectangle.draw();
         }
 
         while let Some(circle) = self.circles.pop_front(){
             circle.draw();
         }
-
-        while let Some(rectangle) = self.rectangles.pop_front(){
-            rectangle.draw();
+        
+        while let Some(line) = self.lines.pop_front(){
+            line.draw();
         }
 
         while let Some(rot_rectangle) = self.rot_rectangles.pop_front(){

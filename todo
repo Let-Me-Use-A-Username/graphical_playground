@@ -1,12 +1,13 @@
 ==============================================
 ================== Critical ==================
 - GPU
-    - Separation of draw calls (circle, rect etc)
-    - Batch drawing instead of separate draw calls
-        -Implement z index to know which layer to draw in
+    - Batch drawing and eparation of draw calls
         -Implement artist for Emitters (player)
-            Idea: Keep a queue/Hashmap, with a z index and draw calls
+            Idea: Keep a queue/Hashmap, with a z index and vec of draw calls
             for each z index, sort the queues into smaller ones and render
+
+- CPU
+    - Make `publish` and `update` synchronous
         
 - Fix bullet pool regen
 - Refine enemy collision
@@ -33,8 +34,6 @@
     - Memory
         - Implement enemy pooling
         - ECS?
-    - CPU
-        - Replace some async functions with synchronous ones
 
 ==============================================
 ================== Gameplay ==================
