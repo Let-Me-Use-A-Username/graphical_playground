@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
 
-use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Publisher}};
+use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher}};
 
 use super::collider::{Collider, RectCollider};
 
@@ -30,11 +30,15 @@ impl CollisionDetector{
         }
     }
 
-    pub async fn detect_players_projectile_collision(&self, projectile: Box<&dyn Collider>, enemies: Vec<Option<&Box<dyn Enemy>>>){
+    pub async fn detect_players_projectile_collision(&self, projectile: &Box<dyn Projectile>, enemies: Vec<Option<&Box<dyn Enemy>>>){
+        let collider = projectile.get_collider();
+        let id = projectile.get_id();
+
         for entry in enemies{
             if let Some(enemy) = entry{
-                if enemy.collides(*projectile){
+                if enemy.collides(*collider){
                     let _ = self.publish(Event::new(enemy.get_id(), EventType::EnemyHit)).await;
+                    let _ = self.publish(Event::new(id, EventType::PlayerBulletHit)).await;
                 }
             }
         }

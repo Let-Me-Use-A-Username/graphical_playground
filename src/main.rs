@@ -6,6 +6,7 @@ mod game_manager;
 mod entity_handler;
 mod collision_system;
 mod objects;
+mod renderer;
 
 use std::env;
 use macroquad::prelude::*;

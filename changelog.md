@@ -1,10 +1,14 @@
 # Changelog
 
 
+### 0.2.4 Changes 8/3/2025
+- v.0.2.4 Implemented Artist component to handle draw calls.
+- v.0.2.4 Player projectile is set to inactive if it collides with enemy.
+
+
 ### 0.2.4 Changes 6/3/2025
-- v.0.2.4 Changed collision detection algorithm in Collision structs. 
-- v.0.2.4 Fixed collision detection faulty enemy detection.
-- v.0.2.4 Implemented very basic enemy collision.
+- v.0.2.4 Changed collision detection algorithm in Collision structs.
+- v.0.2.4 Implemented basic enemy collision.
 
 
 ### 0.2.4 Changes 5/3/2025

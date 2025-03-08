@@ -6,7 +6,7 @@ use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Projectile, Updatable}}, objects::bullet, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Projectile, Updatable}}, objects::bullet, renderer::artist::DrawCall, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
@@ -312,11 +312,16 @@ impl Moveable for Player{
 impl Drawable for Player{
     #[inline(always)]
     fn draw(&mut self){
+        self.emitter.draw(self.pos);
+    }
+    
+    #[inline(always)]
+    fn get_draw_call(&self) -> DrawCall {
         let p_rect_width = self.size;
         let p_rect_height = self.size * 2.0;
 
         //player rect
-        draw_rectangle_ex(
+        let rect = (
             self.pos.x, 
             self.pos.y,
             p_rect_width, 
@@ -326,8 +331,8 @@ impl Drawable for Player{
                 color: self.color,
                 offset: Vec2::new(0.5, 0.5), 
             });
-            
-        self.emitter.draw(self.pos);
+        
+        return DrawCall::RotatedRectangle(rect.0, rect.1, rect.2, rect.3, rect.4)
     }
 }
 

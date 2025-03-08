@@ -1,9 +1,9 @@
-use std::{collections::{HashMap, HashSet}, sync::mpsc::Sender};
+use std::{collections::{HashMap, HashSet, VecDeque}, sync::mpsc::Sender};
 
 use async_trait::async_trait;
 use macroquad::{color::{DARKGRAY, ORANGE}, math::{Rect, Vec2}, shapes::{draw_line, draw_rectangle}};
 
-use crate::event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}};
+use crate::{event_system::{event::{Event, EventType}, interface::{Drawable, Publisher, Subscriber}}, renderer::artist::DrawCall};
 
 type EntityId = u64;
 type CellPos = (i32, i32);
@@ -302,17 +302,17 @@ impl Grid{
             .collect()
     }
 
-
     #[inline(always)]
-    pub fn draw(&self, viewport: Rect){
+    pub fn get_draw_calls(&self, viewport: Rect) -> VecDeque<DrawCall>{
+        let mut draw_calls: VecDeque<DrawCall> = VecDeque::new();
+
         // Draw background
-        draw_rectangle(
-            viewport.x,
-            viewport.y,
-            viewport.w,
-            viewport.h,
-            ORANGE
-        );
+        draw_calls.push_back(DrawCall::Rectangle(
+            viewport.x, 
+            viewport.y, 
+            viewport.w, 
+            viewport.h, 
+            ORANGE));
         
         // Calculate visible cell range
         let start_x = (viewport.x / self.cell_size as f32).floor() as i32;
@@ -330,27 +330,27 @@ impl Grid{
         
         // Draw only visible vertical lines
         for x in start_x..=end_x {
-            draw_line(
-                x as f32 * cell_size,
-                viewport.y,
-                x as f32 * cell_size,
-                viewport.y + viewport.h,
-                1.0,
-                DARKGRAY
-            );
+            draw_calls.push_back(DrawCall::Line(
+                x as f32 * cell_size, 
+                viewport.y, 
+                x as f32 * cell_size, 
+                viewport.y + viewport.h, 
+                1.0, 
+                DARKGRAY));
         }
 
         // Draw only visible horizontal lines
         for y in start_y..=end_y {
-            draw_line(
-                viewport.x,
-                y as f32 * cell_size,
-                viewport.x + viewport.w,
-                y as f32 * cell_size,
-                1.0,
-                DARKGRAY
-            );
+            draw_calls.push_back(DrawCall::Line(
+                viewport.x, 
+                y as f32 * cell_size, 
+                viewport.x + viewport.w, 
+                y as f32 * cell_size, 
+                1.0, 
+                DARKGRAY));
         }
+
+        return draw_calls
     }
 }
 

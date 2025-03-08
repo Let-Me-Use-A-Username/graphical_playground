@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use async_trait::async_trait;
 use macroquad::{color::{BLUE, PURPLE, RED, YELLOW}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time};
 
-use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, utils::timer::{SimpleTimer, Timer}};
+use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::timer::{SimpleTimer, Timer}};
 use crate::collision_system::collider::Collider;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -99,6 +99,11 @@ impl Moveable for Bullet{
 impl Drawable for Bullet{
     #[inline(always)]
     fn draw(&mut self) {
+        todo!()
+    }
+    
+    #[inline(always)]
+    fn get_draw_call(&self) -> DrawCall {
         let dir = self.direction;
 
         let tip = self.pos + dir * self.size;
@@ -110,8 +115,7 @@ impl Drawable for Bullet{
         let base_left = self.pos - dir * size_mod + left;
         let base_right = self.pos - dir * size_mod + right;
 
-        draw_triangle(tip, base_left, base_right, RED);
-        //self.collider.draw();
+        return DrawCall::Triangle(tip, base_left, base_right, RED);
     }
 }
 

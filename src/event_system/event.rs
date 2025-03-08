@@ -14,6 +14,7 @@ pub enum EventType{
     BatchEnemySpawn,
     PlayerBulletSpawn,
     PlayerBulletExpired,
+    PlayerBulletHit,
     CollidingEnemies,
     //Factory
     QueueEnemy,

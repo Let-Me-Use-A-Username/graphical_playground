@@ -18,6 +18,7 @@ use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
 use crate::objects::bullet::ProjectileType;
+use crate::renderer::artist::{Artist, DrawType};
 use crate::utils::globals::Global;
 use crate::utils::timer::Timer;
 
@@ -49,11 +50,15 @@ pub struct GameManager{
     wall: Wall,
 
     dispatcher: Dispatcher,
+    artist: Artist,
+
+    handler: Arc<Mutex<Handler>>,
     spawner: Arc<Mutex<SpawnManager>>,
     factory: Arc<Mutex<Factory>>,
+    
     grid: Arc<Mutex<Grid>>,
-    handler: Arc<Mutex<Handler>>,
     detector: CollisionDetector,
+
     player: Arc<Mutex<Player>>,
 }
 
@@ -110,6 +115,7 @@ impl GameManager{
         dispatcher.register_listener(EventType::EnemyHit, handler.clone());
         dispatcher.register_listener(EventType::BatchEnemySpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletSpawn, handler.clone());
+        dispatcher.register_listener(EventType::PlayerBulletHit, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletExpired, handler.clone());
         dispatcher.register_listener(EventType::CollidingEnemies, handler.clone());
 
@@ -117,7 +123,7 @@ impl GameManager{
         dispatcher.register_listener(EventType::QueueEnemy, factory.clone());
         dispatcher.register_listener(EventType::QueueTemplate, factory.clone());
         dispatcher.register_listener(EventType::ForwardEnemiesToHandler, factory.clone());
-        
+
         return GameManager { 
             state: GameState::Playing,
             channel: (sender, receiver),
@@ -128,11 +134,15 @@ impl GameManager{
             wall: wall,
 
             dispatcher: dispatcher,
+            artist: Artist::new(),
+
+            handler: handler,
             spawner: spawner,
             factory: factory,
+
             grid: grid,
-            handler: handler,
             detector: detector,
+            
             player: player
         }
     }
@@ -276,7 +286,7 @@ impl GameManager{
                                     .collect();
 
                                 //Check for collision on each enemy
-                                self.detector.detect_players_projectile_collision(projectile.get_collider(), enemies).await;
+                                self.detector.detect_players_projectile_collision(projectile, enemies).await;
                             }
                         }
                     }
@@ -315,21 +325,29 @@ impl GameManager{
             {
                 let _span = tracy_client::span!("Rendering");
 
-                clear_background(LIGHTGRAY);
+                self.artist.draw_background(LIGHTGRAY);
 
                 if let Ok(grid) = self.grid.try_lock(){
-                    grid.draw(viewport);
-                    self.wall.draw(viewport);
+                    let grid_calls = grid.get_draw_calls(viewport);
+                    let wall_calls = self.wall.get_draw_calls(viewport);
+
+                    self.artist.queue_calls(grid_calls.into());
+                    self.artist.queue_calls(wall_calls);
                 }
                 if let Ok(mut player) = self.player.try_lock(){
-                    player.draw()
+                    //Review: Players emitter draw call is still inside player
+                    player.draw();
+                    let call = player.get_draw_call();
+                    self.artist.add_call(call, DrawType::RotRect);
                 }
                 if let Ok(mut handler) = self.handler.try_lock(){
-                    handler.draw_all(viewport);
+                    let handler_calls = handler.get_draw_calls(viewport);
+                    self.artist.queue_calls(handler_calls);
                 }
+
+                self.artist.draw();
             }
             
-            //grid_unlocked.clear();
             set_default_camera();
 
             next_frame().await

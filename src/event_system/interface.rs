@@ -3,7 +3,7 @@ use std::{any::Any, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
 
-use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, utils::machine::StateType};
+use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::machine::StateType};
 
 //========= Event related interfaces ==========
 #[async_trait]
@@ -32,8 +32,9 @@ pub trait Moveable: Object{
     fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32);
 }
 
-pub trait Drawable: Object{
+pub trait Drawable{
     fn draw(&mut self);
+    fn get_draw_call(&self) -> DrawCall;
 }
 
 #[async_trait]

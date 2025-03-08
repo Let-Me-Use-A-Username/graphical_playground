@@ -5,7 +5,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, utils::machine::{StateMachine, StateType}};   
+use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::machine::{StateMachine, StateType}};   
 
 pub struct Circle{
     //Attributes
@@ -91,7 +91,12 @@ impl Moveable for Circle{
 impl Drawable for Circle{
     #[inline(always)]
     fn draw(&mut self){
-        draw_circle(self.pos.x, self.pos.y, self.size, self.color);
+        todo!()
+    }
+    
+    #[inline(always)]
+    fn get_draw_call(&self) -> DrawCall {
+        return DrawCall::Circle(self.pos.x, self.pos.y, self.size, self.color)
     }
 }
 

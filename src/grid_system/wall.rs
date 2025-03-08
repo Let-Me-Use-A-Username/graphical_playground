@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use async_trait::async_trait;
 use macroquad::{color::RED, math::{Rect, Vec2}, shapes::draw_line};
 
-use crate::event_system::{event::{Event, EventType}, interface::Publisher};
+use crate::{event_system::{event::{Event, EventType}, interface::Publisher}, renderer::artist::DrawCall};
 
 
 
@@ -53,7 +53,9 @@ impl Wall{
     }
 
     #[inline(always)]
-    pub fn draw(&self, viewport: Rect){
+    pub fn get_draw_calls(&self, viewport: Rect) -> Vec<DrawCall>{
+        let mut calls: Vec<DrawCall> = Vec::new();
+
         let width = self.bounds.w;
         let height = self.bounds.h;
         
@@ -66,29 +68,31 @@ impl Wall{
         if intersects_left {
             let y_start = f32::max(viewport.y, 0.0);
             let y_end = f32::min(viewport.y + viewport.h, height);
-            draw_line(0.0, y_start, 0.0, y_end, 8.0, RED);
+            calls.push(DrawCall::Line(0.0, y_start, 0.0, y_end, 8.0, RED));
         }
         
         //Top
         if intersects_top {
             let x_start = f32::max(viewport.x, 0.0);
             let x_end = f32::min(viewport.x + viewport.w, width);
-            draw_line(x_start, height, x_end, height, 8.0, RED);
+            calls.push(DrawCall::Line(x_start, height, x_end, height, 8.0, RED));
         }
         
         //Right
         if intersects_right {
             let y_start = f32::max(viewport.y, 0.0);
             let y_end = f32::min(viewport.y + viewport.h, height);
-            draw_line(width, y_start, width, y_end, 8.0, RED);
+            calls.push(DrawCall::Line(width, y_start, width, y_end, 8.0, RED));
         }
         
         //Bottom
         if intersects_bottom {
             let x_start = f32::max(viewport.x, 0.0);
             let x_end = f32::min(viewport.x + viewport.w, width);
-            draw_line(x_start, 0.0, x_end, 0.0, 8.0, RED);
+            calls.push(DrawCall::Line(x_start, 0.0, x_end, 0.0, 8.0, RED));
         }
+
+        return calls
     }
 }
 

@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::{Rect, Vec2};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, utils::machine::StateType};
+use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::machine::StateType};
 
 pub enum OverideType{
     ForveMoveTo(Vec2)
@@ -94,14 +94,16 @@ impl Handler{
     }
 
     #[inline(always)]
-    pub fn draw_all(&mut self, viewport: Rect){
+    pub fn get_draw_calls(&mut self, viewport: Rect) -> Vec<DrawCall>{
+        let mut draw_calls: Vec<DrawCall> = Vec::new();
+
         self.enemies.iter_mut()
             .map(|(_, boxed)| boxed)
             .filter(|enemy| {
                 viewport.contains(enemy.get_pos())
             })
             .for_each(|enemy|{
-                enemy.draw();
+                draw_calls.push(enemy.get_draw_call());
             });
     
         self.projectiles.iter_mut()
@@ -110,8 +112,10 @@ impl Handler{
                 viewport.contains(proj.get_pos())
             })
             .for_each(|projectile|{
-                projectile.draw();
+                draw_calls.push(projectile.get_draw_call());
             });
+        
+        return draw_calls
     }
 
     #[inline(always)]
@@ -200,6 +204,18 @@ impl Subscriber for Handler{
                         let entity = data.take().unwrap();
                         let id = entity.get_id();
                         self.insert_projectile(id, entity);
+                    }
+                }
+            },
+            EventType::PlayerBulletHit => {
+                if let Ok(mut entry) = event.data.lock(){
+                    if let Some(data) = entry.downcast_mut::<u64>(){
+                        if let Some(proj) = self.projectiles.get_mut(&data){
+
+                            if proj.is_active(){
+                                proj.set_active(false);
+                            }
+                        }
                     }
                 }
             },
