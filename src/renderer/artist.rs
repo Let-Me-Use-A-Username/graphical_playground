@@ -111,11 +111,9 @@ impl Artist{
 
         //Review: Why does this provide increased performance...?
         for draw_type in [DrawType::Rect, DrawType::Circle, DrawType::Line, DrawType::RotRect, DrawType::Triangle] {
-        // For each layer (to maintain visual order)
             for &layer in &layers {
                 if let Some(layer_map) = self.queue.get(&layer) {
                     if let Some(calls) = layer_map.get(&draw_type) {
-                        // Draw all calls of this type in this layer
                         for call in calls {
                             call.draw();
                         }

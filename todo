@@ -15,6 +15,7 @@
 - Implement different kind of enemies.
 
 - Refine Artist draw method.
+    -Compare the two methods, if nothing works implement something different.
 
 
 ==============================================

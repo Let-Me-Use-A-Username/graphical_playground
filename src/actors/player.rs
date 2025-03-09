@@ -312,7 +312,12 @@ impl Moveable for Player{
 impl Drawable for Player{
     #[inline(always)]
     fn draw(&mut self){
-        self.emitter.draw(self.pos);
+        if let Ok(state) = self.machine.get_state().lock(){
+            if *state == StateType::Moving{
+                self.emitter.draw(self.pos);
+            }
+        }
+        
     }
     
     #[inline(always)]

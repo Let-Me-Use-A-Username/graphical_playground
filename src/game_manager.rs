@@ -213,14 +213,21 @@ impl GameManager{
             let delta = get_frame_time();
 
             let mut player_collider = None;
+            let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
 
             {
                 let _span = tracy_client::span!("Player/Wall updates");
                 if let Ok(mut player) = self.player.try_lock(){
                     player.update(delta, vec!()).await;
                     player_pos = player.get_pos();
+
                     self.wall.update((player_pos, player.size)).await;
+                    let wall_calls = self.wall.get_draw_calls(viewport);
+                    
                     player_collider = Some(player.collider.clone());
+                    
+                    draw_calls.extend(vec![(10, player.get_draw_call())]);
+                    draw_calls.extend(wall_calls);
                 }
             }
 
@@ -228,6 +235,7 @@ impl GameManager{
                 {
                     let _span = tracy_client::span!("Handler updating");
                     handler.update(delta, player_pos).await;
+                    draw_calls.extend(handler.get_draw_calls(viewport));
                 }
 
                 if let Ok(mut spawner) = self.spawner.try_lock(){
@@ -248,6 +256,7 @@ impl GameManager{
                         let _span = tracy_client::span!("Detecting players collision with enemies");
                         
                         grid.update();
+                        draw_calls.extend(grid.get_draw_calls(viewport));
                         //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
                         let nearby_entities_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
                         //Retrieve enemies based on Ids
@@ -324,31 +333,16 @@ impl GameManager{
             // ======== RENDERING ========
             {
                 let _span = tracy_client::span!("Rendering");
-
-                let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
-
-                if let Ok(grid) = self.grid.try_lock(){
-                    let grid_calls = grid.get_draw_calls(viewport);
-                    let wall_calls = self.wall.get_draw_calls(viewport);
-
-                    draw_calls.extend(grid_calls);
-                    draw_calls.extend(wall_calls);
-                }
-                if let Ok(mut player) = self.player.try_lock(){
-                    //Review: Players emitter draw call is still inside player
-                    player.draw();
-
-                    let call = player.get_draw_call();
-                    draw_calls.extend(vec![(10, call)]);
-                }
-                if let Ok(mut handler) = self.handler.try_lock(){
-                    let handler_calls = handler.get_draw_calls(viewport);
-                    draw_calls.extend(handler_calls);
-                }
                 
                 self.artist.queue_calls(draw_calls);
                 self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
+
+                if let Ok(mut player) = self.player.try_lock(){
+                    //Review: Players emitter draw call is still inside player
+                    player.draw();
+                }
+                
             }
             
             set_default_camera();

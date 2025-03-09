@@ -133,54 +133,6 @@ impl Grid{
         }
     }
 
-    pub fn check_entity_consistency(&self) -> bool {
-        let mut entity_count = 0;
-        let mut entity_locations = HashMap::new();
-        
-        // Count entities in all cells
-        for (pos, cell) in &self.cells {
-            for entity in &cell.entities {
-                entity_count += 1;
-                entity_locations
-                    .entry(entity.entity_id)
-                    .or_insert_with(Vec::new)
-                    .push(*pos);
-            }
-        }
-        
-        // Check for entities in multiple cells
-        let mut duplicates = 0;
-        for (id, locations) in &entity_locations {
-            if locations.len() > 1 {
-                duplicates += 1;
-                println!("Entity {} found in multiple cells: {:?}", id, locations);
-            }
-        }
-        
-        // Check for entities in entity_table but not in any cell
-        let mut missing = 0;
-        for id in self.entity_table.keys() {
-            if !entity_locations.contains_key(id) {
-                missing += 1;
-                println!("Entity {} in entity_table but not in any cell", id);
-            }
-        }
-        
-        // Check for entities in cells but not in entity_table
-        let mut orphaned = 0;
-        for id in entity_locations.keys() {
-            if !self.entity_table.contains_key(id) {
-                orphaned += 1;
-                println!("Entity {} in cells but not in entity_table", id);
-            }
-        }
-        
-        println!("Grid consistency check: {} entities, {} duplicates, {} missing, {} orphaned",
-                 entity_count, duplicates, missing, orphaned);
-        
-        duplicates == 0 && missing == 0 && orphaned == 0
-    }
-
     /// Updates an entity by first checking if it present inside the grid.
     /// Proceeds to insert it, if already present, removes old entry.
     #[inline(always)]
