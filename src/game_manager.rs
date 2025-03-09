@@ -18,7 +18,7 @@ use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
 use crate::objects::bullet::ProjectileType;
-use crate::renderer::artist::{Artist, DrawType};
+use crate::renderer::artist::{Artist, DrawCall, DrawType};
 use crate::utils::globals::Global;
 use crate::utils::timer::Timer;
 
@@ -325,26 +325,29 @@ impl GameManager{
             {
                 let _span = tracy_client::span!("Rendering");
 
-                self.artist.draw_background(LIGHTGRAY);
+                let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
 
                 if let Ok(grid) = self.grid.try_lock(){
                     let grid_calls = grid.get_draw_calls(viewport);
                     let wall_calls = self.wall.get_draw_calls(viewport);
 
-                    self.artist.queue_calls(grid_calls.into());
-                    self.artist.queue_calls(wall_calls);
+                    draw_calls.extend(grid_calls);
+                    draw_calls.extend(wall_calls);
                 }
                 if let Ok(mut player) = self.player.try_lock(){
                     //Review: Players emitter draw call is still inside player
                     player.draw();
+
                     let call = player.get_draw_call();
-                    self.artist.add_call(call, DrawType::RotRect);
+                    draw_calls.extend(vec![(10, call)]);
                 }
                 if let Ok(mut handler) = self.handler.try_lock(){
                     let handler_calls = handler.get_draw_calls(viewport);
-                    self.artist.queue_calls(handler_calls);
+                    draw_calls.extend(handler_calls);
                 }
-
+                
+                self.artist.queue_calls(draw_calls);
+                self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
             }
             

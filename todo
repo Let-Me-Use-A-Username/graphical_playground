@@ -1,39 +1,21 @@
 ==============================================
 ================== Critical ==================
 - GPU
-    - Batch drawing and eparation of draw calls
-        -Implement artist for Emitters (player)
-            Idea: Keep a queue/Hashmap, with a z index and vec of draw calls
-            for each z index, sort the queues into smaller ones and render
-
-- CPU
-    - Make `publish` and `update` synchronous
+    -Implement artist for Emitters (player)
         
 - Fix bullet pool regen
-- Refine enemy collision
+- Refine Spawner-Factory queue and spawn management.
 
 ==============================================
 ================== General todo ==============
-- Implement build parameters
-    - Debug mode
-        - Enable/Disable tracy
-
-- Implement better UI
-    - Implement fullscreen with  macroquad::prelude::Conf
-        - Function macroquad::window::set_fullscreen ?
-            - When settings are changed, restart game to run them (hot reload)
-    - Draw bullet ammunition UI
-
 - Implement correct ids for entities.
  
 - Implement ErrorHandler 
 
 - Implement different kind of enemies.
 
-- Resource optimazation
-    - Memory
-        - Implement enemy pooling
-        - ECS?
+- Refine Artist draw method.
+
 
 ==============================================
 ================== Gameplay ==================
@@ -48,7 +30,15 @@
 
 ==============================================
 ================== Implementation ideas ======
+- Implement build parameters
+    - Debug mode
+        - Enable/Disable tracy
 
+- Implement better UI
+    - Implement fullscreen with  macroquad::prelude::Conf
+        - Function macroquad::window::set_fullscreen ?
+            - When settings are changed, restart game to run them (hot reload)
+    - Draw bullet ammunition UI
 
 ==============================================
 ================== Study =====================

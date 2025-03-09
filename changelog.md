@@ -1,6 +1,11 @@
 # Changelog
 
 
+### 0.2.4 Changes 9/3/2025
+- v.0.2.4 Fixed enemy collision "drag" and "sticky" behavior.
+- v.0.2.4 Implemented Artist for a| batch rendering b| layered rendering taken inspired from unity
+
+
 ### 0.2.4 Changes 8/3/2025
 - v.0.2.4 Implemented Artist component to handle draw calls.
 - v.0.2.4 Player projectile is set to inactive if it collides with enemy.

@@ -303,16 +303,16 @@ impl Grid{
     }
 
     #[inline(always)]
-    pub fn get_draw_calls(&self, viewport: Rect) -> VecDeque<DrawCall>{
-        let mut draw_calls: VecDeque<DrawCall> = VecDeque::new();
+    pub fn get_draw_calls(&self, viewport: Rect) -> Vec<(i32, DrawCall)>{
+        let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
 
         // Draw background
-        draw_calls.push_back(DrawCall::Rectangle(
+        draw_calls.push((1, DrawCall::Rectangle(
             viewport.x, 
             viewport.y, 
             viewport.w, 
             viewport.h, 
-            ORANGE));
+            ORANGE)));
         
         // Calculate visible cell range
         let start_x = (viewport.x / self.cell_size as f32).floor() as i32;
@@ -330,24 +330,24 @@ impl Grid{
         
         // Draw only visible vertical lines
         for x in start_x..=end_x {
-            draw_calls.push_back(DrawCall::Line(
+            draw_calls.push((2, DrawCall::Line(
                 x as f32 * cell_size, 
                 viewport.y, 
                 x as f32 * cell_size, 
                 viewport.y + viewport.h, 
                 1.0, 
-                DARKGRAY));
+                DARKGRAY)));
         }
 
         // Draw only visible horizontal lines
         for y in start_y..=end_y {
-            draw_calls.push_back(DrawCall::Line(
+            draw_calls.push((2, DrawCall::Line(
                 viewport.x, 
                 y as f32 * cell_size, 
                 viewport.x + viewport.w, 
                 y as f32 * cell_size, 
                 1.0, 
-                DARKGRAY));
+                DARKGRAY)));
         }
 
         return draw_calls

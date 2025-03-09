@@ -6,12 +6,12 @@ use macroquad::math::{Rect, Vec2};
 use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::machine::StateType};
 
 pub enum OverideType{
-    ForveMoveTo(Vec2)
+    Displace(Vec2)
 }
 impl OverideType{
     fn get_vec(&self) -> Vec2{
         match self{
-            OverideType::ForveMoveTo(vec) => *vec,
+            OverideType::Displace(vec) => *vec,
         }
     }
 }
@@ -65,7 +65,6 @@ impl Handler{
         futures::future::join_all(all_futures).await;
     }
 
-    //TODO: Remove overides from removed ids
     async fn remove_expired_entities(&mut self){
         let enemies_remove = self.enemies
             .iter()
@@ -84,18 +83,20 @@ impl Handler{
             if let Some(_) = self.enemies.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await
             }
+            self.enemy_overides.remove(&id);
         }
 
         for id in projecitles_remove{
             if let Some(_) = self.projectiles.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await
             }
+            self.enemy_overides.remove(&id);
         }
     }
 
     #[inline(always)]
-    pub fn get_draw_calls(&mut self, viewport: Rect) -> Vec<DrawCall>{
-        let mut draw_calls: Vec<DrawCall> = Vec::new();
+    pub fn get_draw_calls(&mut self, viewport: Rect) -> Vec<(i32, DrawCall)>{
+        let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
 
         self.enemies.iter_mut()
             .map(|(_, boxed)| boxed)
@@ -103,7 +104,7 @@ impl Handler{
                 viewport.contains(enemy.get_pos())
             })
             .for_each(|enemy|{
-                draw_calls.push(enemy.get_draw_call());
+                draw_calls.push((4, enemy.get_draw_call()));
             });
     
         self.projectiles.iter_mut()
@@ -112,7 +113,7 @@ impl Handler{
                 viewport.contains(proj.get_pos())
             })
             .for_each(|projectile|{
-                draw_calls.push(projectile.get_draw_call());
+                draw_calls.push((9, projectile.get_draw_call()));
             });
         
         return draw_calls
@@ -238,14 +239,15 @@ impl Subscriber for Handler{
 
                                 let normalized_dir = direction.normalize();
                                 let overlap = (com_radius - distance) / 2.0 + 1.0;
+
+                                let pos_x_corrected = posx - (normalized_dir * overlap);
+                                let pos_y_corrected = posy + (normalized_dir * overlap);
                                 //Move in negative
-                                self.enemy_overides.insert(idx, OverideType::ForveMoveTo(-(normalized_dir * overlap)));
+                                self.enemy_overides.insert(idx, OverideType::Displace(pos_x_corrected));
                                 //Move in positive
-                                self.enemy_overides.insert(idy, OverideType::ForveMoveTo(normalized_dir * overlap));
-                                
+                                self.enemy_overides.insert(idy, OverideType::Displace(pos_y_corrected));
                             }
                         }
-            
                     }
                 } 
             }
