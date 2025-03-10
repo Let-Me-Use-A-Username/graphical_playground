@@ -9,7 +9,7 @@ use std::sync::{atomic::AtomicU64, mpsc::Sender};
 use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Projectile, Updatable}}, objects::bullet, renderer::artist::DrawCall, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
-static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
+static BULLETCOUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub struct Player{
     //Attributes
@@ -39,7 +39,7 @@ pub struct Player{
 
 impl Player{
     const ROTATION_SPEED: f32 = 1.0;
-    const BULLET_SPAWN: f64 = 5.0;
+    const POOL_REFILL: f64 = 7.5;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
@@ -117,6 +117,7 @@ impl Player{
             self.left_fire = !self.left_fire;
 
             let id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            
             let pos = spawn_pos;
 
             bullet.set(
@@ -142,33 +143,39 @@ impl Updatable for Player{
         let now = get_time();
 
         self.collider.update(self.pos);
+        let pool_size = self.bullet_pool.get_pool_size();
 
+        /* 
+            Bullet pool refreshes every `BULLET_SPAWN`= 10.0 seconds
+        */
         self.bullet_pool.update(|current, capacity|{
             if !self.bullet_timer.is_set(){
-                self.bullet_timer.set(now, Self::BULLET_SPAWN);
+                self.bullet_timer.set(now, Self::POOL_REFILL);
             }
-
+            
             if self.bullet_timer.expired(now) && current < capacity{
-                self.bullet_timer.set(now, Self::BULLET_SPAWN);
-                return (true, 10)
+                self.bullet_timer.set(now, Self::POOL_REFILL);
+                return (true, pool_size)
             }
             return (false, 0)
         });
 
         let current_state = self.machine.get_state().lock().unwrap().clone();
 
-        let can_fire: bool = {
+        let can_attack: bool = {
             if !self.attack_speed.is_set(){
-                self.attack_speed.set(now, 1.0);    //0.3
+                self.attack_speed.set(now, 0.1); // Lower time is more attacks
             }
 
-            if !self.attack_speed.expired(now){ //remove negative
+            if self.attack_speed.expired(now){
                 true
             }
             else{
                 false
             }
         };
+
+        let can_fire = is_mouse_button_down(MouseButton::Left) & can_attack;
 
         match current_state{
             StateType::Idle => {
@@ -177,7 +184,7 @@ impl Updatable for Player{
                     self.publish(Event::new((), EventType::PlayerMoving)).await
                 }
 
-                if is_mouse_button_down(MouseButton::Left) && can_fire{
+                if can_fire{
                     self.fire().await;
                 } 
             }
@@ -189,7 +196,7 @@ impl Updatable for Player{
                     self.publish(Event::new((), EventType::PlayerIdle)).await
                 }
                 
-                if is_mouse_button_down(MouseButton::Left) && can_fire{
+                if can_fire{
                     self.fire().await;
                 }
             },

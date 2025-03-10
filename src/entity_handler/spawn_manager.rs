@@ -12,12 +12,11 @@ use crate::entity_handler::enemy_type::EnemyType;
 #[derive(Clone, Copy)]
 pub enum EnemyComplexity {
     Simple = 1,
-    Mediocre = 3,
-    Average = 5,
-    Complex = 7,
-    VeryComplex = 11,
-    Expert = 13,
-    Hell = 17,
+    Mediocre = 2,
+    Average = 3,
+    Complex = 4,
+    Expert = 5,
+    Hell = 6,
 }
 
 impl EnemyComplexity {
@@ -27,8 +26,7 @@ impl EnemyComplexity {
             EnemyComplexity::Simple => EnemyComplexity::Mediocre,
             EnemyComplexity::Mediocre => EnemyComplexity::Average,
             EnemyComplexity::Average => EnemyComplexity::Complex,
-            EnemyComplexity::Complex => EnemyComplexity::VeryComplex,
-            EnemyComplexity::VeryComplex => EnemyComplexity::Expert,
+            EnemyComplexity::Complex => EnemyComplexity::Expert,
             EnemyComplexity::Expert => EnemyComplexity::Hell,
             EnemyComplexity::Hell => EnemyComplexity::Hell, 
         }
@@ -50,9 +48,6 @@ impl EnemyComplexity {
             },
             EnemyComplexity::Complex => {
                 vec![EnemyType::Circle, EnemyType::Ellipse, EnemyType::Triangle, EnemyType::Rect].into()
-            },
-            EnemyComplexity::VeryComplex => {
-                vec![EnemyType::Circle, EnemyType::Ellipse, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon].into()
             },
             //TODO: Implement the following difficulties
             EnemyComplexity::Expert => {
@@ -76,7 +71,6 @@ impl EnemyComplexity {
             EnemyComplexity::Mediocre => BLUE,
             EnemyComplexity::Average => YELLOW,
             EnemyComplexity::Complex => ORANGE,
-            EnemyComplexity::VeryComplex => RED,
             EnemyComplexity::Expert => RED,
             EnemyComplexity::Hell => RED,
         }
@@ -108,7 +102,7 @@ pub struct SpawnManager{
     level_timer: SimpleTimer,       //When to increase level. Depends on entities spawned/killed 
     level_interval: f64,            //Level increase interval
 
-    spawn_timer: SimpleTimer,       //When to spawn entities
+    factory_timer: SimpleTimer,       //When to spawn entities
     config: WaveConfig,             //Determines complexity of enemies spawned
 
     sender: Sender<Event>
@@ -122,7 +116,7 @@ impl SpawnManager{
             level: 1,
             level_timer: SimpleTimer::new(level_interval),
             level_interval: level_interval,
-            spawn_timer: SimpleTimer::new(spawn_interval),
+            factory_timer: SimpleTimer::new(spawn_interval),
             config: WaveConfig::new(spawn_interval, Self::ENEMY_MULTIPLIER),
             sender: sender
         }
@@ -135,31 +129,27 @@ impl SpawnManager{
             self.advance_level(now);
         }
 
-        if !self.spawn_timer.is_set(){
-            self.spawn_timer.set(now, self.config.spawn_interval);
+        if !self.factory_timer.is_set(){
+            self.factory_timer.set(now, self.config.spawn_interval);
         }
-
-        let enemy_count = self.config.enemy_count as usize;
         
-        //Every 10 seconds, queue a semi random enemy template based on the current level.
-        // As long as the factory has twice the enemies
-        if self.spawn_timer.expired(now){
-            self.spawn_timer.set(now, self.config.spawn_interval);
+        let enemy_count = self.config.enemy_count as usize;
+
+        //Every 5 seconds, queue a semi random enemy template based on the current level.
+        if self.factory_timer.expired(now){
+            let factory_backup = enemy_count * 2;
 
             let threshold: usize = {
-                if enemy_count * 2 < 128{
-                    enemy_count * 2
+                if factory_backup < 512{
+                    factory_backup
                 }
                 else{
-                    128
+                    512 //FACTORY LIMIT: game_manager
                 }
             };
             /*
                 Enemies are queued for the factory when its queue is smaller
                 than the threshold.
-
-                Where the threshold is the `enemy_count` in `WaveConfig` times 2
-                or the factories queue capacity which is 128.  
             */
             if queue_size < threshold {
                 let difference = (queue_size).abs_diff(threshold);
@@ -168,7 +158,9 @@ impl SpawnManager{
     
                 self.publish(Event::new((template, player_pos, color, viewport), EventType::QueueTemplate)).await;
             }
+            self.factory_timer.set(now, self.config.spawn_interval);
         }
+
         /* 
             Forward he difference between the current levels `enemy_count` 
             and the amount of `active_enemies` the Handler holds, 
@@ -182,8 +174,6 @@ impl SpawnManager{
  
     #[inline(always)]
     fn advance_level(&mut self, now: f64){
-        //Review: Flush factories queue on levelup. Spawn all enemies and clear queue
-        //Note: On level up, draw UI
         self.level += 1;
         self.level_timer.set(now, self.level_interval);
         

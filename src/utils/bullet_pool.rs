@@ -39,11 +39,19 @@ impl BulletPool{
         let (refill, amount) = condition(current, capacity);
 
         if refill{
+            //If new spawn amount exceeds currect size, grow to match
+            if self.available.len() < amount {
+                self.available = VecDeque::with_capacity(amount);
+            }
             for _ in 0..amount{
                 if self.available.len() < self.available.capacity(){
                     self.available.push_back(Bullet::get_blank(self.sender.clone(), self.origin));
                 }
             }
         }
+    }
+
+    pub fn get_pool_size(&self) -> usize{
+        return self.available.len()
     }
 }

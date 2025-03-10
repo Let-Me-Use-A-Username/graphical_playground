@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::ops::Deref;
 use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::Sender;
 
@@ -25,9 +26,9 @@ pub struct Factory{
 }
 
 impl Factory{
-    pub fn new(sender: Sender<Event>, enemy_sender: Sender<Event>) -> Self{
+    pub fn new(sender: Sender<Event>, size: usize, enemy_sender: Sender<Event>) -> Self{
         return Factory {
-            queue: VecDeque::with_capacity(128),
+            queue: VecDeque::with_capacity(size),
             sender: sender,
             enemy_sender: enemy_sender
         }
@@ -176,12 +177,13 @@ impl Subscriber for Factory{
 
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<usize>(){
+                        //FIXME: If request is for more enemies than currently possing, not sending anything back
                         if self.queue.len() >= *data{
                             queue = self.queue
                             .drain(0..*data)
                             .map(|enemy| Some(enemy))
                             .collect();
-                        }            
+                        }
                     }
                 }
                 self.publish(Event::new(queue, EventType::BatchEnemySpawn)).await;

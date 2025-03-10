@@ -1,5 +1,11 @@
 # Changelog
 
+### 0.2.4 Changes 10/3/2025
+- v.0.2.4 Implemented resizeable bullet pool
+- v.0.2.4 Implemented different refill method for bullet pool
+- v.0.2.4 Implemented proper fire rate with timer expiration
+- v.0.2.4 Incresed factory size to 512, and decreased spawners factory timer to 5
+
 
 ### 0.2.4 Changes 9/3/2025
 - v.0.2.4 Fixed enemy collision "drag" and "sticky" behavior.

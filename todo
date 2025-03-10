@@ -3,14 +3,14 @@
 - GPU
     -Implement artist for Emitters (player)
         
-- Fix bullet pool regen
 - Refine Spawner-Factory queue and spawn management.
 
 ==============================================
 ================== General todo ==============
-- Implement correct ids for entities.
- 
 - Implement ErrorHandler 
+
+- Enemy spawn location is still a bit off
+    -factory
 
 - Implement different kind of enemies.
 
@@ -22,6 +22,7 @@
 ================== Gameplay ==================
 - Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
 - Refine handbrake
+- Implement boost
 
 
 ==============================================

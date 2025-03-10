@@ -79,22 +79,22 @@ impl DrawCall{
 */
 pub struct Artist{
     queue: HashMap<Layer, HashMap<DrawType, Vec<DrawCall>>>,
-    lines: VecDeque<DrawCall>,
-    circles: VecDeque<DrawCall>,
-    rectangles: VecDeque<DrawCall>,
-    rot_rectangles: VecDeque<DrawCall>,
-    triangles: VecDeque<DrawCall>
+    // lines: VecDeque<DrawCall>,
+    // circles: VecDeque<DrawCall>,
+    // rectangles: VecDeque<DrawCall>,
+    // rot_rectangles: VecDeque<DrawCall>,
+    // triangles: VecDeque<DrawCall>
 }
 
 impl Artist{
     pub fn new() -> Artist{
         return Artist{
             queue: HashMap::new(),
-            lines: VecDeque::new(),
-            circles: VecDeque::new(),
-            rectangles: VecDeque::new(),
-            rot_rectangles: VecDeque::new(),
-            triangles: VecDeque::new()
+            // lines: VecDeque::new(),
+            // circles: VecDeque::new(),
+            // rectangles: VecDeque::new(),
+            // rot_rectangles: VecDeque::new(),
+            // triangles: VecDeque::new()
         }
     }
     #[inline(always)]
