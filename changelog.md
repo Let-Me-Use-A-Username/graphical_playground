@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.4 Changes 11/3/2025
+- v.0.2.4 Added Factory safety check when sending enemies to handler.
+- v.0.2.4 Added Factory reservation for additional space.
+- v.0.2.4 Changed Spawners update loop to properly handle the factory.
+- v.0.2.4 Fixed Artist drawing dead entities by placing constrain when retrieving draw calls.
+- v.0.2.4 Implemented template for Emitter Renderer.
+
+
 ### 0.2.4 Changes 10/3/2025
 - v.0.2.4 Implemented resizeable bullet pool
 - v.0.2.4 Implemented different refill method for bullet pool

@@ -2,15 +2,16 @@
 ================== Critical ==================
 - GPU
     -Implement artist for Emitters (player)
-        
-- Refine Spawner-Factory queue and spawn management.
+        -Consider that, many entities might have a few emitters to display different effects.
+        -Many configs perhaps and swap configs?
+            -So MetalArtist would have to keep a config file as well. <id, Conf>
 
 ==============================================
 ================== General todo ==============
-- Implement ErrorHandler 
+- Verify following work correctly.
+    - Bullet pool refill (Once the bullets stopped firing)
 
-- Enemy spawn location is still a bit off
-    -factory
+- Implement ErrorHandler 
 
 - Implement different kind of enemies.
 

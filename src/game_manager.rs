@@ -76,7 +76,7 @@ impl GameManager{
             SpawnManager::new(
                 dispatcher.create_sender(), 
                 180.0,
-                5.0
+                1.0
             )));
         let factory = Arc::new(Mutex::new(
             Factory::new(
@@ -124,6 +124,7 @@ impl GameManager{
         dispatcher.register_listener(EventType::QueueEnemy, factory.clone());
         dispatcher.register_listener(EventType::QueueTemplate, factory.clone());
         dispatcher.register_listener(EventType::ForwardEnemiesToHandler, factory.clone());
+        dispatcher.register_listener(EventType::FactoryResize, factory.clone());
 
         return GameManager { 
             state: GameState::Playing,
@@ -171,7 +172,7 @@ impl GameManager{
 
     async fn update_game(&mut self) {
         let mut player_pos = self.player.try_lock().unwrap().get_pos();
-        let mut camera_pos = vec2(player_pos.x, player_pos.y);
+        let mut camera_pos = player_pos;
 
         // Zoom variables
         let mut zoom_level = 0.002;
@@ -242,12 +243,12 @@ impl GameManager{
                 if let Ok(mut spawner) = self.spawner.try_lock(){
                     {
                         let _span = tracy_client::span!("Spawner updating");
-                        
                         if let Ok(factory) = self.factory.try_lock(){
                             spawner.update(player_pos, 
                                 handler.get_active_enemy_count(), 
                                 viewport,
-                                factory.get_queue_size()).await;
+                                factory.get_queue_size(),
+                            factory.get_queue_capacity()).await;
                         }
                     }
                 }

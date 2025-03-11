@@ -164,7 +164,7 @@ impl Updatable for Player{
 
         let can_attack: bool = {
             if !self.attack_speed.is_set(){
-                self.attack_speed.set(now, 0.1); // Lower time is more attacks
+                self.attack_speed.set(now, 0.001); // Lower time is more attacks
             }
 
             if self.attack_speed.expired(now){

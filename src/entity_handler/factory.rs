@@ -46,11 +46,25 @@ impl Factory{
                 self.enemy_sender.clone()
             ));
 
-        if self.queue.len() >= self.queue.capacity() {
-            self.queue.pop_front();
+        /* 
+            The idea is that, every time the queue is full, shift to the left 1 place,
+            then remove the last element and place new one, to mimic a cyclic list.
+
+            This way we continue to remove older enemies but still append newer ones.
+        */
+        if self.queue.len() == self.queue.capacity() {
+            self.queue.rotate_left(1);
+            self.queue.pop_back();
         }
 
         self.queue.push_back(enemy);
+    }
+
+    pub fn reserve_additional(&mut self, size: usize){
+        //REVIEW: Check if this does increase space or not
+        println!("Resized factory queue from: {:?}", self.queue.capacity());
+        self.queue.reserve(size);
+        println!("to: {:?}", self.queue.capacity());
     }
 
     fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color, viewport: Rect){
@@ -129,6 +143,10 @@ impl Factory{
         return self.queue.len()
     }
 
+    pub fn get_queue_capacity(&self) -> usize{
+        return self.queue.capacity()
+    }
+
 }
 
 #[async_trait]
@@ -177,17 +195,33 @@ impl Subscriber for Factory{
 
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<usize>(){
-                        //FIXME: If request is for more enemies than currently possing, not sending anything back
+                        //If requested size is larger than collection, send whole collection
+                        let amount = {
+                            if self.queue.len() > *data{
+                                self.queue.len()
+                            }
+                            else{
+                                *data
+                            }
+                        };
+
                         if self.queue.len() >= *data{
                             queue = self.queue
-                            .drain(0..*data)
+                            .drain(0..amount)
                             .map(|enemy| Some(enemy))
                             .collect();
                         }
                     }
                 }
                 self.publish(Event::new(queue, EventType::BatchEnemySpawn)).await;
-            }
+            },
+            EventType::FactoryResize => {
+                if let Ok(result) = event.data.lock(){
+                    if let Some(data) = result.downcast_ref::<usize>(){
+                        self.reserve_additional(*data);
+                    }
+                }
+            },
             _ => {}
         }
     }

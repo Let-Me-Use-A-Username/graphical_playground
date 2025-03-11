@@ -136,7 +136,6 @@ impl Grid{
     /// Updates an entity by first checking if it present inside the grid.
     /// Proceeds to insert it, if already present, removes old entry.
     #[inline(always)]
-    //Review: Change the following parameter to a struct, pass a stuct as event data to update.
     pub fn update_entity(&mut self, id: EntityId, entity_type: EntityType, pos: Vec2) {
         let new_pos = self.world_to_cell(pos.into());
 

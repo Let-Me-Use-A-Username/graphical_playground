@@ -101,7 +101,7 @@ impl Handler{
         self.enemies.iter_mut()
             .map(|(_, boxed)| boxed)
             .filter(|enemy| {
-                viewport.contains(enemy.get_pos())
+                viewport.contains(enemy.get_pos()) && enemy.is_alive()
             })
             .for_each(|enemy|{
                 draw_calls.push((4, enemy.get_draw_call()));
@@ -110,7 +110,7 @@ impl Handler{
         self.projectiles.iter_mut()
             .map(|(_, boxed)| boxed)
             .filter(|proj| {
-                viewport.contains(proj.get_pos())
+                viewport.contains(proj.get_pos()) && proj.is_active()
             })
             .for_each(|projectile|{
                 draw_calls.push((9, projectile.get_draw_call()));
@@ -151,7 +151,11 @@ impl Handler{
 
     #[inline(always)]
     pub fn get_active_enemy_count(&self) -> usize{
-        return self.enemies.len()
+        return self.enemies.iter()
+            .filter(|(_, enemy)| {
+                enemy.is_alive()
+            })
+            .count()
     }
 }   
 

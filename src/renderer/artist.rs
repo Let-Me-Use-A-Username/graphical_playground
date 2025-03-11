@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use macroquad::{color::Color, math::Vec2, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
+use macroquad_particles::Emitter;
 
 type Layer = i32;
 
@@ -204,5 +205,26 @@ impl Artist{
 
             self.add_call(layer, call, drawtype)
         }
+    }
+}
+
+
+pub struct MetalArtist{
+    emitters: HashMap<u64, Emitter>
+}
+impl MetalArtist{
+    pub fn new() -> MetalArtist{
+        return MetalArtist {
+            emitters: HashMap::new()
+        }
+    }
+
+    pub fn add(&mut self, id: u64, emitter: Emitter){
+        self.emitters.entry(id)
+            .or_insert(emitter);
+    }
+
+    pub fn remove(&mut self, id: u64){
+        self.emitters.remove(&id);
     }
 }

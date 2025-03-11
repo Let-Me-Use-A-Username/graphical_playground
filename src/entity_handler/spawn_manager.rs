@@ -11,12 +11,12 @@ use crate::entity_handler::enemy_type::EnemyType;
 
 #[derive(Clone, Copy)]
 pub enum EnemyComplexity {
-    Simple = 1,
-    Mediocre = 2,
-    Average = 3,
-    Complex = 4,
-    Expert = 5,
-    Hell = 6,
+    Simple = 1,     // 80 enemies
+    Mediocre = 2,   // 160
+    Average = 3,    // 240
+    Complex = 4,    // 320
+    Expert = 5,     // 400
+    Hell = 6,       // 480
 }
 
 impl EnemyComplexity {
@@ -102,7 +102,7 @@ pub struct SpawnManager{
     level_timer: SimpleTimer,       //When to increase level. Depends on entities spawned/killed 
     level_interval: f64,            //Level increase interval
 
-    factory_timer: SimpleTimer,       //When to spawn entities
+    spawn_timer: SimpleTimer,     //When to spawn entities
     config: WaveConfig,             //Determines complexity of enemies spawned
 
     sender: Sender<Event>
@@ -116,59 +116,77 @@ impl SpawnManager{
             level: 1,
             level_timer: SimpleTimer::new(level_interval),
             level_interval: level_interval,
-            factory_timer: SimpleTimer::new(spawn_interval),
+            spawn_timer: SimpleTimer::new(spawn_interval),
             config: WaveConfig::new(spawn_interval, Self::ENEMY_MULTIPLIER),
             sender: sender
         }
     }
 
-    pub async fn update(&mut self, player_pos: Vec2, active_enemies: usize, viewport: Rect, queue_size: usize){
+    /* 
+        Spawners attempts to always have the number of `active_enemies` (Enemies the Handler has)
+        the same as the amount of enemies this level has (Spawners config, enemy_count = i * 80, i={1..6}).
+
+        Additionally, he controls the factory so that he has at least as many queued enemies (`factory_queue_size`)
+        as the difference between the queue size and the `active_enemies`.
+
+        Lastly, every 1.0 seconds, the Spawner sends enemies (`enemy_count` - `active_enemies`) to the Handler
+        from the Factory. If this amount exceeds the factories owned entities, he sends all available.
+        
+        If for any reason (Level up) the `enemy_count` surpasses the `factory_queue_capacity`, the factory
+        reserved additional space equal to the difference.
+    */
+    pub async fn update(&mut self, player_pos: Vec2, active_enemies: usize, viewport: Rect, factory_queue_size: usize, factory_queue_capacity: usize){
         let now = get_time();
 
         if self.level_timer.expired(now){
             self.advance_level(now);
         }
-
-        if !self.factory_timer.is_set(){
-            self.factory_timer.set(now, self.config.spawn_interval);
-        }
         
         let enemy_count = self.config.enemy_count as usize;
 
-        //Every 5 seconds, queue a semi random enemy template based on the current level.
-        if self.factory_timer.expired(now){
-            let factory_backup = enemy_count * 2;
-
-            let threshold: usize = {
-                if factory_backup < 512{
-                    factory_backup
-                }
-                else{
-                    512 //FACTORY LIMIT: game_manager
-                }
-            };
-            /*
-                Enemies are queued for the factory when its queue is smaller
-                than the threshold.
-            */
-            if queue_size < threshold {
-                let difference = (queue_size).abs_diff(threshold);
-                let template = self.get_spawn_template(difference);
-                let color = self.config.complexity.get_color();
-    
-                self.publish(Event::new((template, player_pos, color, viewport), EventType::QueueTemplate)).await;
+        //Number of enemies to send to handler
+        let spawn_enemies = {
+            if enemy_count > active_enemies {
+                enemy_count - active_enemies
             }
-            self.factory_timer.set(now, self.config.spawn_interval);
+            else{
+                0
+            }
+        };
+
+        //Number of enemies to queue in factory
+        let mut factory_surplus = {
+            if factory_queue_size > active_enemies{
+                (true, factory_queue_size - active_enemies)
+            }
+            else{
+                (false, spawn_enemies)
+            }
+        };
+
+        //If enemy count exceeds factory limits, increase capacity, and set queue size to `active_enemies`.
+        if enemy_count > factory_queue_capacity{
+            self.publish(Event::new(enemy_count - factory_queue_capacity, EventType::FactoryResize)).await;
+            factory_surplus = (false, active_enemies);
         }
 
-        /* 
-            Forward he difference between the current levels `enemy_count` 
-            and the amount of `active_enemies` the Handler holds, 
-            to the Handler in order to spawn them.
-        */
-        if active_enemies < enemy_count{
-            let difference = enemy_count - active_enemies;
-            self.publish(Event::new(difference, EventType::ForwardEnemiesToHandler)).await
+
+        //If Factory is lacking enemies, queue the difference
+        if !factory_surplus.0{
+            let amount = factory_surplus.1;
+            let template = self.get_spawn_template(amount);
+            let color = self.config.complexity.get_color();
+            
+            self.publish(Event::new((template, player_pos, color, viewport), EventType::QueueTemplate)).await;
+        }
+        //Review: Factory Surplus??
+
+        if self.spawn_timer.expired(now){
+            self.spawn_timer.set(now, self.config.spawn_interval);
+
+            if spawn_enemies != 0{
+                self.publish(Event::new(spawn_enemies, EventType::ForwardEnemiesToHandler)).await;
+            }
         }
     }
  
