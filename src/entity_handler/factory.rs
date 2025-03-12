@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::ops::Deref;
 use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::Sender;
 
@@ -16,7 +15,7 @@ use crate::utils::globals;
 
 use super::enemy_type::EnemyType;
 
-static COUNTER: AtomicU64 = AtomicU64::new(0);
+static COUNTER: AtomicU64 = AtomicU64::new(1025);
 
 
 pub struct Factory{
@@ -35,7 +34,11 @@ impl Factory{
     }
 
     pub fn queue_enemy<T: Enemy + 'static>(&mut self, pos: Vec2, size: f32, color: Color, player_pos: Vec2){
-        let id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let mut id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+        if id > 2056{
+            id = COUNTER.swap(1025, std::sync::atomic::Ordering::SeqCst);
+        }
 
         let enemy = Box::new(T::new(
                 id, 
@@ -195,13 +198,14 @@ impl Subscriber for Factory{
 
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<usize>(){
-                        //If requested size is larger than collection, send whole collection
                         let amount = {
+                            //Requested less than collection
                             if self.queue.len() > *data{
-                                self.queue.len()
-                            }
-                            else{
                                 *data
+                            }
+                            //Requested more than collection
+                            else{
+                                self.queue.len()
                             }
                         };
 

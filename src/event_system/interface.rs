@@ -2,6 +2,7 @@ use std::{any::Any, sync::mpsc::Sender};
 
 use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
+use macroquad_particles::EmitterConfig;
 
 use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::machine::StateType};
 
@@ -35,6 +36,11 @@ pub trait Moveable: Object{
 pub trait Drawable{
     fn draw(&mut self);
     fn get_draw_call(&self) -> DrawCall;
+}
+
+pub trait Emittable{
+    fn get_emitter_conf(&self) -> Option<EmitterConfig>;
+    fn get_emitter_params(&self) -> Option<Vec2>;
 }
 
 #[async_trait]

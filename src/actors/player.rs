@@ -2,17 +2,18 @@ use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
-use macroquad_particles::{BlendMode, Curve, Emitter, EmitterConfig};
+use macroquad_particles::{BlendMode, Curve, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Projectile, Updatable}}, objects::bullet, renderer::artist::DrawCall, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Emittable, GameEntity, Projectile, Updatable}}, objects::bullet, renderer::artist::DrawCall, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
-static BULLETCOUNTER: AtomicU64 = AtomicU64::new(0);
+static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
 
 pub struct Player{
     //Attributes
+    id: u64,
     pos: Vec2,
     direction: Vec2,
     speed: f32,
@@ -23,7 +24,7 @@ pub struct Player{
     color: Color,
     rotation: f32,
     //Components
-    emitter: Emitter,
+    emitter_conf: EmitterConfig,
     sender: Sender<Event>,
     machine: StateMachine,
     pub collider: RectCollider,
@@ -43,6 +44,7 @@ impl Player{
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         return Player { 
+            id: 0,
             pos: Vec2::new(x, y),
             direction: Vec2::new(0.0, 0.0),
             speed: 1000.0,
@@ -52,7 +54,7 @@ impl Player{
             size: size,
             color: color,
             rotation: 0.0,
-            emitter: Emitter::new(EmitterConfig {
+            emitter_conf: EmitterConfig {
                 lifetime: 2.0,
                 amount: 5,
                 initial_direction_spread: 0.0,
@@ -64,10 +66,10 @@ impl Player{
                 }),
                 blend_mode: BlendMode::Additive,
                 ..Default::default()
-            }),
+            },
             sender: sender.clone(),
             machine: StateMachine::new(),
-            collider: RectCollider::new(x, y, size, size),
+            collider: RectCollider::new(x, y, size, size * 2.0),
             immune_timer: Timer::new(),
             bounce: false,
             left_fire: true,
@@ -75,10 +77,6 @@ impl Player{
             bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank()
         }
-    }
-    
-    pub fn collide(&mut self, other: &dyn Collider) -> bool{
-        return self.collider.collides_with(other)
     }
 
     async fn fire(&mut self){
@@ -116,7 +114,11 @@ impl Player{
 
             self.left_fire = !self.left_fire;
 
-            let id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let mut id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+            if id >= 1024{ //Bullet pool size
+                id = BULLETCOUNTER.swap(0, std::sync::atomic::Ordering::SeqCst);
+            }
             
             let pos = spawn_pos;
 
@@ -143,11 +145,10 @@ impl Updatable for Player{
         let now = get_time();
 
         self.collider.update(self.pos);
+        self.collider.set_rotation(self.rotation);
+
         let pool_size = self.bullet_pool.get_pool_size();
 
-        /* 
-            Bullet pool refreshes every `BULLET_SPAWN`= 10.0 seconds
-        */
         self.bullet_pool.update(|current, capacity|{
             if !self.bullet_timer.is_set(){
                 self.bullet_timer.set(now, Self::POOL_REFILL);
@@ -319,12 +320,7 @@ impl Moveable for Player{
 impl Drawable for Player{
     #[inline(always)]
     fn draw(&mut self){
-        if let Ok(state) = self.machine.get_state().lock(){
-            if *state == StateType::Moving{
-                self.emitter.draw(self.pos);
-            }
-        }
-        
+        todo!()
     }
     
     #[inline(always)]
@@ -348,6 +344,38 @@ impl Drawable for Player{
     }
 }
 
+impl Emittable for Player{
+    fn get_emitter_conf(&self) -> Option<EmitterConfig> {
+        return Some(self.emitter_conf.clone())
+    }
+
+    fn get_emitter_params(&self) -> Option<Vec2> {
+        if let Ok(state) = self.machine.get_state().lock(){
+            if *state == StateType::Moving {
+                return Some(self.pos)
+            }
+        }
+        return None
+    }
+}
+
+impl GameEntity for Player{
+    fn get_id(&self) -> u64 {
+        return self.id
+    }
+
+    fn get_size(&self) -> f32 {
+        return self.size
+    }
+
+    fn collides(&self,other: &dyn Collider) -> bool {
+        return self.collider.collides_with(other)
+    }
+
+    fn get_collider(&self) -> Box<&dyn Collider>  {
+        return Box::new(&self.collider)
+    }
+}
 
 //======== Event traits =============
 #[async_trait]

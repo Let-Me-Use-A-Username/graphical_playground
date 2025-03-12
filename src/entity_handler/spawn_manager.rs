@@ -156,11 +156,15 @@ impl SpawnManager{
 
         //Number of enemies to queue in factory
         let mut factory_surplus = {
+            //Factory surplus is equivalant to (queue - `active_enemies`)
             if factory_queue_size > active_enemies{
                 (true, factory_queue_size - active_enemies)
             }
             else{
-                (false, spawn_enemies)
+                let val = active_enemies - factory_queue_size;
+                //This check is for catching initialization and flushing queue
+                if val == 0 { (false, spawn_enemies) }
+                else { (false, val) }
             }
         };
 

@@ -12,13 +12,13 @@ use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
 use crate::entity_handler::spawn_manager::SpawnManager;
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Drawable, Enemy, Object, Updatable};
+use crate::event_system::interface::{Drawable, Emittable, Enemy, GameEntity, Object, Updatable};
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
 use crate::objects::bullet::ProjectileType;
-use crate::renderer::artist::{Artist, DrawCall, DrawType};
+use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
 use crate::utils::globals::Global;
 use crate::utils::timer::Timer;
 
@@ -51,6 +51,7 @@ pub struct GameManager{
 
     dispatcher: Dispatcher,
     artist: Artist,
+    metal: MetalArtist,
 
     handler: Arc<Mutex<Handler>>,
     spawner: Arc<Mutex<SpawnManager>>,
@@ -137,6 +138,7 @@ impl GameManager{
 
             dispatcher: dispatcher,
             artist: Artist::new(),
+            metal: MetalArtist::new(),
 
             handler: handler,
             spawner: spawner,
@@ -215,7 +217,9 @@ impl GameManager{
             let delta = get_frame_time();
 
             let mut player_collider = None;
+
             let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
+            let mut emitter_calls: Vec<(u64, Vec2)> = Vec::new();
 
             {
                 let _span = tracy_client::span!("Player/Wall updates");
@@ -230,6 +234,11 @@ impl GameManager{
                     
                     draw_calls.extend(vec![(10, player.get_draw_call())]);
                     draw_calls.extend(wall_calls);
+
+                    if let Some(conf) = player.get_emitter_conf(){
+                        self.metal.add(player.get_id(), conf);
+                        emitter_calls.push((player.get_id(), player.get_pos()));
+                    }
                 }
             }
 
@@ -340,11 +349,7 @@ impl GameManager{
                 self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
 
-                if let Ok(mut player) = self.player.try_lock(){
-                    //Review: Players emitter draw call is still inside player
-                    player.draw();
-                }
-                
+                self.metal.draw_emitters(emitter_calls);
             }
             
             set_default_camera();

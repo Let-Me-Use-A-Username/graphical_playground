@@ -6,6 +6,9 @@
         -Many configs perhaps and swap configs?
             -So MetalArtist would have to keep a config file as well. <id, Conf>
 
+- Rework player Hit state. (Bounce doesn't occur)
+- Change MetalArtist to save/delete configs AND update emitters via update
+
 ==============================================
 ================== General todo ==============
 - Verify following work correctly.

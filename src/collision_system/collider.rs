@@ -121,17 +121,6 @@ impl RectCollider{
         return rotated_corners
     }
 
-    pub fn draw(&self){
-        draw_rectangle_ex(
-            self.x, 
-            self.y, 
-            self.w, 
-            self.h, 
-        DrawRectangleParams{
-            rotation: self.rotation,
-            ..Default::default()
-        });
-    }
 }
 impl Collider for RectCollider{
     fn collides_with(&self, other: &dyn Collider) -> bool{

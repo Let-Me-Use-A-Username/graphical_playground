@@ -1,6 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
+use macroquad::time::get_time;
 
 use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher}};
 
@@ -22,10 +23,10 @@ impl CollisionDetector{
     pub async fn detect_player_collision(&self, player: RectCollider, enemies: Vec<Option<&Box<dyn Enemy>>>){
         for entry in enemies{
             if let Some(enemy) = entry{
-                // if enemy.collides(&player){
-                //     let _ = self.publish(Event::new(enemy.get_id(), EventType::EnemyHit)).await;
-                //     let _ = self.publish(Event::new(get_time(), EventType::PlayerHit)).await;
-                //}
+                if enemy.collides(&player){
+                    let _ = self.publish(Event::new(enemy.get_id(), EventType::EnemyHit)).await;
+                    let _ = self.publish(Event::new(get_time(), EventType::PlayerHit)).await;
+                }
             }
         }
     }

@@ -1,5 +1,11 @@
 # Changelog
 
+
+### 0.2.4 Changes 12/3/2025
+- v.0.2.4 Implemented edge case check in Spanwer. (Regarding Factory capacity)
+- v.0.2.4 Reworked Ids: Player: 0 Bullets: 1-1024 Enemy: 1025-2056. Are not Cyclic.
+
+
 ### 0.2.4 Changes 11/3/2025
 - v.0.2.4 Added Factory safety check when sending enemies to handler.
 - v.0.2.4 Added Factory reservation for additional space.

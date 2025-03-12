@@ -1,7 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{any::Any, collections::{HashMap, VecDeque}};
 
 use macroquad::{color::Color, math::Vec2, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
-use macroquad_particles::Emitter;
+use macroquad_particles::{Emitter, EmitterConfig};
 
 type Layer = i32;
 
@@ -209,22 +209,41 @@ impl Artist{
 }
 
 
+/* 
+    MetalArist is also a Batch rendering component, however
+    its task is to control Emitters and EmitterConfigs.
+*/
 pub struct MetalArtist{
-    emitters: HashMap<u64, Emitter>
+    emitters: HashMap<u64, Emitter>,
+    configs: HashMap<u64, EmitterConfig>
 }
 impl MetalArtist{
     pub fn new() -> MetalArtist{
         return MetalArtist {
-            emitters: HashMap::new()
+            emitters: HashMap::new(),
+            configs: HashMap::new()
         }
     }
 
-    pub fn add(&mut self, id: u64, emitter: Emitter){
+    pub fn add(&mut self, id: u64, config: EmitterConfig){
+        self.configs.entry(id)
+            .or_insert(config.clone());
+
         self.emitters.entry(id)
-            .or_insert(emitter);
+            .or_insert(Emitter::new(config));
     }
 
     pub fn remove(&mut self, id: u64){
+        self.configs.remove(&id);
         self.emitters.remove(&id);
+    }
+
+    pub fn draw_emitters(&mut self, params: Vec<(u64, Vec2)>){
+        for (id, emitter_params) in params{
+            //If emitter exists for given id
+            if let Some(emitter) = self.emitters.get_mut(&id){
+                emitter.draw(emitter_params);
+            }
+        }
     }
 }
