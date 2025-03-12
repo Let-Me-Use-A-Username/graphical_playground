@@ -101,12 +101,9 @@ impl GameManager{
                 YELLOW,
                 dispatcher.create_sender()
         )));
-        let wall = Wall::new(map_bounds, dispatcher.create_sender());
-
+        
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
-        dispatcher.register_listener(EventType::PlayerMoving, player.clone());
-        dispatcher.register_listener(EventType::PlayerIdle, player.clone());
 
         //Grid events
         dispatcher.register_listener(EventType::InsertOrUpdateToGrid, grid.clone());
@@ -134,7 +131,7 @@ impl GameManager{
             component_sender: dispatcher.create_sender(),
 
             global: global,
-            wall: wall,
+            wall: Wall::new(map_bounds, dispatcher.create_sender()),
 
             dispatcher: dispatcher,
             artist: Artist::new(),

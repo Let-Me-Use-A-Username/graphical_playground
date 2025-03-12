@@ -34,7 +34,6 @@ pub trait Moveable: Object{
 }
 
 pub trait Drawable{
-    fn draw(&mut self);
     fn get_draw_call(&self) -> DrawCall;
 }
 

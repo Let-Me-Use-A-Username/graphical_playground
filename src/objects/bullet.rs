@@ -98,11 +98,6 @@ impl Moveable for Bullet{
 
 impl Drawable for Bullet{
     #[inline(always)]
-    fn draw(&mut self) {
-        todo!()
-    }
-    
-    #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
         let dir = self.direction;
 

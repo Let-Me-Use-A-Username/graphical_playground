@@ -90,11 +90,6 @@ impl Moveable for Circle{
 
 impl Drawable for Circle{
     #[inline(always)]
-    fn draw(&mut self){
-        todo!()
-    }
-    
-    #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
         return DrawCall::Circle(self.pos.x, self.pos.y, self.size, self.color)
     }

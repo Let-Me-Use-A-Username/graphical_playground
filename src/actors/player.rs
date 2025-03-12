@@ -182,7 +182,7 @@ impl Updatable for Player{
             StateType::Idle => {
                 //If input, go to Move state
                 if is_key_down(KeyCode::W) | is_key_down(KeyCode::S){
-                    self.publish(Event::new((), EventType::PlayerMoving)).await
+                    self.machine.transition(StateType::Moving);
                 }
 
                 if can_fire{
@@ -194,7 +194,7 @@ impl Updatable for Player{
 
                 //If velocity is ZERO (assigned from move_to), go to Idle state
                 if self.velocity == Vec2::ZERO{
-                    self.publish(Event::new((), EventType::PlayerIdle)).await
+                    self.machine.transition(StateType::Idle);
                 }
                 
                 if can_fire{
@@ -208,7 +208,7 @@ impl Updatable for Player{
                     match exp{
                         true => {
                             hit_timer.reset();
-                            self.publish(Event::new(get_time(), EventType::PlayerMoving)).await;
+                            self.machine.transition(StateType::Moving);
                         },
                         false => {
                             //Reverse velocity vector
@@ -319,11 +319,6 @@ impl Moveable for Player{
 
 impl Drawable for Player{
     #[inline(always)]
-    fn draw(&mut self){
-        todo!()
-    }
-    
-    #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
         let p_rect_width = self.size;
         let p_rect_height = self.size * 2.0;
@@ -382,12 +377,6 @@ impl GameEntity for Player{
 impl Subscriber for Player {
     async fn notify(&mut self, event: &Event){
         match &event.event_type{
-            EventType::PlayerIdle => {
-                self.machine.transition(StateType::Idle);
-            },
-            EventType::PlayerMoving => {
-                self.machine.transition(StateType::Moving);
-            },
             EventType::PlayerHit => {
                 let current_time = get_time();
 
