@@ -1,7 +1,10 @@
 use std::{any::Any, collections::{HashMap, VecDeque}};
 
+use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
 use macroquad_particles::{Emitter, EmitterConfig};
+
+use crate::event_system::{event::{Event, EventType}, interface::Subscriber};
 
 type Layer = i32;
 
@@ -212,25 +215,34 @@ impl Artist{
 /* 
     MetalArist is also a Batch rendering component, however
     its task is to control Emitters and EmitterConfigs.
+
+    MetalArtist holds configs and emitters seperately. When a 
+    register event occurs the last config/emitter is dropped
+    and the new one is inserted.
+
+    MetalArtist holds a queue for emitting requests. If 
+    an entity doesn't provide an event its emitter isn't drawn.
+    The queue is cleared at the end whether its elements emitted
+    or not.
 */
 pub struct MetalArtist{
     emitters: HashMap<u64, Emitter>,
-    configs: HashMap<u64, EmitterConfig>
+    configs: HashMap<u64, EmitterConfig>,
+    queue: HashMap<u64, Vec2>
 }
 impl MetalArtist{
     pub fn new() -> MetalArtist{
         return MetalArtist {
             emitters: HashMap::new(),
-            configs: HashMap::new()
+            configs: HashMap::new(),
+            queue: HashMap::new()
         }
     }
 
+    ///Inserts (or overwrites) an entry. 
     pub fn add(&mut self, id: u64, config: EmitterConfig){
-        self.configs.entry(id)
-            .or_insert(config.clone());
-
-        self.emitters.entry(id)
-            .or_insert(Emitter::new(config));
+        self.configs.insert(id, config.clone());
+        self.emitters.insert(id, Emitter::new(config));
     }
 
     pub fn remove(&mut self, id: u64){
@@ -238,11 +250,50 @@ impl MetalArtist{
         self.emitters.remove(&id);
     }
 
-    pub fn draw_emitters(&mut self, params: Vec<(u64, Vec2)>){
-        for (id, emitter_params) in params{
-            //If emitter exists for given id
-            if let Some(emitter) = self.emitters.get_mut(&id){
-                emitter.draw(emitter_params);
+    /*
+        Metal artist draws only entities that have submitted a position to draw
+        since the last frame. 
+    */
+    pub fn draw(&mut self){
+        self.queue.iter()
+            .for_each(|(id, pos)| {
+                if let Some(emitter) = self.emitters.get_mut(&id){
+                    emitter.draw(*pos);
+            }
+        });
+
+        self.queue.clear();
+    }
+}
+
+#[async_trait]
+impl Subscriber for MetalArtist{
+    async fn notify(&mut self, event: &Event){
+        match event.event_type{
+            EventType::RegisterEmitterConf => {
+                if let Ok(data) = event.data.try_lock(){
+                    if let Some((id, conf)) = data.downcast_ref::<(u64, EmitterConfig)>(){
+                        self.add(*id, conf.clone());
+                    }
+                }
+            },
+            EventType::UnregisterEmitterConf => {
+                if let Ok(data) = event.data.try_lock(){
+                    if let Some(id) = data.downcast_ref::<u64>(){
+                        self.remove(*id);
+                    }
+                }
+            },
+            EventType::DrawEmitter => {
+                if let Ok(data) = event.data.try_lock(){
+                    if let Some((id, pos)) = data.downcast_ref::<(u64, Vec2)>(){
+                        self.queue.entry(*id)
+                            .or_insert(*pos);
+                    }
+                }
+            },
+            _ => {
+                todo!()
             }
         }
     }

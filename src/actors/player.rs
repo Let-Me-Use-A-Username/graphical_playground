@@ -136,6 +136,10 @@ impl Player{
             self.publish(bullet_spawn).await;
         }
     }
+
+    pub async fn register_emitter(&self){
+        self.publish(Event::new((self.get_id(), self.get_emitter_conf().unwrap()), EventType::RegisterEmitterConf)).await;
+    }
 }
 
 //======= Player interfaces ========
@@ -200,6 +204,8 @@ impl Updatable for Player{
                 if can_fire{
                     self.fire().await;
                 }
+
+                self.publish(Event::new((self.get_id(), self.get_pos()), EventType::DrawEmitter)).await;
             },
             StateType::Hit => {
                 let mut hit_timer = self.immune_timer;
@@ -345,12 +351,7 @@ impl Emittable for Player{
     }
 
     fn get_emitter_params(&self) -> Option<Vec2> {
-        if let Ok(state) = self.machine.get_state().lock(){
-            if *state == StateType::Moving {
-                return Some(self.pos)
-            }
-        }
-        return None
+        todo!()
     }
 }
 

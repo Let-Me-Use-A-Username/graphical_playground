@@ -1,13 +1,13 @@
 ==============================================
 ================== Critical ==================
-- GPU
-    -Implement artist for Emitters (player)
-        -Consider that, many entities might have a few emitters to display different effects.
-        -Many configs perhaps and swap configs?
-            -So MetalArtist would have to keep a config file as well. <id, Conf>
+- Implement Metal Artist
+    - Implement removeConfig from Entity_Handler (similar to the grid)
+    - Implement a basic enemy death emittion to test.
 
+- Refine Artist draw method.
+    -Compare the two methods, if nothing works implement something different.
+    
 - Rework player Hit state. (Bounce doesn't occur)
-- Change MetalArtist to save/delete configs AND update emitters via update
 
 ==============================================
 ================== General todo ==============
@@ -16,10 +16,8 @@
 
 - Implement ErrorHandler 
 
-- Implement different kind of enemies.
+- Implement different kinds of enemies.
 
-- Refine Artist draw method.
-    -Compare the two methods, if nothing works implement something different.
 
 
 ==============================================

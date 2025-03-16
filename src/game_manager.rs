@@ -51,7 +51,7 @@ pub struct GameManager{
 
     dispatcher: Dispatcher,
     artist: Artist,
-    metal: MetalArtist,
+    metal: Arc<Mutex<MetalArtist>>,
 
     handler: Arc<Mutex<Handler>>,
     spawner: Arc<Mutex<SpawnManager>>,
@@ -101,6 +101,7 @@ impl GameManager{
                 YELLOW,
                 dispatcher.create_sender()
         )));
+        let metal = Arc::new(Mutex::new(MetalArtist::new()));
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -124,6 +125,11 @@ impl GameManager{
         dispatcher.register_listener(EventType::ForwardEnemiesToHandler, factory.clone());
         dispatcher.register_listener(EventType::FactoryResize, factory.clone());
 
+        //MetalArtist events
+        dispatcher.register_listener(EventType::RegisterEmitterConf, metal.clone());
+        dispatcher.register_listener(EventType::UnregisterEmitterConf, metal.clone());
+        dispatcher.register_listener(EventType::DrawEmitter, metal.clone());
+
         return GameManager { 
             state: GameState::Playing,
             channel: (sender, receiver),
@@ -135,7 +141,7 @@ impl GameManager{
 
             dispatcher: dispatcher,
             artist: Artist::new(),
-            metal: MetalArtist::new(),
+            metal: metal,
 
             handler: handler,
             spawner: spawner,
@@ -182,6 +188,11 @@ impl GameManager{
         let mut camera = Camera2D::default();
         camera.target = camera_pos;
         camera.zoom = vec2(zoom_level, zoom_level);
+
+        //Register players emitter
+        if let Ok(player) = self.player.try_lock(){
+            player.register_emitter().await;
+        }
         
         loop {
             tracy_client::frame_mark();
@@ -216,7 +227,6 @@ impl GameManager{
             let mut player_collider = None;
 
             let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
-            let mut emitter_calls: Vec<(u64, Vec2)> = Vec::new();
 
             {
                 let _span = tracy_client::span!("Player/Wall updates");
@@ -231,11 +241,6 @@ impl GameManager{
                     
                     draw_calls.extend(vec![(10, player.get_draw_call())]);
                     draw_calls.extend(wall_calls);
-
-                    if let Some(conf) = player.get_emitter_conf(){
-                        self.metal.add(player.get_id(), conf);
-                        emitter_calls.push((player.get_id(), player.get_pos()));
-                    }
                 }
             }
 
@@ -345,8 +350,10 @@ impl GameManager{
                 self.artist.queue_calls(draw_calls);
                 self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
+            }
 
-                self.metal.draw_emitters(emitter_calls);
+            if let Ok(mut emitter) = self.metal.try_lock(){
+                emitter.draw();
             }
             
             set_default_camera();

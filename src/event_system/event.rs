@@ -22,6 +22,10 @@ pub enum EventType{
     //Grid
     InsertOrUpdateToGrid,
     RemoveEntityFromGrid,
+    //MetalArtist
+    RegisterEmitterConf,
+    UnregisterEmitterConf,
+    DrawEmitter
 }
 
 #[derive(Clone, Debug)]
