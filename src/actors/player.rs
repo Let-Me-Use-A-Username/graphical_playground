@@ -2,11 +2,10 @@ use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
-use macroquad_particles::{BlendMode, Curve, EmitterConfig};
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Emittable, GameEntity, Projectile, Updatable}}, objects::bullet, renderer::artist::DrawCall, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Projectile, Updatable}}, objects::bullet, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
@@ -24,7 +23,6 @@ pub struct Player{
     color: Color,
     rotation: f32,
     //Components
-    emitter_conf: EmitterConfig,
     sender: Sender<Event>,
     machine: StateMachine,
     pub collider: RectCollider,
@@ -54,19 +52,6 @@ impl Player{
             size: size,
             color: color,
             rotation: 0.0,
-            emitter_conf: EmitterConfig {
-                lifetime: 2.0,
-                amount: 5,
-                initial_direction_spread: 0.0,
-                initial_velocity: -50.0,
-                size: 5.0,
-                size_curve: Some(Curve {
-                    points: vec![(0.0, 0.5), (0.5, 1.0), (1.0, 0.0)],
-                    ..Default::default()
-                }),
-                blend_mode: BlendMode::Additive,
-                ..Default::default()
-            },
             sender: sender.clone(),
             machine: StateMachine::new(),
             collider: RectCollider::new(x, y, size, size * 2.0),
@@ -135,10 +120,6 @@ impl Player{
 
             self.publish(bullet_spawn).await;
         }
-    }
-
-    pub async fn register_emitter(&self){
-        self.publish(Event::new((self.get_id(), self.get_emitter_conf().unwrap()), EventType::RegisterEmitterConf)).await;
     }
 }
 
@@ -343,15 +324,9 @@ impl Drawable for Player{
         
         return DrawCall::RotatedRectangle(rect.0, rect.1, rect.2, rect.3, rect.4)
     }
-}
 
-impl Emittable for Player{
-    fn get_emitter_conf(&self) -> Option<EmitterConfig> {
-        return Some(self.emitter_conf.clone())
-    }
-
-    fn get_emitter_params(&self) -> Option<Vec2> {
-        todo!()
+    fn should_emit(&self) -> bool{
+        return false;
     }
 }
 

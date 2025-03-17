@@ -112,6 +112,10 @@ impl Drawable for Bullet{
 
         return DrawCall::Triangle(tip, base_left, base_right, RED);
     }
+
+    fn should_emit(&self) -> bool{
+        return false;
+    }
 }
 
 #[async_trait]

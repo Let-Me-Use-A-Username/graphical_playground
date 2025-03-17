@@ -1,6 +1,14 @@
 # Changelog
 
 
+### 0.2.4 Changes 17/3/2025
+- v.0.2.4 Changed MetalArtist remove process for enemies.
+- v.0.2.4 Implemented actors with EmitionConfigs collection, that change emittion configs on state change. (Circle only atm)
+- v.0.2.4 Changed MetalArtist call collection to function instaed of event.
+- v.0.2.4 Implemented Configlibrary inside MetalArtist. Now entities simply request a config and then provide draw requests.
+- v.0.2.4 Implemented basic particle effect for enemy death.
+
+
 ### 0.2.4 Changes 16/3/2025
 - v.0.2.4 Reworked MetalArtist to work with events.
 

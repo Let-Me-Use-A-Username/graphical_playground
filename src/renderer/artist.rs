@@ -1,10 +1,10 @@
 use std::{any::Any, collections::{HashMap, VecDeque}};
 
 use async_trait::async_trait;
-use macroquad::{color::Color, math::Vec2, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
-use macroquad_particles::{Emitter, EmitterConfig};
+use macroquad::{color::Color, math::Vec2, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
+use macroquad_particles::{BlendMode, ColorCurve, Curve, Emitter, EmitterConfig};
 
-use crate::event_system::{event::{Event, EventType}, interface::Subscriber};
+use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::timer::SimpleTimer};
 
 type Layer = i32;
 
@@ -83,22 +83,12 @@ impl DrawCall{
 */
 pub struct Artist{
     queue: HashMap<Layer, HashMap<DrawType, Vec<DrawCall>>>,
-    // lines: VecDeque<DrawCall>,
-    // circles: VecDeque<DrawCall>,
-    // rectangles: VecDeque<DrawCall>,
-    // rot_rectangles: VecDeque<DrawCall>,
-    // triangles: VecDeque<DrawCall>
 }
 
 impl Artist{
     pub fn new() -> Artist{
         return Artist{
             queue: HashMap::new(),
-            // lines: VecDeque::new(),
-            // circles: VecDeque::new(),
-            // rectangles: VecDeque::new(),
-            // rot_rectangles: VecDeque::new(),
-            // triangles: VecDeque::new()
         }
     }
     #[inline(always)]
@@ -112,10 +102,13 @@ impl Artist{
     pub fn draw(&mut self){
         let mut layers: Vec<i32> = self.queue.keys().cloned().collect();
         layers.sort_by(|a, b| a.cmp(b));
-
-        //Review: Why does this provide increased performance...?
+        
+        //Review: Correct layer order?
+        //For draw type
         for draw_type in [DrawType::Rect, DrawType::Circle, DrawType::Line, DrawType::RotRect, DrawType::Triangle] {
+            //For layer
             for &layer in &layers {
+                //Draw
                 if let Some(layer_map) = self.queue.get(&layer) {
                     if let Some(calls) = layer_map.get(&draw_type) {
                         for call in calls {
@@ -125,57 +118,6 @@ impl Artist{
                 }
             }
         }
-        //For each draw layer
-        // for layer in layers{
-        //     //If an entry exists and has items
-        //     if let Some(entry) = self.queue.get(&layer){
-        //         //Extend the draw collection based on draw type
-        //         for (calltype, calls) in entry{
-        //             match calltype{
-        //                 DrawType::Line => self.lines.extend(calls.to_owned()),
-        //                 DrawType::Circle => self.circles.extend(calls.to_owned()),
-        //                 DrawType::Rect => self.rectangles.extend(calls.to_owned()),
-        //                 DrawType::RotRect => self.rot_rectangles.extend(calls.to_owned()),
-        //                 DrawType::Triangle => self.triangles.extend(calls.to_owned()),
-        //             }
-        //         }
-        //     }
-        //     //Once the layer has been broken down into collections, draw them all            
-        //     while let Some(line) = self.lines.pop_front(){
-        //         line.draw();
-        //     }
-
-        //     while let Some(circle) = self.circles.pop_front(){
-        //         circle.draw();
-        //     }
-
-        //     while let Some(rectangle) = self.rectangles.pop_front(){
-        //         rectangle.draw();
-        //     }
-    
-        //     while let Some(rot_rectangle) = self.rot_rectangles.pop_front(){
-        //         rot_rectangle.draw();
-        //     }
-    
-        //     while let Some(triangle) = self.triangles.pop_front(){
-        //         triangle.draw();
-        //     }
-    
-        //     let len = 
-        //         self.lines.len() + 
-        //         self.circles.len() + 
-        //         self.rectangles.len() + 
-        //         self.rot_rectangles.len() +
-        //         self.triangles.len();
-            
-        //     if len != 0{
-        //         self.lines.clear();
-        //         self.circles.clear();
-        //         self.rectangles.clear();
-        //         self.rot_rectangles.clear();
-        //         self.triangles.clear();
-        //     }
-        // }
         if self.queue.len() != 0{
             self.queue.clear();
         }
@@ -202,6 +144,7 @@ impl Artist{
 
     ///Add batch of different call types to each queue.
     /// Better approach for components that have complex draw calls like the grid.
+    #[inline(always)]
     pub fn queue_calls(&mut self, calls: Vec<(Layer, DrawCall)>){
         for (layer, call) in calls {
             let drawtype= call.get_type();
@@ -225,44 +168,158 @@ impl Artist{
     The queue is cleared at the end whether its elements emitted
     or not.
 */
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum ConfigType{
+    PlayerMove,
+    EnemyDeath,
+}
+impl ConfigType{
+    pub fn get_conf(&self) -> EmitterConfig{
+        match self{
+            ConfigType::PlayerMove => {
+                return EmitterConfig {
+                    lifetime: 2.0,
+                    amount: 5,
+                    initial_direction_spread: 0.0,
+                    initial_velocity: -50.0,
+                    size: 5.0,
+                    size_curve: Some(Curve {
+                        points: vec![(0.0, 0.5), (0.5, 1.0), (1.0, 0.0)],
+                        ..Default::default()
+                    }),
+                    blend_mode: BlendMode::Additive,
+                    ..Default::default()
+                }
+            },
+            ConfigType::EnemyDeath => {
+                return EmitterConfig {
+                    local_coords: false,
+                    one_shot: true,
+                    lifetime: 2.0,                 // Increased from 0.8
+                    lifetime_randomness: 0.2,      // Reduced randomness
+                    explosiveness: 1.0,            // Full explosiveness
+                    initial_direction_spread: 2.0 * std::f32::consts::PI,
+                    initial_velocity: 300.0,       // Increased from 200.0
+                    initial_velocity_randomness: 0.5, // Reduced for more consistent speed
+                    size: 10.0,                    // Increased from 4.0
+                    size_randomness: 0.3,          // Reduced randomness
+                    amount: 100,                   // Increased from 50
+                    colors_curve: ColorCurve {
+                        start: Color::from_rgba(255, 50, 50, 255),  // Brighter red
+                        mid: Color::from_rgba(255, 150, 50, 230),   // Orange-red
+                        end: Color::from_rgba(255, 200, 50, 100),   // Yellow-orange fade
+                    },
+                    ..Default::default()
+                }
+            },
+        }
+    }
+}
+
 pub struct MetalArtist{
     emitters: HashMap<u64, Emitter>,
-    configs: HashMap<u64, EmitterConfig>,
-    queue: HashMap<u64, Vec2>
+    configs: HashMap<u64, ConfigType>,
+    queue: VecDeque<(u64, Vec2)>,
+    remove_queue: HashMap<u64, SimpleTimer>
 }
 impl MetalArtist{
     pub fn new() -> MetalArtist{
         return MetalArtist {
             emitters: HashMap::new(),
             configs: HashMap::new(),
-            queue: HashMap::new()
+            queue: VecDeque::new(),
+            remove_queue: HashMap::new()
         }
     }
 
     ///Inserts (or overwrites) an entry. 
-    pub fn add(&mut self, id: u64, config: EmitterConfig){
-        self.configs.insert(id, config.clone());
-        self.emitters.insert(id, Emitter::new(config));
+    #[inline]
+    pub fn add(&mut self, id: u64, config: ConfigType){
+        match self.configs.get(&id){
+            Some(entry) => {
+                if *entry != config{
+                    self.configs.insert(id, config.clone());
+
+                    let emitter = Emitter::new(config.get_conf());
+                    self.emitters.insert(id, emitter);
+                }
+            },
+            None => {
+                self.configs.insert(id, config.clone());
+
+                let emitter = Emitter::new(config.get_conf());
+                self.emitters.insert(id, emitter);
+            }
+        }
     }
 
-    pub fn remove(&mut self, id: u64){
+    #[inline]
+    fn remove(&mut self, id: u64){
+        
+        println!("BEFORE==================================================");
+        println!("Queue size: {:?}", self.queue.len());
+        println!("configs size: {:?}", self.configs.len());
+        println!("emitters size: {:?}", self.emitters.len());
+        println!("remove_queue size: {:?}", self.remove_queue.len());
         self.configs.remove(&id);
         self.emitters.remove(&id);
+        self.remove_queue.remove(&id);
+        self.queue.retain(|(id, _)| id != id);
+        println!("AFTER==================================================");
+
+        println!("Queue size: {:?}", self.queue.len());
+        println!("configs size: {:?}", self.configs.len());
+        println!("emitters size: {:?}", self.emitters.len());
+        println!("remove_queue size: {:?}", self.remove_queue.len());
     }
 
     /*
         Metal artist draws only entities that have submitted a position to draw
         since the last frame. 
     */
+    #[inline(always)]
     pub fn draw(&mut self){
+        let now = get_time();
+
+        //FIXME: Elements not removed form QWueue
         self.queue.iter()
             .for_each(|(id, pos)| {
                 if let Some(emitter) = self.emitters.get_mut(&id){
                     emitter.draw(*pos);
-            }
+
+                    if self.configs.get(id).is_some_and(|conf| conf.eq(&ConfigType::EnemyDeath)){
+                        let duration = emitter.config.lifetime as f64 * 2.0;
+
+                        if !self.remove_queue.contains_key(&id){
+                            self.remove_queue.insert(*id, SimpleTimer::new(duration));
+                        }
+                    }
+                }
         });
 
-        self.queue.clear();
+        //Remove enemies who emites the EnemyDeath config by default.
+        let rqueue = self.remove_queue.clone();
+
+        for (id, mut timer) in rqueue{
+            if timer.expired(now){
+                self.remove(id);
+            }
+        }
+
+        //self.queue.clear();
+    }
+
+    pub fn insert_call(&mut self, id: u64, pos: Vec2){
+        self.queue.push_back((id, pos));
+    }
+
+    pub fn insert_batch_calls(&mut self, batch: Vec<(u64, Vec2)>){
+        batch.iter()
+            .for_each(|(id, pos)| {
+                if self.emitters.contains_key(&id){
+                    self.insert_call(*id, *pos);
+                }
+            });
     }
 }
 
@@ -272,7 +329,7 @@ impl Subscriber for MetalArtist{
         match event.event_type{
             EventType::RegisterEmitterConf => {
                 if let Ok(data) = event.data.try_lock(){
-                    if let Some((id, conf)) = data.downcast_ref::<(u64, EmitterConfig)>(){
+                    if let Some((id, conf)) = data.downcast_ref::<(u64, ConfigType)>(){
                         self.add(*id, conf.clone());
                     }
                 }
@@ -287,8 +344,7 @@ impl Subscriber for MetalArtist{
             EventType::DrawEmitter => {
                 if let Ok(data) = event.data.try_lock(){
                     if let Some((id, pos)) = data.downcast_ref::<(u64, Vec2)>(){
-                        self.queue.entry(*id)
-                            .or_insert(*pos);
+                        self.insert_call(*id, *pos);
                     }
                 }
             },

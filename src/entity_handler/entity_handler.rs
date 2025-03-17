@@ -65,6 +65,7 @@ impl Handler{
         futures::future::join_all(all_futures).await;
     }
 
+    
     async fn remove_expired_entities(&mut self){
         let enemies_remove = self.enemies
             .iter()
@@ -81,7 +82,7 @@ impl Handler{
         
         for id in enemies_remove{
             if let Some(_) = self.enemies.remove(&id){
-                self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await
+                self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
             }
             self.enemy_overides.remove(&id);
         }
@@ -117,6 +118,30 @@ impl Handler{
             });
         
         return draw_calls
+    }
+
+    //Retrive collections of entities that want to emit
+    #[inline(always)]
+    pub fn get_emitter_calls(&mut self) -> Vec<(u64, Vec2)>{
+        let mut calls = self.enemies.iter()
+            .filter(|(_, enemy)| {
+                enemy.should_emit()
+            })
+            .map(|(id, enemy)| {
+            (*id, enemy.get_pos())
+            })
+            .collect::<Vec<(u64, Vec2)>>();
+        
+        calls.extend(self.projectiles.iter()
+                .filter(|(_, proj)| {
+                    proj.should_emit()
+                })
+                .map(|(id, proj)| {
+                    (*id, proj.get_pos())
+                })
+                .collect::<Vec<(u64, Vec2)>>());
+
+        return calls
     }
 
     #[inline(always)]

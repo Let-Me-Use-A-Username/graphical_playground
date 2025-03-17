@@ -53,7 +53,7 @@ impl Timer{
 
 }
 
-
+#[derive(Clone, Copy)]
 pub struct SimpleTimer{
     start: f64,
     end: f64,

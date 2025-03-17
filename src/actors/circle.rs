@@ -1,11 +1,11 @@
-use std::sync::mpsc::Sender;
+use std::{collections::HashMap, sync::mpsc::Sender};
 
 use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::machine::{StateMachine, StateType}};   
+use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
 
 pub struct Circle{
     //Attributes
@@ -21,6 +21,9 @@ pub struct Circle{
     machine: StateMachine,
     //State specifics
     is_alive: bool,
+    //Emittion
+    current_config: Option<ConfigType>,
+    emittion_configs: HashMap<StateType, ConfigType>,
 }
 
 //========== Circle interfaces =========
@@ -44,7 +47,7 @@ impl Updatable for Circle{
             if let Ok(state) = self.machine.get_state().try_lock(){
                 match *state{
                     StateType::Idle => {
-                        self.machine.transition(StateType::Moving)
+                        self.machine.transition(StateType::Moving);
                     },
                     StateType::Moving => {
                         self.move_to(delta, overide);
@@ -53,6 +56,11 @@ impl Updatable for Circle{
                         self.set_alive(false);
                     },
                 }
+            }
+
+            if self.current_config.is_none(){
+                self.current_config = Some(ConfigType::EnemyDeath);
+                self.publish(Event::new((self.get_id(), ConfigType::EnemyDeath), EventType::RegisterEmitterConf)).await;
             }
 
             self.collider.update(self.pos);
@@ -93,6 +101,15 @@ impl Drawable for Circle{
     fn get_draw_call(&self) -> DrawCall {
         return DrawCall::Circle(self.pos.x, self.pos.y, self.size, self.color)
     }
+
+    fn should_emit(&self) -> bool{
+        if let Ok(state) = self.machine.get_state().try_lock(){
+            if state.eq(&StateType::Hit){
+                return true
+            }
+        }
+        return false
+    }
 }
 
 impl GameEntity for Circle{
@@ -117,6 +134,9 @@ impl GameEntity for Circle{
 #[async_trait]
 impl Enemy for Circle{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
+        let mut emittions = HashMap::new();
+        emittions.insert(StateType::Hit, ConfigType::EnemyDeath);
+
         return Circle {
             id: id,
             pos: pos, 
@@ -130,6 +150,9 @@ impl Enemy for Circle{
             machine: StateMachine::new(),
 
             is_alive: true,
+
+            current_config: None,
+            emittion_configs: emittions
         }
     }
 

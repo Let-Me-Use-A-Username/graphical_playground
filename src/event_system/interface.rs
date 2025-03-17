@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
 use macroquad_particles::EmitterConfig;
 
-use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::machine::StateType};
+use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::machine::StateType};
 
 //========= Event related interfaces ==========
 #[async_trait]
@@ -35,11 +35,7 @@ pub trait Moveable: Object{
 
 pub trait Drawable{
     fn get_draw_call(&self) -> DrawCall;
-}
-
-pub trait Emittable{
-    fn get_emitter_conf(&self) -> Option<EmitterConfig>;
-    fn get_emitter_params(&self) -> Option<Vec2>;
+    fn should_emit(&self) -> bool;
 }
 
 #[async_trait]
@@ -49,6 +45,7 @@ pub trait GameEntity: Updatable + Drawable{
     fn collides(&self, other: &dyn Collider) -> bool;
     fn get_collider(&self) -> Box<&dyn Collider>;
 }
+
 
 #[async_trait]
 pub trait Enemy: GameEntity{

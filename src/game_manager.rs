@@ -12,7 +12,7 @@ use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
 use crate::entity_handler::spawn_manager::SpawnManager;
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Drawable, Emittable, Enemy, GameEntity, Object, Updatable};
+use crate::event_system::interface::{Drawable, Enemy, GameEntity, Object, Updatable};
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
@@ -189,11 +189,6 @@ impl GameManager{
         camera.target = camera_pos;
         camera.zoom = vec2(zoom_level, zoom_level);
 
-        //Register players emitter
-        if let Ok(player) = self.player.try_lock(){
-            player.register_emitter().await;
-        }
-        
         loop {
             tracy_client::frame_mark();
             let _span = tracy_client::span!("Game Loop");
@@ -227,6 +222,7 @@ impl GameManager{
             let mut player_collider = None;
 
             let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
+            let mut emitter_calls: Vec<(u64, Vec2)> = Vec::new();
 
             {
                 let _span = tracy_client::span!("Player/Wall updates");
@@ -238,9 +234,10 @@ impl GameManager{
                     let wall_calls = self.wall.get_draw_calls(viewport);
                     
                     player_collider = Some(player.collider.clone());
-                    
+                    //Queue player on highest layer
                     draw_calls.extend(vec![(10, player.get_draw_call())]);
                     draw_calls.extend(wall_calls);
+                    emitter_calls.push((player.get_id(), player.get_pos()));
                 }
             }
 
@@ -248,7 +245,9 @@ impl GameManager{
                 {
                     let _span = tracy_client::span!("Handler updating");
                     handler.update(delta, player_pos).await;
+                    
                     draw_calls.extend(handler.get_draw_calls(viewport));
+                    emitter_calls.extend(handler.get_emitter_calls());
                 }
 
                 if let Ok(mut spawner) = self.spawner.try_lock(){
@@ -353,11 +352,12 @@ impl GameManager{
             }
 
             if let Ok(mut emitter) = self.metal.try_lock(){
+                emitter.insert_batch_calls(emitter_calls);
                 emitter.draw();
             }
             
             set_default_camera();
-
+            
             next_frame().await
         }
     }

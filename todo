@@ -1,13 +1,15 @@
 ==============================================
 ================== Critical ==================
 - Implement Metal Artist
-    - Implement removeConfig from Entity_Handler (similar to the grid)
-    - Implement a basic enemy death emittion to test.
+    - Emitters are cut short before emitting whole animation.
+    - Suspition is that cues are not cleared properly inside MetalArtist.
 
 - Refine Artist draw method.
     -Compare the two methods, if nothing works implement something different.
     
 - Rework player Hit state. (Bounce doesn't occur)
+
+- Decrease players deceleration. It doesn't mimick a cars.
 
 ==============================================
 ================== General todo ==============
