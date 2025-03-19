@@ -237,7 +237,6 @@ impl GameManager{
                     //Queue player on highest layer
                     draw_calls.extend(vec![(10, player.get_draw_call())]);
                     draw_calls.extend(wall_calls);
-                    emitter_calls.push((player.get_id(), player.get_pos()));
                 }
             }
 

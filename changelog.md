@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.4 Changes 19/3/2025
+- v.0.2.4 Implemented Emitter-State for player. (Only for Movement)
+- v.0.2.4 Minor changed to Artist. Rework is in order.
+
+
+### 0.2.4 Changes 18/3/2025
+- v.0.2.4 Fixed MetalArtist. References were not removed, and emitters weren't correct. Seems to be functional.
+
 
 ### 0.2.4 Changes 17/3/2025
 - v.0.2.4 Changed MetalArtist remove process for enemies.

@@ -1,12 +1,11 @@
 ==============================================
 ================== Critical ==================
-- Implement Metal Artist
-    - Emitters are cut short before emitting whole animation.
-    - Suspition is that cues are not cleared properly inside MetalArtist.
+- Reimplement MetalArtist to handle permanent and one-shot emitter differently.
+    -One shot render based on a timer
+    -Continius emitter emit as long as a request is present (?)
 
-- Refine Artist draw method.
-    -Compare the two methods, if nothing works implement something different.
-    
+- Find better way to register Emitters 
+
 - Rework player Hit state. (Bounce doesn't occur)
 
 - Decrease players deceleration. It doesn't mimick a cars.
@@ -15,12 +14,11 @@
 ================== General todo ==============
 - Verify following work correctly.
     - Bullet pool refill (Once the bullets stopped firing)
+    - Factories enemies are spawning in player vision again, make queue smaller.
 
 - Implement ErrorHandler 
 
 - Implement different kinds of enemies.
-
-
 
 ==============================================
 ================== Gameplay ==================

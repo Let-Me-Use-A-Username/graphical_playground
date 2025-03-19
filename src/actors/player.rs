@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use std::sync::{atomic::AtomicU64, mpsc::Sender};
+use std::{collections::HashMap, sync::{atomic::AtomicU64, mpsc::Sender}};
 
 use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Projectile, Updatable}}, objects::bullet, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
@@ -33,7 +33,10 @@ pub struct Player{
     left_fire: bool,
     attack_speed: SimpleTimer,
     bullet_pool: BulletPool,
-    bullet_timer: SimpleTimer
+    bullet_timer: SimpleTimer,
+    //Emitter specifics
+    current_config: Option<ConfigType>,
+    emittion_configs: HashMap<StateType, ConfigType>,
 }
 
 impl Player{
@@ -41,6 +44,9 @@ impl Player{
     const POOL_REFILL: f64 = 7.5;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
+        let mut emittions = HashMap::new();
+        emittions.insert(StateType::Moving, ConfigType::PlayerMove);
+
         return Player { 
             id: 0,
             pos: Vec2::new(x, y),
@@ -60,7 +66,9 @@ impl Player{
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
             bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
-            bullet_timer: SimpleTimer::blank()
+            bullet_timer: SimpleTimer::blank(),
+            current_config: None,
+            emittion_configs: emittions
         }
     }
 
@@ -163,6 +171,11 @@ impl Updatable for Player{
 
         let can_fire = is_mouse_button_down(MouseButton::Left) & can_attack;
 
+        if self.current_config.is_none(){
+            self.current_config = Some(ConfigType::PlayerMove);
+            self.publish(Event::new((self.get_id(), ConfigType::PlayerMove), EventType::RegisterEmitterConf)).await;
+        }
+
         match current_state{
             StateType::Idle => {
                 //If input, go to Move state
@@ -185,8 +198,10 @@ impl Updatable for Player{
                 if can_fire{
                     self.fire().await;
                 }
-
-                self.publish(Event::new((self.get_id(), self.get_pos()), EventType::DrawEmitter)).await;
+                
+                if self.velocity.length() > 5.0 {
+                    self.publish(Event::new((self.get_id(), self.get_pos()), EventType::DrawEmitter)).await;
+                }
             },
             StateType::Hit => {
                 let mut hit_timer = self.immune_timer;
@@ -358,13 +373,13 @@ impl Subscriber for Player {
 
                 let entry = event.data.try_lock().unwrap();
 
-                //Hit by normal enemy
+                //Hit by normal enemy.Setting timer to duration sent.
                 if let Some(now) = entry.downcast_ref::<f64>(){
                     if self.immune_timer.can_be_set(*now){
                         self.immune_timer.set(*now, 1.5, Some(10.0));
                     }
                 }
-                //Restrict by Wall
+                //Restrict by Wall.
                 else if let Some(wall_hit) = entry.downcast_ref::<bool>(){
                     if *wall_hit{
                         if self.immune_timer.can_be_set(current_time){

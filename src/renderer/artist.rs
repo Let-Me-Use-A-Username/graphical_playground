@@ -195,15 +195,16 @@ impl ConfigType{
                 return EmitterConfig {
                     local_coords: false,
                     one_shot: true,
-                    lifetime: 2.0,                 // Increased from 0.8
-                    lifetime_randomness: 0.2,      // Reduced randomness
-                    explosiveness: 1.0,            // Full explosiveness
+                    emitting: false,
+                    lifetime: 2.0,           
+                    lifetime_randomness: 0.2,
+                    explosiveness: 1.0,      
                     initial_direction_spread: 2.0 * std::f32::consts::PI,
-                    initial_velocity: 300.0,       // Increased from 200.0
-                    initial_velocity_randomness: 0.5, // Reduced for more consistent speed
-                    size: 10.0,                    // Increased from 4.0
-                    size_randomness: 0.3,          // Reduced randomness
-                    amount: 100,                   // Increased from 50
+                    initial_velocity: 300.0,   
+                    initial_velocity_randomness: 0.5,
+                    size: 10.0,              
+                    size_randomness: 0.3,    
+                    amount: 100,            
                     colors_curve: ColorCurve {
                         start: Color::from_rgba(255, 50, 50, 255),  // Brighter red
                         mid: Color::from_rgba(255, 150, 50, 230),   // Orange-red
@@ -255,22 +256,10 @@ impl MetalArtist{
 
     #[inline]
     fn remove(&mut self, id: u64){
-        
-        println!("BEFORE==================================================");
-        println!("Queue size: {:?}", self.queue.len());
-        println!("configs size: {:?}", self.configs.len());
-        println!("emitters size: {:?}", self.emitters.len());
-        println!("remove_queue size: {:?}", self.remove_queue.len());
         self.configs.remove(&id);
         self.emitters.remove(&id);
         self.remove_queue.remove(&id);
-        self.queue.retain(|(id, _)| id != id);
-        println!("AFTER==================================================");
-
-        println!("Queue size: {:?}", self.queue.len());
-        println!("configs size: {:?}", self.configs.len());
-        println!("emitters size: {:?}", self.emitters.len());
-        println!("remove_queue size: {:?}", self.remove_queue.len());
+        self.queue.retain(|(queue_id, _)| *queue_id != id);
     }
 
     /*
@@ -278,40 +267,58 @@ impl MetalArtist{
         since the last frame. 
     */
     #[inline(always)]
-    pub fn draw(&mut self){
+    pub fn draw(&mut self) {
         let now = get_time();
-
-        //FIXME: Elements not removed form QWueue
-        self.queue.iter()
-            .for_each(|(id, pos)| {
-                if let Some(emitter) = self.emitters.get_mut(&id){
-                    emitter.draw(*pos);
-
-                    if self.configs.get(id).is_some_and(|conf| conf.eq(&ConfigType::EnemyDeath)){
-                        let duration = emitter.config.lifetime as f64 * 2.0;
-
-                        if !self.remove_queue.contains_key(&id){
-                            self.remove_queue.insert(*id, SimpleTimer::new(duration));
+    
+        // Draw all queued emitters
+        for (id, pos) in &self.queue {
+            if let Some(emitter) = self.emitters.get_mut(id) {
+                println!("Rendering: {:?}", id);
+                emitter.draw(*pos);
+                
+                if let Some(conf_type) = self.configs.get(id) {
+                    match conf_type {
+                        ConfigType::EnemyDeath => {
+                            if !self.remove_queue.contains_key(id) {
+                                let duration = emitter.config.lifetime as f64 * 2.0;
+                                self.remove_queue.insert(*id, SimpleTimer::new(duration));
+                            }
+                            else{
+                                if let Some(timer) = self.remove_queue.get_mut(id){
+                                    if !timer.expired(now){
+                                        emitter.draw(*pos);
+                                    }
+                                }
+                            }
+                        },
+                        ConfigType::PlayerMove => {
                         }
                     }
                 }
-        });
-
-        //Remove enemies who emites the EnemyDeath config by default.
-        let rqueue = self.remove_queue.clone();
-
-        for (id, mut timer) in rqueue{
-            if timer.expired(now){
-                self.remove(id);
             }
         }
-
-        //self.queue.clear();
+    
+        // Append expired emitters
+        let mut to_remove = Vec::new();
+        for (id, timer) in &mut self.remove_queue {
+            if timer.expired(now) {
+                to_remove.push(*id);
+            }
+        }
+        
+        // Remove expired emitters
+        for id in to_remove {
+            self.remove(id);
+        }
+        
+        self.queue.clear();
     }
+
 
     pub fn insert_call(&mut self, id: u64, pos: Vec2){
         self.queue.push_back((id, pos));
     }
+
 
     pub fn insert_batch_calls(&mut self, batch: Vec<(u64, Vec2)>){
         batch.iter()
