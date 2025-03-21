@@ -20,6 +20,7 @@ use crate::grid_system::wall::Wall;
 use crate::objects::bullet::ProjectileType;
 use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
 use crate::utils::globals::Global;
+use crate::utils::machine::StateType;
 use crate::utils::timer::Timer;
 
 #[derive(Debug, Clone)]
@@ -222,7 +223,7 @@ impl GameManager{
             let mut player_collider = None;
 
             let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
-            let mut emitter_calls: Vec<(u64, Vec2)> = Vec::new();
+            let mut emitter_calls: Vec<(u64, StateType, Vec2)> = Vec::new();
 
             {
                 let _span = tracy_client::span!("Player/Wall updates");
@@ -351,7 +352,7 @@ impl GameManager{
             }
 
             if let Ok(mut emitter) = self.metal.try_lock(){
-                emitter.insert_batch_calls(emitter_calls);
+                emitter.add_batch_request(emitter_calls);
                 emitter.draw();
             }
             

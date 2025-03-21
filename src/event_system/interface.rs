@@ -2,7 +2,6 @@ use std::{any::Any, sync::mpsc::Sender};
 
 use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
-use macroquad_particles::EmitterConfig;
 
 use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::machine::StateType};
 
@@ -53,6 +52,7 @@ pub trait Enemy: GameEntity{
     fn is_alive(&self) -> bool;
     fn set_alive(&mut self, alive: bool);
     fn force_state(&mut self, state: StateType);
+    fn get_state(&self) -> Option<StateType>;
 }
 
 #[async_trait]

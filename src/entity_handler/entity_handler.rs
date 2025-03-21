@@ -122,24 +122,24 @@ impl Handler{
 
     //Retrive collections of entities that want to emit
     #[inline(always)]
-    pub fn get_emitter_calls(&mut self) -> Vec<(u64, Vec2)>{
+    pub fn get_emitter_calls(&mut self) -> Vec<(u64, StateType, Vec2)>{
         let mut calls = self.enemies.iter()
             .filter(|(_, enemy)| {
                 enemy.should_emit()
             })
             .map(|(id, enemy)| {
-            (*id, enemy.get_pos())
+            (*id, enemy.get_state().unwrap_or(StateType::Hit) , enemy.get_pos())
             })
-            .collect::<Vec<(u64, Vec2)>>();
+            .collect::<Vec<(u64, StateType, Vec2)>>();
         
-        calls.extend(self.projectiles.iter()
-                .filter(|(_, proj)| {
-                    proj.should_emit()
-                })
-                .map(|(id, proj)| {
-                    (*id, proj.get_pos())
-                })
-                .collect::<Vec<(u64, Vec2)>>());
+        // calls.extend(self.projectiles.iter()
+        //         .filter(|(_, proj)| {
+        //             proj.should_emit()
+        //         })
+        //         .map(|(id, proj)| {
+        //             (*id, proj.get_pos())
+        //         })
+        //         .collect::<Vec<(u64, Vec2)>>());
 
         return calls
     }

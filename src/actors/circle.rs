@@ -23,7 +23,7 @@ pub struct Circle{
     is_alive: bool,
     //Emittion
     current_config: Option<ConfigType>,
-    emittion_configs: HashMap<StateType, ConfigType>,
+    emittion_configs: Vec<(StateType, ConfigType)>,
 }
 
 //========== Circle interfaces =========
@@ -60,7 +60,7 @@ impl Updatable for Circle{
 
             if self.current_config.is_none(){
                 self.current_config = Some(ConfigType::EnemyDeath);
-                self.publish(Event::new((self.get_id(), ConfigType::EnemyDeath), EventType::RegisterEmitterConf)).await;
+                self.publish(Event::new((self.get_id(), self.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
             }
 
             self.collider.update(self.pos);
@@ -134,9 +134,6 @@ impl GameEntity for Circle{
 #[async_trait]
 impl Enemy for Circle{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
-        let mut emittions = HashMap::new();
-        emittions.insert(StateType::Hit, ConfigType::EnemyDeath);
-
         return Circle {
             id: id,
             pos: pos, 
@@ -152,7 +149,7 @@ impl Enemy for Circle{
             is_alive: true,
 
             current_config: None,
-            emittion_configs: emittions
+            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)]
         }
     }
 
@@ -166,6 +163,13 @@ impl Enemy for Circle{
 
     fn force_state(&mut self, state: StateType){
         self.machine.transition(state);
+    }
+
+    fn get_state(&self) -> Option<StateType>{
+        if let Ok(entry) = self.machine.get_state().try_lock(){
+            return Some(*entry)
+        }
+        return None
     }
 
 }

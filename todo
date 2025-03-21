@@ -1,10 +1,14 @@
 ==============================================
 ================== Critical ==================
 - Reimplement MetalArtist to handle permanent and one-shot emitter differently.
-    -One shot render based on a timer
-    -Continius emitter emit as long as a request is present (?)
+    -Continius emitter emit as long as a request is present
+        -They are removed on event
+    - Emission break at random points
 
-- Find better way to register Emitters 
+- Player COllider isnt accurate ( off on x and y )
+
+- Implement additional States..?
+    - MoveFire for player.. ?
 
 - Rework player Hit state. (Bounce doesn't occur)
 

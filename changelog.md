@@ -1,5 +1,8 @@
 # Changelog
 
+### 0.2.4 Changes 21/3/2025
+- v.0.2.4 Reworked MetalArtist to handle one shot and permanent emitters differently.
+
 ### 0.2.4 Changes 19/3/2025
 - v.0.2.4 Implemented Emitter-State for player. (Only for Movement)
 - v.0.2.4 Minor changed to Artist. Rework is in order.

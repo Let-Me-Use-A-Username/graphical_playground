@@ -36,7 +36,7 @@ pub struct Player{
     bullet_timer: SimpleTimer,
     //Emitter specifics
     current_config: Option<ConfigType>,
-    emittion_configs: HashMap<StateType, ConfigType>,
+    emittion_configs: Vec<(StateType, ConfigType)>,
 }
 
 impl Player{
@@ -44,9 +44,6 @@ impl Player{
     const POOL_REFILL: f64 = 7.5;
 
     pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
-        let mut emittions = HashMap::new();
-        emittions.insert(StateType::Moving, ConfigType::PlayerMove);
-
         return Player { 
             id: 0,
             pos: Vec2::new(x, y),
@@ -68,7 +65,7 @@ impl Player{
             bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank(),
             current_config: None,
-            emittion_configs: emittions
+            emittion_configs: vec![(StateType::Moving, ConfigType::PlayerMove)]
         }
     }
 
@@ -173,7 +170,7 @@ impl Updatable for Player{
 
         if self.current_config.is_none(){
             self.current_config = Some(ConfigType::PlayerMove);
-            self.publish(Event::new((self.get_id(), ConfigType::PlayerMove), EventType::RegisterEmitterConf)).await;
+            self.publish(Event::new((self.get_id(), self.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
         }
 
         match current_state{
@@ -200,7 +197,7 @@ impl Updatable for Player{
                 }
                 
                 if self.velocity.length() > 5.0 {
-                    self.publish(Event::new((self.get_id(), self.get_pos()), EventType::DrawEmitter)).await;
+                    self.publish(Event::new((self.get_id(), StateType::Moving, self.get_pos()), EventType::DrawEmitter)).await;
                 }
             },
             StateType::Hit => {

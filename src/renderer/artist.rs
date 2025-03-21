@@ -1,10 +1,10 @@
-use std::{any::Any, collections::{HashMap, VecDeque}};
+use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
 use macroquad_particles::{BlendMode, ColorCurve, Curve, Emitter, EmitterConfig};
 
-use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::timer::SimpleTimer};
+use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::{machine::StateType, timer::SimpleTimer}};
 
 type Layer = i32;
 
@@ -195,7 +195,6 @@ impl ConfigType{
                 return EmitterConfig {
                     local_coords: false,
                     one_shot: true,
-                    emitting: false,
                     lifetime: 2.0,           
                     lifetime_randomness: 0.2,
                     explosiveness: 1.0,      
@@ -217,116 +216,132 @@ impl ConfigType{
     }
 }
 
+type Identifier = (u64, StateType);
+
+
 pub struct MetalArtist{
-    emitters: HashMap<u64, Emitter>,
-    configs: HashMap<u64, ConfigType>,
-    queue: VecDeque<(u64, Vec2)>,
-    remove_queue: HashMap<u64, SimpleTimer>
+    //Review: Id-State pair isn't unique in table.
+    //Entry tables
+    table: HashMap<Identifier, bool>,
+    one_shot: HashMap<Identifier, Emitter>,
+    permanent: HashMap<Identifier, Emitter>,
+    //Queues
+    request_queue: VecDeque<(u64, StateType, Vec2)>,
+    remove_queue: VecDeque<(Identifier, SimpleTimer, Vec2)>
 }
 impl MetalArtist{
     pub fn new() -> MetalArtist{
-        return MetalArtist {
-            emitters: HashMap::new(),
-            configs: HashMap::new(),
-            queue: VecDeque::new(),
-            remove_queue: HashMap::new()
-        }
-    }
-
-    ///Inserts (or overwrites) an entry. 
-    #[inline]
-    pub fn add(&mut self, id: u64, config: ConfigType){
-        match self.configs.get(&id){
-            Some(entry) => {
-                if *entry != config{
-                    self.configs.insert(id, config.clone());
-
-                    let emitter = Emitter::new(config.get_conf());
-                    self.emitters.insert(id, emitter);
-                }
-            },
-            None => {
-                self.configs.insert(id, config.clone());
-
-                let emitter = Emitter::new(config.get_conf());
-                self.emitters.insert(id, emitter);
-            }
+        return MetalArtist { 
+            table: HashMap::new(), 
+            one_shot: HashMap::new(), 
+            permanent: HashMap::new(), 
+            request_queue: VecDeque::new(), 
+            remove_queue: VecDeque::new(),
         }
     }
 
     #[inline]
-    fn remove(&mut self, id: u64){
-        self.configs.remove(&id);
-        self.emitters.remove(&id);
-        self.remove_queue.remove(&id);
-        self.queue.retain(|(queue_id, _)| *queue_id != id);
-    }
-
-    /*
-        Metal artist draws only entities that have submitted a position to draw
-        since the last frame. 
-    */
-    #[inline(always)]
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self){
         let now = get_time();
-    
-        // Draw all queued emitters
-        for (id, pos) in &self.queue {
-            if let Some(emitter) = self.emitters.get_mut(id) {
-                println!("Rendering: {:?}", id);
-                emitter.draw(*pos);
-                
-                if let Some(conf_type) = self.configs.get(id) {
-                    match conf_type {
-                        ConfigType::EnemyDeath => {
-                            if !self.remove_queue.contains_key(id) {
-                                let duration = emitter.config.lifetime as f64 * 2.0;
-                                self.remove_queue.insert(*id, SimpleTimer::new(duration));
-                            }
-                            else{
-                                if let Some(timer) = self.remove_queue.get_mut(id){
-                                    if !timer.expired(now){
-                                        emitter.draw(*pos);
-                                    }
-                                }
-                            }
-                        },
-                        ConfigType::PlayerMove => {
+
+        let mut drop_queue = Vec::new();
+
+        //Iterate remove queue first in order to not double draw 
+        self.remove_queue
+            .iter_mut()
+            .for_each(|(id, timer, pos)| {
+                //If timer hasn't expired, draw it
+                if timer.expired(now){
+                    drop_queue.push(id.clone());
+                }
+                if let Some(emitter) = self.one_shot.get_mut(&id){
+                    emitter.draw(*pos);
+                }
+        });
+
+        //Drop all entries from everywhere
+        while let Some(rid) = drop_queue.pop(){
+            let id = rid;
+            self.drop(id);
+        }
+
+        //Normal queue logic
+        while let Some(request) = self.request_queue.pop_front(){
+            let id = request.0;
+            let state = request.1;
+            let pos = request.2;
+            let identifier: Identifier = (id, state);
+
+            //Main draw method
+            if let Some(one_shot) = self.table.get(&identifier){
+                match one_shot{
+                    true => {
+                        //If one_shot emitter, draw and add to remove queue
+                        if let Some(emitter) = self.one_shot.get_mut(&identifier){
+                            emitter.draw(pos);
+                            
+                            let duration = emitter.config.lifetime * 3.0;
+                            self.remove_queue.push_back((identifier, SimpleTimer::new(duration.into()), pos));
                         }
-                    }
+                    },
+                    //If permanent just draw
+                    false => {
+                        if let Some(emitter) = self.permanent.get_mut(&identifier){
+                            emitter.draw(pos);
+                        }
+                    },
                 }
             }
         }
-    
-        // Append expired emitters
-        let mut to_remove = Vec::new();
-        for (id, timer) in &mut self.remove_queue {
-            if timer.expired(now) {
-                to_remove.push(*id);
+
+        self.request_queue.clear();
+    }
+
+    //Drop identifier from everywhere
+    #[inline(always)]
+    fn drop(&mut self, id: Identifier){
+        self.table.remove(&id);
+        self.one_shot.remove(&id);
+        self.permanent.remove(&id);
+        self.remove_queue.retain(|(rid, mut timer, _)| {
+            *rid != id && timer.expired(get_time())
+        });
+    }
+
+    #[inline(always)]
+    fn add_emitter(&mut self, id: Identifier, conf: ConfigType){
+        //If entry doesn't exists
+        if self.table.get(&id).is_none(){
+            match conf.get_conf().one_shot{
+                true => {
+                    self.table.insert( id, true);
+
+                    self.one_shot.entry(id)
+                        .or_insert(Emitter::new(conf.get_conf()));
+                },
+                false => {
+                    self.table.insert( id, false);
+
+                    self.permanent.entry(id)
+                        .or_insert(Emitter::new(conf.get_conf()));
+                },
             }
         }
-        
-        // Remove expired emitters
-        for id in to_remove {
-            self.remove(id);
+        else{
+            eprintln!("Inserting `Identifier: {:?}` when entry exists already.", id);
         }
-        
-        self.queue.clear();
     }
 
-
-    pub fn insert_call(&mut self, id: u64, pos: Vec2){
-        self.queue.push_back((id, pos));
+    #[inline(always)]
+    fn add_request(&mut self, id: u64, state: StateType, pos: Vec2){
+        self.request_queue.push_back((id, state, pos));
     }
 
-
-    pub fn insert_batch_calls(&mut self, batch: Vec<(u64, Vec2)>){
-        batch.iter()
-            .for_each(|(id, pos)| {
-                if self.emitters.contains_key(&id){
-                    self.insert_call(*id, *pos);
-                }
-            });
+    #[inline(always)]
+    pub fn add_batch_request(&mut self, req: Vec<(u64, StateType, Vec2)>){
+        for (id, state, pos) in req{
+            self.add_request(id, state, pos);
+        }
     }
 }
 
@@ -336,22 +351,23 @@ impl Subscriber for MetalArtist{
         match event.event_type{
             EventType::RegisterEmitterConf => {
                 if let Ok(data) = event.data.try_lock(){
-                    if let Some((id, conf)) = data.downcast_ref::<(u64, ConfigType)>(){
-                        self.add(*id, conf.clone());
+                    if let Some((id, vec)) = data.downcast_ref::<(u64, Vec<(StateType, ConfigType)>)>(){
+                        vec.iter().for_each(|(state, conf)| self.add_emitter((*id, *state), conf.clone()));
                     }
                 }
             },
+            //Review: This is now only needed to remove permanent Emitters.
             EventType::UnregisterEmitterConf => {
                 if let Ok(data) = event.data.try_lock(){
-                    if let Some(id) = data.downcast_ref::<u64>(){
-                        self.remove(*id);
+                    if let Some(id) = data.downcast_ref::<(u64, StateType)>(){
+                        self.drop(*id);
                     }
                 }
             },
             EventType::DrawEmitter => {
                 if let Ok(data) = event.data.try_lock(){
-                    if let Some((id, pos)) = data.downcast_ref::<(u64, Vec2)>(){
-                        self.insert_call(*id, *pos);
+                    if let Some((id, state, pos)) = data.downcast_ref::<(u64, StateType, Vec2)>(){
+                        self.add_request(*id, *state, *pos);
                     }
                 }
             },
