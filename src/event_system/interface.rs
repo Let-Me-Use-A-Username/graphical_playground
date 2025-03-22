@@ -3,7 +3,7 @@ use std::{any::Any, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
 
-use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::machine::StateType};
+use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::machine::StateType};
 
 //========= Event related interfaces ==========
 #[async_trait]

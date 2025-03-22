@@ -1,9 +1,9 @@
-use std::{collections::{HashMap, HashSet, VecDeque}, sync::mpsc::Sender};
+use std::{collections::{HashMap, HashSet}, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::{color::{DARKGRAY, ORANGE}, math::{Rect, Vec2}, shapes::{draw_line, draw_rectangle}};
+use macroquad::{color::{DARKGRAY, ORANGE}, math::{Rect, Vec2}};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Drawable, Publisher, Subscriber}}, renderer::artist::DrawCall};
+use crate::{event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, renderer::artist::DrawCall};
 
 type EntityId = u64;
 type CellPos = (i32, i32);

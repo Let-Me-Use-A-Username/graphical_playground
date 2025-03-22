@@ -157,16 +157,19 @@ impl Artist{
 
 /* 
     MetalArist is also a Batch rendering component, however
-    its task is to control Emitters and EmitterConfigs.
+    its task is to handle Emitters. MetalArtist registers a
+    emitter when an entity presents a pair of State-Config.
 
-    MetalArtist holds configs and emitters seperately. When a 
-    register event occurs the last config/emitter is dropped
-    and the new one is inserted.
+    This implmenetation is used for entities that have different 
+    emission based on their state.
 
-    MetalArtist holds a queue for emitting requests. If 
-    an entity doesn't provide an event its emitter isn't drawn.
-    The queue is cleared at the end whether its elements emitted
-    or not.
+    MetalArtist draws emitters upon request, and has a 
+    different handling if they are a one shot emitter or not.
+
+    One shot emitters are removed after they fired, and their 
+    timer expires. In order to draw the full effect.
+
+    Permanent emittes are removed upon request from an entity.
 */
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ConfigType{
@@ -218,7 +221,6 @@ impl ConfigType{
 
 type Identifier = (u64, StateType);
 
-
 pub struct MetalArtist{
     //Review: Id-State pair isn't unique in table.
     //Entry tables
@@ -243,7 +245,6 @@ impl MetalArtist{
     #[inline]
     pub fn draw(&mut self){
         let now = get_time();
-
         let mut drop_queue = Vec::new();
 
         //Iterate remove queue first in order to not double draw 
@@ -304,7 +305,7 @@ impl MetalArtist{
         self.one_shot.remove(&id);
         self.permanent.remove(&id);
         self.remove_queue.retain(|(rid, mut timer, _)| {
-            *rid != id && timer.expired(get_time())
+            !(*rid == id && timer.expired(get_time()))
         });
     }
 
@@ -326,9 +327,6 @@ impl MetalArtist{
                         .or_insert(Emitter::new(conf.get_conf()));
                 },
             }
-        }
-        else{
-            eprintln!("Inserting `Identifier: {:?}` when entry exists already.", id);
         }
     }
 

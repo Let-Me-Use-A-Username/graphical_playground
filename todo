@@ -1,24 +1,27 @@
 ==============================================
 ================== Critical ==================
-- Reimplement MetalArtist to handle permanent and one-shot emitter differently.
-    -Continius emitter emit as long as a request is present
-        -They are removed on event
-    - Emission break at random points
+- Player Test
+    -Test handbrake mechanic(Check forward and lateral friction)
+        -Faster or slower? (if faster revert to old frictions, else increase them)
+        -Turns too much or too little?
+    -Test Players base turn rate (rotation when not drifting)
+    -Not inputting movement losses velocity too fast
 
-- Player COllider isnt accurate ( off on x and y )
 
+- Implement MetalArtist.
+    -Reset permanent emitters when idle for long 
+        -Implement new collection with stopwatch and count?
+        -Emit event from entity to reset with config?
+    -Projectile entities cant use MetalArtist because they don't have a state
+==============================================
+================== General todo ==============
 - Implement additional States..?
     - MoveFire for player.. ?
 
-- Rework player Hit state. (Bounce doesn't occur)
-
-- Decrease players deceleration. It doesn't mimick a cars.
-
-==============================================
-================== General todo ==============
 - Verify following work correctly.
     - Bullet pool refill (Once the bullets stopped firing)
     - Factories enemies are spawning in player vision again, make queue smaller.
+        - Let resizing happen on queue_size increase, since more entities will be drawn, the viewport offset will be less
 
 - Implement ErrorHandler 
 
@@ -27,7 +30,6 @@
 ==============================================
 ================== Gameplay ==================
 - Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
-- Refine handbrake
 - Implement boost
 
 

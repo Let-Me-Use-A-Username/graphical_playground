@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{color::RED, math::{Rect, Vec2}, shapes::draw_line};
+use macroquad::{color::RED, math::{Rect, Vec2}};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Publisher}, renderer::artist::DrawCall};
 

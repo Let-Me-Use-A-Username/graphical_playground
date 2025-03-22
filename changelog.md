@@ -1,7 +1,19 @@
 # Changelog
 
+### 0.2.5 Changes 22/3/2025
+- v.0.2.5 Changed faulty removal check in MetalArtist. This fixed the premature removal of one shot emitters.
+- v.0.2.5 Added a slight offset to players RectCollider, to overlap with sprite drawn.
+- v.0.2.5 Fixed CollitionDetector bug that triggered playerHit twice.
+- v.0.2.5 Changed players moving logic to account for forward and lateral friction.
+- v.0.2.5 Reworked player drifting mechanic.
+- v.0.2.5 Changed player to have 0 acceleration after being hit. This fixed the issue with players velocity burst after being hit.
+- v.0.2.5 Removed some outdated imports and code.
+- v.0.2.5 Fixed problem with RectCollider not detecting one corner.
+
+
 ### 0.2.4 Changes 21/3/2025
 - v.0.2.4 Reworked MetalArtist to handle one shot and permanent emitters differently.
+
 
 ### 0.2.4 Changes 19/3/2025
 - v.0.2.4 Implemented Emitter-State for player. (Only for Movement)

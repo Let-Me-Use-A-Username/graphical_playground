@@ -5,7 +5,7 @@ use macroquad::time::get_time;
 
 use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher}};
 
-use super::collider::{Collider, RectCollider};
+use super::collider::RectCollider;
 
 
 pub struct CollisionDetector{

@@ -12,7 +12,7 @@ use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
 use crate::entity_handler::spawn_manager::SpawnManager;
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Drawable, Enemy, GameEntity, Object, Updatable};
+use crate::event_system::interface::{Drawable, Enemy, Object, Updatable};
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
@@ -274,9 +274,10 @@ impl GameManager{
                         //Retrieve enemies based on Ids
                         let nearby_entities: Vec<Option<&Box<dyn Enemy>>> = nearby_entities_ids
                             .iter()
-                            .map(|id| handler.get_enemy(id))
+                            .filter_map(|id| {
+                                Some(handler.get_enemy(id).filter(|enemy| enemy.is_alive()))
+                            })
                             .collect();
-                        
                         //Update collision detector
                         if let Some(collider) = player_collider{
                             self.detector.detect_player_collision(collider, nearby_entities).await;

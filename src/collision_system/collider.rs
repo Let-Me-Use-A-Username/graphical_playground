@@ -1,4 +1,4 @@
-use macroquad::{math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
+use macroquad::math::Vec2;
 
 ///Each entity is either assigned a circle or rectangular collider.
 pub trait Collider{
@@ -112,7 +112,7 @@ impl RectCollider{
         let mut index = 0;
         while let Some((relative_x, relative_y)) = relative_corners.get(index){
             let rotation_x = relative_x * cos_r - relative_y * sin_r;
-            let rotation_y = relative_x * cos_r + relative_y * sin_r;
+            let rotation_y = relative_x * sin_r + relative_y * cos_r;
 
             rotated_corners[index] = (center_x + rotation_x, center_y + rotation_y);
             index += 1;

@@ -123,7 +123,7 @@ impl Handler{
     //Retrive collections of entities that want to emit
     #[inline(always)]
     pub fn get_emitter_calls(&mut self) -> Vec<(u64, StateType, Vec2)>{
-        let mut calls = self.enemies.iter()
+        let calls = self.enemies.iter()
             .filter(|(_, enemy)| {
                 enemy.should_emit()
             })

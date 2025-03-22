@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{color::{BLUE, PURPLE, RED, YELLOW}, math::Vec2, shapes::{draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time};
+use macroquad::{color::RED, math::Vec2, time::get_time};
 
 use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::timer::{SimpleTimer, Timer}};
 use crate::collision_system::collider::Collider;
@@ -89,7 +89,7 @@ impl Object for Bullet{
 
 impl Moveable for Bullet{
     #[inline(always)]
-    fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32) {
+    fn move_to(&mut self, delta: f32, _overide: Option<Vec2>) -> (f32, f32) {
         self.pos += self.direction * self.speed * delta;
 
         return (self.pos.x, self.pos.y)
@@ -120,7 +120,7 @@ impl Drawable for Bullet{
 
 #[async_trait]
 impl Updatable for Bullet{
-    async fn update(&mut self, delta: f32, params: Vec<Box<dyn std::any::Any + Send>>) {
+    async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_active{
             if !self.timer.expired(get_time()) {
                 self.move_to(delta, None);
