@@ -4,6 +4,11 @@
 - v.0.2.5 Fixed bullet pool refill. Was caused by wrong function `get_pool_size` return len and not capacity.
 - v.0.2.5 Bullets now have a state machine too. Entity Handler changes the state rather than the `is_active`.
 - v.0.2.5 Bullets are able to register Emitters now (since it has a state) but won't have one at the moment.
+- v.0.2.5 Changed Players call to MetalArtist to be function-like (like the rest of the entities)
+- v.0.2.5 Implemented basic player hit emission (to test multi-config hanlding in MetalArtist).It works.
+- v.0.2.5 Implemented Playable trait to mimic other trait types pattern (Enemy, Projectile).
+- v.0.2.5 Implemented different colours for player and grid, as well as different configs for emitters 
+- v.0.2.5 Changed Players bullet transform
 
 
 ### 0.2.5 Changes 22/3/2025

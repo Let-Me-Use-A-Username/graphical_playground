@@ -1,7 +1,7 @@
 use std::{collections::{HashMap, HashSet}, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::{color::{DARKGRAY, ORANGE}, math::{Rect, Vec2}};
+use macroquad::{color::{Color, DARKGRAY, ORANGE}, math::{Rect, Vec2}};
 
 use crate::{event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, renderer::artist::DrawCall};
 
@@ -263,7 +263,7 @@ impl Grid{
             viewport.y, 
             viewport.w, 
             viewport.h, 
-            ORANGE)));
+            Color::from_rgba(227, 228, 225, 255))));
         
         // Calculate visible cell range
         let start_x = (viewport.x / self.cell_size as f32).floor() as i32;

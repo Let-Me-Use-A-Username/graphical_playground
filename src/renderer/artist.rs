@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
 use macroquad::{color::{Color, ORANGE, RED, YELLOW}, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
-use macroquad_particles::{BlendMode, ColorCurve, Curve, Emitter, EmitterConfig, ParticleShape};
+use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, Emitter, EmitterConfig, ParticleShape};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::{machine::StateType, timer::SimpleTimer}};
 
@@ -182,38 +182,44 @@ impl ConfigType{
         match self{
             ConfigType::PlayerHit => {
                 return EmitterConfig{
-                    lifetime: 1.5,
-                    explosiveness: 0.7,
-                    amount: 50,
-                    initial_direction: vec2(0.0, -1.0),
-                    initial_direction_spread: std::f32::consts::PI * 2.0,
-                    initial_velocity: 50.0,
-                    initial_velocity_randomness: 0.5,
-                    size: 2.0, 
-                    size_randomness: 0.1,
+                    one_shot: false,
+                    lifetime: 0.3,
+                    lifetime_randomness: 0.7,
+                    explosiveness: 0.95,
+                    amount: 30,
+                    initial_direction_spread: 2.0 * std::f32::consts::PI,
+                    initial_velocity: 200.0,
+                    size: 3.0,
+                    gravity: vec2(0.0, -1000.0),
+                    atlas: Some(AtlasConfig::new(4, 4, 8..)),
                     blend_mode: BlendMode::Additive,
-                    colors_curve: ColorCurve {
-                        start: RED,
-                        mid: YELLOW,
-                        end: ORANGE,
-                    },
-                    gravity: vec2(0.0, 2.0),
-                    local_coords: false, 
                     ..Default::default()
                 }
             }
             ConfigType::PlayerMove => {
                 return EmitterConfig {
-                    lifetime: 2.0,
-                    amount: 5,
-                    initial_direction_spread: 0.0,
-                    initial_velocity: -50.0,
-                    size: 5.0,
+                    local_coords: false,
+                    lifetime: 1.1,
+                    explosiveness: 0.1,
+                    one_shot: false,
+                    amount: 75,
+                    initial_direction: vec2(0.0, -1.0),
+                    initial_direction_spread: std::f32::consts::PI * 2.0,
+                    initial_velocity: 100.0,
+                    initial_velocity_randomness: 0.0,
+                    size: 5.0, 
+                    size_randomness: 0.5,
+                    blend_mode: BlendMode::Alpha,
                     size_curve: Some(Curve {
                         points: vec![(0.0, 0.5), (0.5, 1.0), (1.0, 0.0)],
                         ..Default::default()
                     }),
-                    blend_mode: BlendMode::Additive,
+                    colors_curve: ColorCurve {
+                        start: Color::from_rgba(255, 200, 0, 255),
+                        mid: Color::from_rgba(255, 100, 50, 255),
+                        end: Color::from_rgba(255, 0, 0, 255),
+                    },
+                    gravity: vec2(0.0, 2.0),
                     ..Default::default()
                 }
             },
@@ -233,7 +239,7 @@ impl ConfigType{
                     colors_curve: ColorCurve {
                         start: Color::from_rgba(255, 50, 50, 255),  // Brighter red
                         mid: Color::from_rgba(255, 150, 50, 230),   // Orange-red
-                        end: Color::from_rgba(255, 200, 50, 100),   // Yellow-orange fade
+                        end: Color::from_rgba(227, 228, 225, 255),  // Icewhite
                     },
                     ..Default::default()
                 }
@@ -385,6 +391,7 @@ impl Subscriber for MetalArtist{
                     }
                 }
             },
+            //Review: Not used anymore, all calls for emission are received via functions inside `game_manager`
             EventType::DrawEmitter => {
                 if let Ok(data) = event.data.try_lock(){
                     if let Some((id, state, pos)) = data.downcast_ref::<(u64, StateType, Vec2)>(){

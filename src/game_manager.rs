@@ -12,7 +12,7 @@ use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
 use crate::entity_handler::spawn_manager::SpawnManager;
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Drawable, Enemy, Object, Updatable};
+use crate::event_system::interface::{Drawable, Enemy, GameEntity, Object, Playable, Updatable};
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
@@ -99,7 +99,7 @@ impl GameManager{
                 map_bounds / 2.0,
                 map_bounds / 2.0,
                 15.0,
-                YELLOW,
+                BLACK,
                 dispatcher.create_sender()
         )));
         let metal = Arc::new(Mutex::new(MetalArtist::new()));
@@ -238,6 +238,17 @@ impl GameManager{
                     //Queue player on highest layer
                     draw_calls.extend(vec![(10, player.get_draw_call())]);
                     draw_calls.extend(wall_calls);
+
+                    if player.should_emit(){
+                        let effect_pos;
+                        let state = player.get_state().unwrap_or(StateType::Idle);
+                        
+                        match state{
+                            StateType::Idle | StateType::Hit => effect_pos = player.get_pos(),
+                            StateType::Moving => effect_pos = player.get_back_position(),
+                        }
+                        emitter_calls.push((player.get_id(), state, effect_pos));
+                    }
                 }
             }
 

@@ -120,7 +120,14 @@ impl Handler{
         return draw_calls
     }
 
-    //Retrive collections of entities that want to emit
+    
+    /* 
+        All entities that are handled by the handler (inlcuding the player) must first
+        return a `should_emit()` true, before their emitter called is valid.
+
+        Even if a valid emitter call is presented, if the entity doesn't have a corresponding 
+        emitter for said State, it won't do anything, and the call will be dropped by the MetalArtist.
+    */
     #[inline(always)]
     pub fn get_emitter_calls(&mut self) -> Vec<(u64, StateType, Vec2)>{
         let mut calls = self.enemies.iter()
@@ -128,7 +135,7 @@ impl Handler{
                 enemy.should_emit()
             })
             .map(|(id, enemy)| {
-            (*id, enemy.get_state().unwrap_or(StateType::Hit) , enemy.get_pos())
+            (*id, enemy.get_state().unwrap_or(StateType::Idle) , enemy.get_pos())
             })
             .collect::<Vec<(u64, StateType, Vec2)>>();
         
@@ -137,7 +144,7 @@ impl Handler{
                     proj.should_emit()
                 })
                 .map(|(id, proj)| {
-                    (*id, proj.get_state().unwrap_or(StateType::Moving), proj.get_pos())
+                    (*id, proj.get_state().unwrap_or(StateType::Idle), proj.get_pos())
                 })
                 .collect::<Vec<(u64, StateType, Vec2)>>());
 

@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Projectile, Updatable}}, objects::bullet, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::bullet, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
@@ -120,14 +120,20 @@ impl Player{
                 pos,
                 3000.0,
                 front_vector,
-                3.0,
-                10.0,
+                2.0,
+                17.0,
             );
             
             let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
 
             self.publish(bullet_spawn).await;
         }
+    }
+
+    pub fn get_back_position(&self) -> Vec2 {
+        let front_vector = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
+        let back_vector = -front_vector;
+        self.pos + back_vector * self.size
     }
 }
 
@@ -159,7 +165,7 @@ impl Updatable for Player{
 
         let can_attack: bool = {
             if !self.attack_speed.is_set(){
-                self.attack_speed.set(now, 0.001); // Lower time is more attacks
+                self.attack_speed.set(now, 0.05); // Lower time is more attacks
             }
 
             if self.attack_speed.expired(now){
@@ -199,18 +205,13 @@ impl Updatable for Player{
                 if can_fire{
                     self.fire().await;
                 }
-                
-                if self.velocity.length() > 5.0 {
-                    self.publish(Event::new((self.get_id(), StateType::Moving, self.get_pos()), EventType::DrawEmitter)).await;
-                }
             },
             StateType::Hit => {
-                let mut hit_timer = self.immune_timer;
                 //Reset timer for Hit state
-                if let Some(exp) = hit_timer.has_expired(get_time()){
+                if let Some(exp) = self.immune_timer.has_expired(get_time()){
                     match exp{
                         true => {
-                            hit_timer.reset();
+                            self.immune_timer.reset();
                             self.acceleration = 1.0;
                             self.machine.transition(StateType::Moving);
                         },
@@ -234,8 +235,6 @@ impl Updatable for Player{
                     self.direction = self.velocity.normalize();
                     self.pos += self.velocity * delta;
                 }
-                //FIXME: Not working properply
-                self.publish(Event::new((self.get_id(), StateType::Hit, self.get_pos()), EventType::DrawEmitter)).await;
             },
         };
     }
@@ -316,6 +315,10 @@ impl Moveable for Player{
             if self.acceleration > 1.0 {
                 self.acceleration *= 0.85;
             }
+            
+            if self.velocity.length() < 10.0 {
+                self.velocity = Vec2::ZERO;
+            }
         }
         
         // Handle physics (drifting or normal)
@@ -323,14 +326,13 @@ impl Moveable for Player{
         let mut forward_component = forward * forward_speed;
         let mut lateral_component = self.velocity - forward_component;
         
-        // Different friction rates based on drifting status
+        // Different friction based on drifting or not
         let (forward_friction, lateral_friction) = if is_drifting && self.velocity.length() > 10.0 {
             // Drifting: Less forward friction, much less lateral friction
-            //(0.1, 0.6)  //Originally: 0.05 , 0.03
-            (0.3, 0.6)
+            (0.2, 0.8) // Changed from 0.3, 0.6
         } else {
             // Normal: More forward friction, very high lateral friction
-            (0.2, 0.85)
+            (0.6, 0.8)
         };
         
         // Apply friction
@@ -374,6 +376,11 @@ impl Drawable for Player{
     }
 
     fn should_emit(&self) -> bool{
+        if let Ok(state) = self.machine.get_state().lock(){
+            if *state != StateType::Idle{
+                return true
+            }
+        }
         return false;
     }
 }
@@ -393,6 +400,15 @@ impl GameEntity for Player{
 
     fn get_collider(&self) -> Box<&dyn Collider>  {
         return Box::new(&self.collider)
+    }
+}
+
+impl Playable for Player{
+    fn get_state(&self) -> Option<StateType>  {
+        if let Ok(state) = self.machine.get_state().try_lock(){
+            return Some(*state)
+        }
+        return None
     }
 }
 

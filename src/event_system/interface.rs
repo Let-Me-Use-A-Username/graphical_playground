@@ -45,6 +45,11 @@ pub trait GameEntity: Updatable + Drawable{
     fn get_collider(&self) -> Box<&dyn Collider>;
 }
 
+#[async_trait]
+pub trait Playable: GameEntity{
+     fn get_state(&self) ->Option<StateType>;
+}
+
 
 #[async_trait]
 pub trait Enemy: GameEntity{

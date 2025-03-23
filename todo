@@ -1,5 +1,8 @@
 ==============================================
 ================== Critical ==================
+- Change Entities(Enemies, Proj, Player) to pass out their current_config instead
+of their state (when collecting emitter calls)
+
 - Implement MetalArtist.
     -Reset permanent emitters when idle for long 
         -Implement new collection with stopwatch and count?
