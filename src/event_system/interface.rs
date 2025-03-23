@@ -60,4 +60,6 @@ pub trait Projectile: GameEntity{
     fn get_ptype(&self) -> ProjectileType;
     fn is_active(&self) -> bool;
     fn set_active(&mut self, alive: bool);
+    fn force_state(&mut self, state: StateType);
+    fn get_state(&self) -> Option<StateType>;
 }

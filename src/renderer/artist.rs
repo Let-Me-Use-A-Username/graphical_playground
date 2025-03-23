@@ -1,8 +1,8 @@
 use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
-use macroquad::{color::Color, math::Vec2, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
-use macroquad_particles::{BlendMode, ColorCurve, Curve, Emitter, EmitterConfig};
+use macroquad::{color::{Color, ORANGE, RED, YELLOW}, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
+use macroquad_particles::{BlendMode, ColorCurve, Curve, Emitter, EmitterConfig, ParticleShape};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::{machine::StateType, timer::SimpleTimer}};
 
@@ -173,12 +173,35 @@ impl Artist{
 */
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ConfigType{
+    PlayerHit,
     PlayerMove,
     EnemyDeath,
 }
 impl ConfigType{
     pub fn get_conf(&self) -> EmitterConfig{
         match self{
+            ConfigType::PlayerHit => {
+                return EmitterConfig{
+                    lifetime: 1.5,
+                    explosiveness: 0.7,
+                    amount: 50,
+                    initial_direction: vec2(0.0, -1.0),
+                    initial_direction_spread: std::f32::consts::PI * 2.0,
+                    initial_velocity: 50.0,
+                    initial_velocity_randomness: 0.5,
+                    size: 2.0, 
+                    size_randomness: 0.1,
+                    blend_mode: BlendMode::Additive,
+                    colors_curve: ColorCurve {
+                        start: RED,
+                        mid: YELLOW,
+                        end: ORANGE,
+                    },
+                    gravity: vec2(0.0, 2.0),
+                    local_coords: false, 
+                    ..Default::default()
+                }
+            }
             ConfigType::PlayerMove => {
                 return EmitterConfig {
                     lifetime: 2.0,

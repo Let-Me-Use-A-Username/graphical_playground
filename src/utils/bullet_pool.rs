@@ -52,6 +52,6 @@ impl BulletPool{
     }
 
     pub fn get_pool_size(&self) -> usize{
-        return self.available.len()
+        return self.available.capacity()
     }
 }

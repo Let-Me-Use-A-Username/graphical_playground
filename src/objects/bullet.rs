@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use async_trait::async_trait;
 use macroquad::{color::RED, math::Vec2, time::get_time};
 
-use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::timer::{SimpleTimer, Timer}};
+use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::{machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::collision_system::collider::Collider;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -25,6 +25,7 @@ pub struct Bullet{
     timer: SimpleTimer,
     collider: RectCollider,
     sender: Sender<Event>,
+    machine: StateMachine
 }
 impl Bullet{
     pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>, ptype: ProjectileType) -> Self{
@@ -38,7 +39,8 @@ impl Bullet{
             collider: RectCollider::new(pos.x, pos.y, size, size),
             sender: sender,
             is_active: true,
-            origin: ptype
+            origin: ptype,
+            machine: StateMachine::new()
         };
     }
 
@@ -53,7 +55,8 @@ impl Bullet{
             collider: RectCollider::new(0.0, 0.0, 0.0, 0.0),
             sender,
             is_active: false,
-            origin: ptype
+            origin: ptype,
+            machine: StateMachine::new()
         }   
     }
 
@@ -98,6 +101,7 @@ impl Moveable for Bullet{
 
 impl Drawable for Bullet{
     #[inline(always)]
+    //Review: If bullet is implemented for other entities, swap the get_draw_call function based on the origin type.
     fn get_draw_call(&self) -> DrawCall {
         let dir = self.direction;
 
@@ -114,19 +118,33 @@ impl Drawable for Bullet{
     }
 
     fn should_emit(&self) -> bool{
-        return false;
+        return false
     }
 }
 
+/* 
+    If bullet timer expires, OR bullets state is set to Hit, the bullet is set to inactive and is
+    dropped by the entity handler.
+*/
 #[async_trait]
 impl Updatable for Bullet{
     async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_active{
             if !self.timer.expired(get_time()) {
-                self.move_to(delta, None);
+                
+                if let Ok(state) = self.machine.get_state().try_lock(){
+                    match *state{
+                        StateType::Idle => self.machine.transition(StateType::Moving),
+                        StateType::Moving => {
+                            self.move_to(delta, None);
 
-                self.collider.update(self.pos);
-                self.collider.set_rotation(self.direction.y.atan2(self.direction.x));
+                            self.collider.update(self.pos);
+                            self.collider.set_rotation(self.direction.y.atan2(self.direction.x));            
+                        },
+                        //drop bullet
+                        StateType::Hit => self.is_active = false,
+                    }
+                }
 
                 self.publish(Event::new((self.id, EntityType::Projectile, self.pos), EventType::InsertOrUpdateToGrid)).await
             }
@@ -169,6 +187,17 @@ impl Projectile for Bullet{
     
     fn set_active(&mut self, alive:bool) {
         self.is_active = alive
+    }
+    
+    fn get_state(&self) -> Option<StateType>  {
+        if let Ok(entry) = self.machine.get_state().try_lock(){
+            return Some(*entry)
+        }
+        return None
+    }
+    
+    fn force_state(&mut self,state:StateType) {
+        self.machine.transition(state);
     }
 }
 

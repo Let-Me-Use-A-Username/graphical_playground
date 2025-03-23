@@ -65,7 +65,10 @@ impl Player{
             bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank(),
             current_config: None,
-            emittion_configs: vec![(StateType::Moving, ConfigType::PlayerMove)]
+            emittion_configs: vec![
+                (StateType::Moving, ConfigType::PlayerMove),
+                (StateType::Hit, ConfigType::PlayerHit)
+            ]
         }
     }
 
@@ -230,7 +233,9 @@ impl Updatable for Player{
                     }
                     self.direction = self.velocity.normalize();
                     self.pos += self.velocity * delta;
-                }                
+                }
+                //FIXME: Not working properply
+                self.publish(Event::new((self.get_id(), StateType::Hit, self.get_pos()), EventType::DrawEmitter)).await;
             },
         };
     }

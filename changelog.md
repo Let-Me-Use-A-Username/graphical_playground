@@ -1,5 +1,11 @@
 # Changelog
 
+### 0.2.5 Changes 23/3/2025
+- v.0.2.5 Fixed bullet pool refill. Was caused by wrong function `get_pool_size` return len and not capacity.
+- v.0.2.5 Bullets now have a state machine too. Entity Handler changes the state rather than the `is_active`.
+- v.0.2.5 Bullets are able to register Emitters now (since it has a state) but won't have one at the moment.
+
+
 ### 0.2.5 Changes 22/3/2025
 - v.0.2.5 Changed faulty removal check in MetalArtist. This fixed the premature removal of one shot emitters.
 - v.0.2.5 Added a slight offset to players RectCollider, to overlap with sprite drawn.

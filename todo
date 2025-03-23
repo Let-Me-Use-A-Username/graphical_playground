@@ -1,29 +1,24 @@
 ==============================================
 ================== Critical ==================
-- Player Test
-    -Test handbrake mechanic(Check forward and lateral friction)
-        -Faster or slower? (if faster revert to old frictions, else increase them)
-        -Turns too much or too little?
-    -Test Players base turn rate (rotation when not drifting)
-    -Not inputting movement losses velocity too fast
-
-
 - Implement MetalArtist.
     -Reset permanent emitters when idle for long 
         -Implement new collection with stopwatch and count?
         -Emit event from entity to reset with config?
-    -Projectile entities cant use MetalArtist because they don't have a state
+        
 ==============================================
 ================== General todo ==============
 - Implement additional States..?
     - MoveFire for player.. ?
 
 - Verify following work correctly.
-    - Bullet pool refill (Once the bullets stopped firing)
     - Factories enemies are spawning in player vision again, make queue smaller.
         - Let resizing happen on queue_size increase, since more entities will be drawn, the viewport offset will be less
+        - Assign position before sending enemy to handler?
+        - Change how factory queues enemies?
 
-- Implement ErrorHandler 
+- Implement ErrorHandler
+    -Change component function to return Results 
+        -Log these results if error occurs
 
 - Implement different kinds of enemies.
 
@@ -31,6 +26,18 @@
 ================== Gameplay ==================
 - Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
 - Implement boost
+
+- Player Test
+    -Test handbrake mechanic(Check forward and lateral friction)
+        -Faster or slower? (if faster revert to old frictions, else increase them)
+        -Turns too much or too little?
+    -Test Players base turn rate (rotation when not drifting)
+    -Not inputting movement losses velocity too fast
+-Test Results
+    - Max speed too much
+    - Max acceleration too much
+    - Normal turn is too much
+    - Firing too quickly
 
 
 ==============================================
