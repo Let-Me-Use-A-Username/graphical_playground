@@ -55,6 +55,7 @@ impl Updatable for Circle{
                     StateType::Hit => {
                         self.set_alive(false);
                     },
+                    _ => (), //Unreachable
                 }
             }
 

@@ -1,18 +1,18 @@
 ==============================================
 ================== Critical ==================
-- Change Entities(Enemies, Proj, Player) to pass out their current_config instead
-of their state (when collecting emitter calls)
 
-- Implement MetalArtist.
-    -Reset permanent emitters when idle for long 
-        -Implement new collection with stopwatch and count?
-        -Emit event from entity to reset with config?
-        
+- MetalArtist has a memory leak
+    - Remake it from scratch.
+- Also losing memory from somewhere else, about 1MB per sec
+
+- Consider chaning Entities(Enemies, Proj, Player) to pass out their current_config instead
+    of their state (when collecting emitter calls)
+        - This allows more control of what emission to hand out.
+        - Breaks the _simple_ logic of State-Emitter transmition 
+
+
 ==============================================
 ================== General todo ==============
-- Implement additional States..?
-    - MoveFire for player.. ?
-
 - Verify following work correctly.
     - Factories enemies are spawning in player vision again, make queue smaller.
         - Let resizing happen on queue_size increase, since more entities will be drawn, the viewport offset will be less
@@ -36,6 +36,7 @@ of their state (when collecting emitter calls)
         -Turns too much or too little?
     -Test Players base turn rate (rotation when not drifting)
     -Not inputting movement losses velocity too fast
+    -Bullet collider might not be overlapping sprite
 -Test Results
     - Max speed too much
     - Max acceleration too much

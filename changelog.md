@@ -1,5 +1,11 @@
 # Changelog
 
+### 0.2.5 Changes 24/3/2025
+- v.0.2.5 Implemented Drifting state for player, in order to simplify players moving state.
+- v.0.2.5 Added emitter for players Drifting state.
+- v.0.2.5 MetalArtist now **resets permanent emitters** that didn't emit for a single frame.
+
+
 ### 0.2.5 Changes 23/3/2025
 - v.0.2.5 Fixed bullet pool refill. Was caused by wrong function `get_pool_size` return len and not capacity.
 - v.0.2.5 Bullets now have a state machine too. Entity Handler changes the state rather than the `is_active`.

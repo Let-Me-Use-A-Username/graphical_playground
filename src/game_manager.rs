@@ -181,7 +181,7 @@ impl GameManager{
         let mut camera_pos = player_pos;
 
         // Zoom variables
-        let mut zoom_level = 0.002;
+        let mut zoom_level = 0.0008;
         let zoom_speed = 0.000001; 
         let min_zoom = 0.0005;
         let max_zoom = 0.004;
@@ -245,7 +245,7 @@ impl GameManager{
                         
                         match state{
                             StateType::Idle | StateType::Hit => effect_pos = player.get_pos(),
-                            StateType::Moving => effect_pos = player.get_back_position(),
+                            StateType::Moving | StateType::Drifting => effect_pos = player.get_back_position(),
                         }
                         emitter_calls.push((player.get_id(), state, effect_pos));
                     }
@@ -356,16 +356,19 @@ impl GameManager{
     
             // ======== RENDERING ========
             {
-                let _span = tracy_client::span!("Rendering");
+                let _span = tracy_client::span!("Artist Rendering");
                 
                 self.artist.queue_calls(draw_calls);
                 self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
             }
-
-            if let Ok(mut emitter) = self.metal.try_lock(){
-                emitter.add_batch_request(emitter_calls);
-                emitter.draw();
+            {
+                let _span = tracy_client::span!("MetalArtist Rendering");
+            
+                if let Ok(mut emitter) = self.metal.try_lock(){
+                    emitter.add_batch_request(emitter_calls);
+                    emitter.draw();
+                }
             }
             
             set_default_camera();

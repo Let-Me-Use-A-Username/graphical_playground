@@ -130,7 +130,7 @@ impl Drawable for Bullet{
 impl Updatable for Bullet{
     async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_active{
-            if !self.timer.expired(get_time()) {
+            if !self.timer.expired(get_time()) {    
                 
                 if let Ok(state) = self.machine.get_state().try_lock(){
                     match *state{
@@ -139,10 +139,11 @@ impl Updatable for Bullet{
                             self.move_to(delta, None);
 
                             self.collider.update(self.pos);
-                            self.collider.set_rotation(self.direction.y.atan2(self.direction.x));            
+                            self.collider.set_rotation(self.direction.y.atan2(self.direction.x));
                         },
                         //drop bullet
                         StateType::Hit => self.is_active = false,
+                        _ => (), //Unreachable
                     }
                 }
 

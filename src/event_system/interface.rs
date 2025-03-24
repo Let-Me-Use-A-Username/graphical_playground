@@ -47,8 +47,11 @@ pub trait GameEntity: Updatable + Drawable{
 
 #[async_trait]
 pub trait Playable: GameEntity{
-     fn get_state(&self) ->Option<StateType>;
+    fn get_state(&self) ->Option<StateType>;
+    fn drift_to(&mut self, delta: f32) -> (f32, f32);     
 }
+
+
 
 
 #[async_trait]

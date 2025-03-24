@@ -66,6 +66,7 @@ impl Player{
             bullet_timer: SimpleTimer::blank(),
             current_config: None,
             emittion_configs: vec![
+                (StateType::Drifting, ConfigType::PlayerDrifting),
                 (StateType::Moving, ConfigType::PlayerMove),
                 (StateType::Hit, ConfigType::PlayerHit)
             ]
@@ -121,7 +122,7 @@ impl Player{
                 3000.0,
                 front_vector,
                 2.0,
-                17.0,
+                11.0,
             );
             
             let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
@@ -183,6 +184,8 @@ impl Updatable for Player{
             self.publish(Event::new((self.get_id(), self.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
         }
 
+        let is_drifting = is_key_down(KeyCode::Space);
+
         match current_state{
             StateType::Idle => {
                 //If input, go to Move state
@@ -204,6 +207,10 @@ impl Updatable for Player{
                 
                 if can_fire{
                     self.fire().await;
+                }
+
+                if is_drifting{
+                    self.machine.transition(StateType::Drifting);
                 }
             },
             StateType::Hit => {
@@ -236,6 +243,17 @@ impl Updatable for Player{
                     self.pos += self.velocity * delta;
                 }
             },
+        StateType::Drifting => {
+            self.drift_to(delta);
+
+            if can_fire{
+                self.fire().await;
+            }
+
+            if !is_key_down(KeyCode::Space) && self.velocity.length() > 10.0{
+                self.machine.transition(StateType::Moving);
+            }
+        }
         };
     }
 }
@@ -255,24 +273,14 @@ impl Object for Player{
     }
 }
 
-impl Moveable for Player{
+impl Moveable for Player {
     #[inline(always)]
-    fn move_to(&mut self, delta: f32, _overide: Option<Vec2>) -> (f32, f32) {
-        // Forward vector based on rotation 
+    fn move_to(&mut self, delta: f32, _override: Option<Vec2>) -> (f32, f32) {
+        // This version now handles only non-drifting logic.
         let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
         
-        // Handle rotation
-        let mut rotation_speed = Self::ROTATION_SPEED;
-        let is_drifting = is_key_down(KeyCode::Space);
-        
-        if is_drifting {
-            rotation_speed *= 3.0; // Rotation multiplier, affects drifting rotation
-        }
-        else{
-            rotation_speed *= 1.35   //Review: This affects rotation when *NOT* drifting, test it
-        }
-        
-        // Only apply steering when car has momentum above a threshold
+        // Handle rotation with normal multiplier.
+        let rotation_speed = Self::ROTATION_SPEED * 1.35;
         if self.velocity.length() > 5.0 {
             if is_key_down(KeyCode::D) {
                 self.rotation += rotation_speed * delta;
@@ -282,10 +290,8 @@ impl Moveable for Player{
             }
         }
         
-        // Reset direction vector before capture
+        // Reset and update direction.
         self.direction = Vec2::ZERO;
-        
-        // forward/backward movement
         if is_key_down(KeyCode::W) {
             self.direction += forward;
         }
@@ -293,64 +299,39 @@ impl Moveable for Player{
             self.direction -= forward;
         }
         
-        // Apply acceleration if there's input
         if self.direction.length() > 0.0 {
-            // Normalize direction vector
             self.direction = self.direction.normalize();
-            
-            // Apply acceleration
             if self.acceleration < self.max_acceleration {
                 self.acceleration += 1.7;
             }
-            
-            // Apply force in the direction
             self.velocity += self.direction * self.acceleration * delta;
-            
-            // Cap at max speed
             if self.velocity.length() > self.speed {
                 self.velocity = self.velocity.normalize() * self.speed;
             }
         } else {
-            // Apply deceleration when no input
             if self.acceleration > 1.0 {
                 self.acceleration *= 0.85;
             }
-            
             if self.velocity.length() < 10.0 {
                 self.velocity = Vec2::ZERO;
             }
         }
         
-        // Handle physics (drifting or normal)
+        // Apply physics for normal movement.
         let forward_speed = self.velocity.dot(forward);
         let mut forward_component = forward * forward_speed;
-        let mut lateral_component = self.velocity - forward_component;
+        let lateral_component = self.velocity - forward_component;
+        // Use standard friction values for non-drifting.
+        forward_component *= 1.0 - (0.6 * delta);
+        let lateral_component = lateral_component * (1.0 - (0.8 * delta));
         
-        // Different friction based on drifting or not
-        let (forward_friction, lateral_friction) = if is_drifting && self.velocity.length() > 10.0 {
-            // Drifting: Less forward friction, much less lateral friction
-            (0.2, 0.8) // Changed from 0.3, 0.6
-        } else {
-            // Normal: More forward friction, very high lateral friction
-            (0.6, 0.8)
-        };
-        
-        // Apply friction
-        forward_component *= 1.0 - (forward_friction * delta);
-        lateral_component *= 1.0 - (lateral_friction * delta);
-        
-        // Recombine components
         self.velocity = forward_component + lateral_component;
-        
-        // Apply velocity
         self.pos += self.velocity * delta;
-        
-        // Stop if very slow
         if self.velocity.length() < 0.1 {
             self.velocity = Vec2::ZERO;
         }
         
-        return (self.pos.x, self.pos.y);
+        (self.pos.x, self.pos.y)
     }
 }
 
@@ -409,6 +390,67 @@ impl Playable for Player{
             return Some(*state)
         }
         return None
+    }
+
+    // New function for drifting behavior.
+    #[inline(always)]
+    fn drift_to(&mut self, delta: f32) -> (f32, f32) {
+        let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
+        
+        // Optionally adjust rotation multiplier for drifting.
+        let rotation_speed = Self::ROTATION_SPEED * 3.0;
+        if self.velocity.length() > 5.0 {
+            if is_key_down(KeyCode::D) {
+                self.rotation += rotation_speed * delta;
+            }
+            if is_key_down(KeyCode::A) {
+                self.rotation -= rotation_speed * delta;
+            }
+        }
+        
+        // Reset and update direction.
+        self.direction = Vec2::ZERO;
+        if is_key_down(KeyCode::W) {
+            self.direction += forward;
+        }
+        if is_key_down(KeyCode::S) {
+            self.direction -= forward;
+        }
+        
+        if self.direction.length() > 0.0 {
+            self.direction = self.direction.normalize();
+            if self.acceleration < self.max_acceleration {
+                self.acceleration += 1.7;
+            }
+            self.velocity += self.direction * self.acceleration * delta;
+            if self.velocity.length() > self.speed {
+                self.velocity = self.velocity.normalize() * self.speed;
+            }
+        } else {
+            if self.acceleration > 1.0 {
+                self.acceleration *= 0.85;
+            }
+            if self.velocity.length() < 10.0 {
+                self.velocity = Vec2::ZERO;
+            }
+        }
+        
+        // Apply drifting physics with custom friction values.
+        let forward_speed = self.velocity.dot(forward);
+        let mut forward_component = forward * forward_speed;
+        let lateral_component = self.velocity - forward_component;
+        
+        // Use drifting friction values
+        forward_component *= 1.0 - (0.2 * delta);
+        let lateral_component = lateral_component * (1.0 - (0.8 * delta));
+        
+        self.velocity = forward_component + lateral_component;
+        self.pos += self.velocity * delta;
+        if self.velocity.length() < 0.1 {
+            self.velocity = Vec2::ZERO;
+        }
+        
+        (self.pos.x, self.pos.y)
     }
 }
 

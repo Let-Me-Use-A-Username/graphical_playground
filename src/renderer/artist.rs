@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
 use macroquad::{color::{Color, ORANGE, RED, YELLOW}, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
-use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, Emitter, EmitterConfig, ParticleShape};
+use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig, ParticleShape};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::{machine::StateType, timer::SimpleTimer}};
 
@@ -173,6 +173,7 @@ impl Artist{
 */
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ConfigType{
+    PlayerDrifting,
     PlayerHit,
     PlayerMove,
     EnemyDeath,
@@ -180,6 +181,49 @@ pub enum ConfigType{
 impl ConfigType{
     pub fn get_conf(&self) -> EmitterConfig{
         match self{
+            ConfigType::PlayerDrifting => {
+                return EmitterConfig {
+                    local_coords: false,
+                    emission_shape: EmissionShape::Point,
+                    one_shot: false,
+                    lifetime: 1.0,
+                    lifetime_randomness: 0.0,
+                    explosiveness: 0.0,
+                    // Emit a moderate number of particles per cycle.
+                    amount: 30,
+                    // The emitter remains active as long as drifting occurs.
+                    emitting: true,
+                    // The initial direction should be roughly opposite to the car’s forward vector.
+                    // Here we assume the car is moving upward on screen; adjust as necessary.
+                    initial_direction: Vec2::new(0.0, 1.0),
+                    // Allow a slight spread so that the tire burn isn’t perfectly uniform.
+                    initial_direction_spread: 0.2, // in radians
+                    // Emit particles with a modest initial speed.
+                    initial_velocity: 150.0,
+                    // Introduce some randomness to the speed for variation.
+                    initial_velocity_randomness: 0.3,
+                    // Apply a slight negative acceleration so particles slow down after emission.
+                    linear_accel: -50.0,
+                    // Start with zero rotation.
+                    initial_rotation: 0.0,
+                    initial_rotation_randomness: 0.5,
+                    initial_angular_velocity: 0.0,
+                    initial_angular_velocity_randomness: 0.2,
+                    angular_accel: 0.0,
+                    angular_damping: 0.1,
+                    size: 13.0,
+                    size_randomness: 0.5,
+                    blend_mode: BlendMode::Alpha,
+                    colors_curve: ColorCurve{
+                        start: Color::new(0.1, 0.1, 0.1, 1.0),  // At spawn: dark and opaque
+                        mid: Color::new(0.2, 0.2, 0.2, 0.7),  // Mid-life: slightly lighter
+                        end: Color::new(0.3, 0.3, 0.3, 0.1),  // End of life: fades out
+                    }
+                    ,
+                    gravity: Vec2::new(0.0, -20.0),
+                    ..Default::default()
+                }
+            },
             ConfigType::PlayerHit => {
                 return EmitterConfig{
                     one_shot: false,
@@ -204,7 +248,7 @@ impl ConfigType{
                     one_shot: false,
                     amount: 75,
                     initial_direction: vec2(0.0, -1.0),
-                    initial_direction_spread: std::f32::consts::PI * 2.0,
+                    initial_direction_spread: std::f32::consts::PI,
                     initial_velocity: 100.0,
                     initial_velocity_randomness: 0.0,
                     size: 5.0, 
@@ -233,13 +277,13 @@ impl ConfigType{
                     initial_direction_spread: 2.0 * std::f32::consts::PI,
                     initial_velocity: 300.0,   
                     initial_velocity_randomness: 0.5,
-                    size: 10.0,              
+                    size: 7.0, //10.0            
                     size_randomness: 0.3,    
                     amount: 100,            
                     colors_curve: ColorCurve {
                         start: Color::from_rgba(255, 50, 50, 255),  // Brighter red
-                        mid: Color::from_rgba(255, 150, 50, 230),   // Orange-red
-                        end: Color::from_rgba(227, 228, 225, 255),  // Icewhite
+                        mid: Color::from_rgba(255, 150, 50, 150),   // Orange-red
+                        end: Color::from_rgba(227, 228, 225, 70),  // Icewhite
                     },
                     ..Default::default()
                 }
@@ -249,126 +293,117 @@ impl ConfigType{
 }
 
 type Identifier = (u64, StateType);
+type Instant = f64;
 
-pub struct MetalArtist{
-    //Review: Id-State pair isn't unique in table.
-    //Entry tables
-    table: HashMap<Identifier, bool>,
-    one_shot: HashMap<Identifier, Emitter>,
-    permanent: HashMap<Identifier, Emitter>,
-    //Queues
+pub struct MetalArtist {
+    // Replace multiple HashMaps with a single, more efficient structure
+    emitters: HashMap<Identifier, EmitterEntry>,
     request_queue: VecDeque<(u64, StateType, Vec2)>,
-    remove_queue: VecDeque<(Identifier, SimpleTimer, Vec2)>
+    remove_queue: VecDeque<(Identifier, SimpleTimer, Vec2)>,
+}
+
+// Consolidated emitter tracking structure
+struct EmitterEntry {
+    is_one_shot: bool,
+    emitter: Emitter,
+    last_used_at: Option<Instant>,
+    total_draws: u64,
 }
 impl MetalArtist{
     pub fn new() -> MetalArtist{
         return MetalArtist { 
-            table: HashMap::new(), 
-            one_shot: HashMap::new(), 
-            permanent: HashMap::new(), 
-            request_queue: VecDeque::new(), 
+            emitters: HashMap::new(),
+            request_queue: VecDeque::new(),
             remove_queue: VecDeque::new(),
         }
     }
 
-    #[inline]
     pub fn draw(&mut self){
         let now = get_time();
-        let mut drop_queue = Vec::new();
+        let mut drawn_permanent_emitters = Vec::new();
+        let mut emitters_to_remove = Vec::new();
 
         //Iterate remove queue first in order to not double draw 
-        self.remove_queue
-            .iter_mut()
-            .for_each(|(id, timer, pos)| {
-                //If timer hasn't expired, draw it
-                if timer.expired(now){
-                    drop_queue.push(id.clone());
-                }
-                if let Some(emitter) = self.one_shot.get_mut(&id){
-                    emitter.draw(*pos);
-                }
+        self.remove_queue.retain(|(id, mut timer, pos)| {
+            if let Some(entry) = self.emitters.get_mut(id) {
+                entry.emitter.draw(*pos);
+            }
+
+            if timer.expired(now) {
+                emitters_to_remove.push(id.clone());
+                false
+            } else {
+                true
+            }
         });
 
-        //Drop all entries from everywhere
-        while let Some(rid) = drop_queue.pop(){
-            let id = rid;
-            self.drop(id);
-        }
-
-        //Normal queue logic
-        while let Some(request) = self.request_queue.pop_front(){
-            let id = request.0;
-            let state = request.1;
-            let pos = request.2;
+        while let Some((id, state, pos)) = self.request_queue.pop_front() {
             let identifier: Identifier = (id, state);
+            
+            if let Some(entry) = self.emitters.get_mut(&identifier) {
+                
+                entry.emitter.draw(pos);
+                entry.last_used_at = Some(now);
+                entry.total_draws += 1;
 
-            //Main draw method
-            if let Some(one_shot) = self.table.get(&identifier){
-                match one_shot{
-                    true => {
-                        //If one_shot emitter, draw and add to remove queue
-                        if let Some(emitter) = self.one_shot.get_mut(&identifier){
-                            emitter.draw(pos);
-                            
-                            let duration = emitter.config.lifetime * 3.0;
-                            self.remove_queue.push_back((identifier, SimpleTimer::new(duration.into()), pos));
-                        }
-                    },
-                    //If permanent just draw
-                    false => {
-                        if let Some(emitter) = self.permanent.get_mut(&identifier){
-                            emitter.draw(pos);
-                        }
-                    },
+                if entry.is_one_shot {
+                    let duration = entry.emitter.config.lifetime * 3.0;
+                    self.remove_queue.push_back((
+                        identifier, 
+                        SimpleTimer::new(duration as f64), 
+                        pos
+                    ));
+                } else {
+                    drawn_permanent_emitters.push(identifier);
                 }
             }
         }
+
+        // Reset permanent emitters not drawn this frame
+        for (id, entry) in &mut self.emitters {
+            if !entry.is_one_shot && 
+                !drawn_permanent_emitters.contains(id) && 
+                entry.last_used_at.is_some() {
+                // Recreate the emitter if it hasn't been drawn recently
+                entry.emitter = Emitter::new(entry.emitter.config.clone());
+            }
+        }
+
+        emitters_to_remove.iter()
+            .for_each(|id| self.drop(*id));
 
         self.request_queue.clear();
     }
 
     //Drop identifier from everywhere
     #[inline(always)]
-    fn drop(&mut self, id: Identifier){
-        self.table.remove(&id);
-        self.one_shot.remove(&id);
-        self.permanent.remove(&id);
-        self.remove_queue.retain(|(rid, mut timer, _)| {
-            !(*rid == id && timer.expired(get_time()))
-        });
+    fn drop(&mut self, id: Identifier) {
+        self.emitters.remove(&id);
+        self.remove_queue.retain(|(rid, _, _)| rid != &id);
     }
 
     #[inline(always)]
-    fn add_emitter(&mut self, id: Identifier, conf: ConfigType){
-        //If entry doesn't exists
-        if self.table.get(&id).is_none(){
-            match conf.get_conf().one_shot{
-                true => {
-                    self.table.insert( id, true);
-
-                    self.one_shot.entry(id)
-                        .or_insert(Emitter::new(conf.get_conf()));
-                },
-                false => {
-                    self.table.insert( id, false);
-
-                    self.permanent.entry(id)
-                        .or_insert(Emitter::new(conf.get_conf()));
-                },
-            }
+    fn add_emitter(&mut self, id: Identifier, conf: ConfigType) {
+        if !self.emitters.contains_key(&id) {
+            let config = conf.get_conf();
+            let entry = EmitterEntry {
+                is_one_shot: config.one_shot,
+                emitter: Emitter::new(config),
+                last_used_at: None,
+                total_draws: 0
+            };
+            self.emitters.insert(id, entry);
         }
     }
 
     #[inline(always)]
-    fn add_request(&mut self, id: u64, state: StateType, pos: Vec2){
+    fn add_request(&mut self, id: u64, state: StateType, pos: Vec2) {
         self.request_queue.push_back((id, state, pos));
     }
 
     #[inline(always)]
-    pub fn add_batch_request(&mut self, req: Vec<(u64, StateType, Vec2)>){
-        for (id, state, pos) in req{
-            self.add_request(id, state, pos);
-        }
+    pub fn add_batch_request(&mut self, req: Vec<(u64, StateType, Vec2)>) {
+        self.request_queue.extend(req);
     }
 }
 
