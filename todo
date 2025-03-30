@@ -1,17 +1,15 @@
 ==============================================
 ================== Critical ==================
-
-- Continues increase in memory usage, about 1MB every few seconds.
-    - Checked most "parts" of game manager and disabling them didn't change much
-
-- MetalArtist has a memory leak
-    - Remake it from scratch.
-
-
-- Consider chaning Entities(Enemies, Proj, Player) to pass out their current_config instead
-    of their state (when collecting emitter calls)
-        - This allows more control of what emission to hand out.
-        - Breaks the _simple_ logic of State-Emitter transmition 
+- MetalArtist: 
+    - Currently, one shot emitters are not dropped correctly
+    - Permanent emitters cant be substituted in order to reset the particles
+        - A work around would be that permanent emitters are drawn every frame whether there was a request or not
+            - This would need the MetalArtist to keep a record with every particle drawn already
+        - Find a way to substitute/remove them
+    - Consider chaning Entities(Enemies, Proj, Player) to pass out their current_config instead
+        of their state (when collecting emitter calls)
+            - This allows more control of what emission to hand out.
+            - Breaks the _simple_ logic of State-Emitter transmition 
 
 
 ==============================================
@@ -20,6 +18,7 @@
     - Factories enemies are spawning in player vision again, make queue smaller.
         - Let resizing happen on queue_size increase, since more entities will be drawn, the viewport offset will be less
         - Assign position before sending enemy to handler?
+            -  Give the handler a spawn queue and in update spawn around viewport
         - Change how factory queues enemies?
 
 - Implement ErrorHandler
@@ -65,6 +64,15 @@
         - Function macroquad::window::set_fullscreen ?
             - When settings are changed, restart game to run them (hot reload)
     - Draw bullet ammunition UI
+
+
+==============================================
+================== Notes =====================
+- If *memory leaks* occur in the future, there is a chance that one of the following will be at fault
+    - Event queue is pushed faster than consumed
+    - Grids operation queue doesn't drain properly
+    - Emitters aren't dropped correctly from MetalArtist
+    - Cyrcle Arc references inside game manager
 
 ==============================================
 ================== Study =====================

@@ -52,7 +52,7 @@ pub struct GameManager{
 
     dispatcher: Dispatcher,
     artist: Artist,
-    //metal: Arc<Mutex<MetalArtist>>,
+    metal: Arc<Mutex<MetalArtist>>,
 
     handler: Arc<Mutex<Handler>>,
     spawner: Arc<Mutex<SpawnManager>>,
@@ -101,7 +101,7 @@ impl GameManager{
                 BLACK,
                 dispatcher.create_sender()
         )));
-        //let metal = Arc::new(Mutex::new(MetalArtist::new()));
+        let metal = Arc::new(Mutex::new(MetalArtist::new()));
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -126,9 +126,9 @@ impl GameManager{
         dispatcher.register_listener(EventType::FactoryResize, factory.clone());
 
         //MetalArtist events
-        // dispatcher.register_listener(EventType::RegisterEmitterConf, metal.clone());
-        // dispatcher.register_listener(EventType::UnregisterEmitterConf, metal.clone());
-        // dispatcher.register_listener(EventType::DrawEmitter, metal.clone());
+        dispatcher.register_listener(EventType::RegisterEmitterConf, metal.clone());
+        dispatcher.register_listener(EventType::UnregisterEmitterConf, metal.clone());
+        dispatcher.register_listener(EventType::DrawEmitter, metal.clone());
 
         return GameManager { 
             state: GameState::Playing,
@@ -141,7 +141,7 @@ impl GameManager{
 
             dispatcher: dispatcher,
             artist: Artist::new(),
-            //metal: metal,
+            metal: metal,
 
             handler: handler,
             spawner: spawner,
@@ -189,9 +189,10 @@ impl GameManager{
         camera.target = camera_pos;
         camera.zoom = vec2(zoom_level, zoom_level);
 
-        loop {
-            tracy_client::frame_mark();
+        let mut draw_calls: Vec<(i32, DrawCall)> = Vec::with_capacity(1024);
+        let mut emitter_calls: Vec<(u64, StateType, Vec2)> = Vec::with_capacity(1024);
 
+        loop {
             // Mouse wheel
             if mouse_wheel().1 != 0.0 {
                 zoom_level = (zoom_level - mouse_wheel().1 * zoom_speed).clamp(min_zoom, max_zoom);
@@ -219,9 +220,6 @@ impl GameManager{
             let delta = get_frame_time();
 
             let mut player_collider = None;
-
-            let mut draw_calls: Vec<(i32, DrawCall)> = Vec::new();
-            let mut emitter_calls: Vec<(u64, StateType, Vec2)> = Vec::new();
 
             {
                 if let Ok(mut player) = self.player.try_lock(){
@@ -346,18 +344,19 @@ impl GameManager{
     
             // ======== RENDERING ========
             {
-                self.artist.queue_calls(draw_calls);
+                self.artist.queue_calls(draw_calls.clone());
                 self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
             }
-            // {
-            //     let _span = tracy_client::span!("MetalArtist Rendering");
-            
-            //     if let Ok(mut emitter) = self.metal.try_lock(){
-            //         emitter.add_batch_request(emitter_calls);
-            //         emitter.draw();
-            //     }
-            // }
+            {            
+                if let Ok(mut emitter) = self.metal.try_lock(){
+                    emitter.add_batch_request(emitter_calls.clone());
+                    emitter.draw();
+                }
+            }
+
+            draw_calls.clear();
+            emitter_calls.clear();
             
             set_default_camera();
             

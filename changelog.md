@@ -1,5 +1,11 @@
 # Changelog
 
+### 0.2.5 Changes 30/3/2025
+- v.0.2.5 Removed Tracy profiler
+- v.0.2.5 Discovered that the *memory leak* was due to tracys continues frame capture.
+- v.0.2.5 
+
+
 ### 0.2.5 Changes 24/3/2025
 - v.0.2.5 Implemented Drifting state for player, in order to simplify players moving state.
 - v.0.2.5 Added emitter for players Drifting state.

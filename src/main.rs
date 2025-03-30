@@ -12,8 +12,6 @@ use std::env;
 use macroquad::prelude::*;
 use game_manager::GameManager;
 use mimalloc::MiMalloc;
-use tracy_client::{Client, ProfiledAllocator};
-
 
 //Mimalloc is used because heap allocation is very frequent due to futures and Box-es
 #[global_allocator]
@@ -39,7 +37,6 @@ async fn main() {
     let mut game_manager = GameManager::new();
 
     loop {
-        println!("runing");
         game_manager.update().await;
     }
 }

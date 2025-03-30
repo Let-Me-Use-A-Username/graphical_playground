@@ -1,8 +1,8 @@
 use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
-use macroquad::{color::{Color, ORANGE, RED, YELLOW}, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
-use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig, ParticleShape};
+use macroquad::{color::Color, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
+use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::{machine::StateType, timer::SimpleTimer}};
 
@@ -330,7 +330,7 @@ impl MetalArtist{
             }
 
             if timer.expired(now) {
-                emitters_to_remove.push(id.clone());
+                emitters_to_remove.push(*id);
                 false
             } else {
                 true
@@ -342,12 +342,15 @@ impl MetalArtist{
             
             if let Some(entry) = self.emitters.get_mut(&identifier) {
                 
+                if !entry.emitter.config.emitting{
+                    entry.emitter.config.emitting = true;
+                }
                 entry.emitter.draw(pos);
                 entry.last_used_at = Some(now);
                 entry.total_draws += 1;
 
                 if entry.is_one_shot {
-                    let duration = entry.emitter.config.lifetime * 3.0;
+                    let duration = entry.emitter.config.lifetime * 1.5;
                     self.remove_queue.push_back((
                         identifier, 
                         SimpleTimer::new(duration as f64), 
@@ -361,11 +364,10 @@ impl MetalArtist{
 
         // Reset permanent emitters not drawn this frame
         for (id, entry) in &mut self.emitters {
-            if !entry.is_one_shot && 
-                !drawn_permanent_emitters.contains(id) && 
-                entry.last_used_at.is_some() {
-                // Recreate the emitter if it hasn't been drawn recently
-                entry.emitter = Emitter::new(entry.emitter.config.clone());
+            if !entry.is_one_shot &&    //if is permanent
+                !drawn_permanent_emitters.contains(id) && //and didn't draw this frame
+                entry.last_used_at.is_some() { //and it has drawn previously
+                    entry.emitter.config.emitting = false;
             }
         }
 
