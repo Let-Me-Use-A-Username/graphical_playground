@@ -52,7 +52,7 @@ pub struct GameManager{
 
     dispatcher: Dispatcher,
     artist: Artist,
-    metal: Arc<Mutex<MetalArtist>>,
+    //metal: Arc<Mutex<MetalArtist>>,
 
     handler: Arc<Mutex<Handler>>,
     spawner: Arc<Mutex<SpawnManager>>,
@@ -67,7 +67,6 @@ pub struct GameManager{
 impl GameManager{
 
     pub fn new() -> Self{
-        let _span = tracy_client::span!("Initializing game components");
         let (sender, receiver) = channel::<GameEvent>();
 
         let global = Global::new();
@@ -102,7 +101,7 @@ impl GameManager{
                 BLACK,
                 dispatcher.create_sender()
         )));
-        let metal = Arc::new(Mutex::new(MetalArtist::new()));
+        //let metal = Arc::new(Mutex::new(MetalArtist::new()));
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -127,9 +126,9 @@ impl GameManager{
         dispatcher.register_listener(EventType::FactoryResize, factory.clone());
 
         //MetalArtist events
-        dispatcher.register_listener(EventType::RegisterEmitterConf, metal.clone());
-        dispatcher.register_listener(EventType::UnregisterEmitterConf, metal.clone());
-        dispatcher.register_listener(EventType::DrawEmitter, metal.clone());
+        // dispatcher.register_listener(EventType::RegisterEmitterConf, metal.clone());
+        // dispatcher.register_listener(EventType::UnregisterEmitterConf, metal.clone());
+        // dispatcher.register_listener(EventType::DrawEmitter, metal.clone());
 
         return GameManager { 
             state: GameState::Playing,
@@ -142,7 +141,7 @@ impl GameManager{
 
             dispatcher: dispatcher,
             artist: Artist::new(),
-            metal: metal,
+            //metal: metal,
 
             handler: handler,
             spawner: spawner,
@@ -192,7 +191,6 @@ impl GameManager{
 
         loop {
             tracy_client::frame_mark();
-            let _span = tracy_client::span!("Game Loop");
 
             // Mouse wheel
             if mouse_wheel().1 != 0.0 {
@@ -226,7 +224,6 @@ impl GameManager{
             let mut emitter_calls: Vec<(u64, StateType, Vec2)> = Vec::new();
 
             {
-                let _span = tracy_client::span!("Player/Wall updates");
                 if let Ok(mut player) = self.player.try_lock(){
                     player.update(delta, vec!()).await;
                     player_pos = player.get_pos();
@@ -254,7 +251,6 @@ impl GameManager{
 
             if let Ok(mut handler) = self.handler.try_lock(){
                 {
-                    let _span = tracy_client::span!("Handler updating");
                     handler.update(delta, player_pos).await;
                     
                     draw_calls.extend(handler.get_draw_calls(viewport));
@@ -263,7 +259,6 @@ impl GameManager{
 
                 if let Ok(mut spawner) = self.spawner.try_lock(){
                     {
-                        let _span = tracy_client::span!("Spawner updating");
                         if let Ok(factory) = self.factory.try_lock(){
                             spawner.update(player_pos, 
                                 handler.get_active_enemy_count(), 
@@ -276,8 +271,6 @@ impl GameManager{
             
                 if let Ok(mut grid) = self.grid.try_lock(){
                     {
-                        let _span = tracy_client::span!("Detecting players collision with enemies");
-                        
                         grid.update();
                         draw_calls.extend(grid.get_draw_calls(viewport));
                         //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
@@ -296,7 +289,6 @@ impl GameManager{
                     }
 
                     {
-                        let _span = tracy_client::span!("Detecting players projectile collision");
                         //Fetch all projectiles
                         for projectile in handler.get_projectiles(){
                             //For each projectile, if approximate entities exist
@@ -325,7 +317,6 @@ impl GameManager{
                     }
                     
                     {
-                        let _span = tracy_client::span!("Detecting enemy inter-collision");
                         //Get populated cells
                         let populated_cells = grid.get_populated_cells();
                         //Iterate ids and map to enemies
@@ -350,26 +341,23 @@ impl GameManager{
             set_camera(&camera);
     
             {
-                let _span = tracy_client::span!("Dispatching");
                 self.dispatcher.dispatch().await;
             }
     
             // ======== RENDERING ========
             {
-                let _span = tracy_client::span!("Artist Rendering");
-                
                 self.artist.queue_calls(draw_calls);
                 self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
             }
-            {
-                let _span = tracy_client::span!("MetalArtist Rendering");
+            // {
+            //     let _span = tracy_client::span!("MetalArtist Rendering");
             
-                if let Ok(mut emitter) = self.metal.try_lock(){
-                    emitter.add_batch_request(emitter_calls);
-                    emitter.draw();
-                }
-            }
+            //     if let Ok(mut emitter) = self.metal.try_lock(){
+            //         emitter.add_batch_request(emitter_calls);
+            //         emitter.draw();
+            //     }
+            // }
             
             set_default_camera();
             

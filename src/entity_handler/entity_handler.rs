@@ -81,17 +81,18 @@ impl Handler{
 
         
         for id in enemies_remove{
-            if let Some(_) = self.enemies.remove(&id){
+            if let Some(enemy) = self.enemies.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
+                drop(enemy);
             }
             self.enemy_overides.remove(&id);
         }
 
         for id in projecitles_remove{
-            if let Some(_) = self.projectiles.remove(&id){
-                self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await
+            if let Some(proj) = self.projectiles.remove(&id){
+                self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
+                drop(proj);
             }
-            self.enemy_overides.remove(&id);
         }
     }
 

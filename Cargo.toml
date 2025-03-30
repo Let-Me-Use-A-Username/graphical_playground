@@ -18,4 +18,4 @@ tracy-client = "0.18.0"
 lto = "fat"             # Optimization across all crates
 opt-level = 3           # Optimization leve, 1=basic, 3=all
 panic = "abort"       # Action taken for panic.
-# codegen-units = 1     # Generation units per file, for parallel processing. Benchmark this. 
+# debug = "full"

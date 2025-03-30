@@ -1,9 +1,12 @@
 ==============================================
 ================== Critical ==================
 
+- Continues increase in memory usage, about 1MB every few seconds.
+    - Checked most "parts" of game manager and disabling them didn't change much
+
 - MetalArtist has a memory leak
     - Remake it from scratch.
-- Also losing memory from somewhere else, about 1MB per sec
+
 
 - Consider chaning Entities(Enemies, Proj, Player) to pass out their current_config instead
     of their state (when collecting emitter calls)
@@ -29,6 +32,8 @@
 ================== Gameplay ==================
 - Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
 - Implement boost
+- Implement right click Shield
+- Implement Tinkering menu for different player-based aspects, variables, skins, sounds etc
 
 - Player Test
     -Test handbrake mechanic(Check forward and lateral friction)

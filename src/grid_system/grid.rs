@@ -1,7 +1,7 @@
 use std::{collections::{HashMap, HashSet}, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::{color::{Color, DARKGRAY, ORANGE}, math::{Rect, Vec2}};
+use macroquad::{color::{Color, DARKGRAY}, math::{Rect, Vec2}};
 
 use crate::{event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, renderer::artist::DrawCall};
 

@@ -19,10 +19,6 @@ use tracy_client::{Client, ProfiledAllocator};
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-// #[global_allocator]
-// static GLOBAL: ProfiledAllocator<std::alloc::System> =
-//     ProfiledAllocator::new(std::alloc::System, 100);
-
 //NOTE: This should be configured in settings ideally...
 pub fn window_conf() -> Conf{
     return Conf {
@@ -40,13 +36,10 @@ pub fn window_conf() -> Conf{
 async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     
-    let _client = Client::start();
-    println!("Tracy profiler initialized...");
-    
     let mut game_manager = GameManager::new();
-    tracy_client::set_thread_name!("Main Thread");
 
     loop {
+        println!("runing");
         game_manager.update().await;
     }
 }

@@ -176,7 +176,7 @@ impl SpawnManager{
 
 
         //If Factory is lacking enemies, queue the difference
-        if !factory_surplus.0{
+        if !factory_surplus.0 && factory_surplus.1 > 0{
             let amount = factory_surplus.1;
             let template = self.get_spawn_template(amount);
             let color = self.config.complexity.get_color();
