@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use async_trait::async_trait;
 use macroquad::{color::Color, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
-use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig};
+use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig, EmittersCache};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::{machine::StateType, timer::SimpleTimer}};
 
@@ -171,7 +171,7 @@ impl Artist{
 
     Permanent emittes are removed upon request from an entity.
 */
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ConfigType{
     PlayerDrifting,
     PlayerHit,
@@ -290,111 +290,79 @@ impl ConfigType{
             },
         }
     }
+
+    fn as_list() -> Vec<ConfigType>{
+        return vec![
+            ConfigType::PlayerMove,
+            ConfigType::PlayerHit,
+            ConfigType::PlayerDrifting,
+            ConfigType::EnemyDeath
+        ]
+    }
 }
 
 type Identifier = (u64, StateType);
-type Instant = f64;
 
+/* 
+    Emitter are either one shot or not.
+    One shot emitters are spawned on the fly and expire on their own.
+    Permanent emitters have 1 emitter that is drawn every frame
+*/
 pub struct MetalArtist {
     // Replace multiple HashMaps with a single, more efficient structure
-    emitters: HashMap<Identifier, EmitterEntry>,
+    cache: HashMap<ConfigType, EmittersCache>,
+    registrations: HashMap<Identifier, ConfigType>,
     request_queue: VecDeque<(u64, StateType, Vec2)>,
-    remove_queue: VecDeque<(Identifier, SimpleTimer, Vec2)>,
-}
-
-// Consolidated emitter tracking structure
-struct EmitterEntry {
-    is_one_shot: bool,
-    emitter: Emitter,
-    last_used_at: Option<Instant>,
-    total_draws: u64,
 }
 impl MetalArtist{
     pub fn new() -> MetalArtist{
-        return MetalArtist { 
-            emitters: HashMap::new(),
+        let mut cache_map = HashMap::new();
+        cache_map.insert(ConfigType::EnemyDeath, EmittersCache::new(ConfigType::EnemyDeath.get_conf()));
+        cache_map.insert(ConfigType::PlayerDrifting, EmittersCache::new(ConfigType::PlayerDrifting.get_conf()));
+        cache_map.insert(ConfigType::PlayerHit, EmittersCache::new(ConfigType::PlayerHit.get_conf()));
+        cache_map.insert(ConfigType::PlayerMove, EmittersCache::new(ConfigType::PlayerMove.get_conf()));
+
+        return MetalArtist {
+            cache: cache_map,
+            registrations: HashMap::new(),
             request_queue: VecDeque::new(),
-            remove_queue: VecDeque::new(),
         }
     }
 
-    pub fn draw(&mut self){
-        let now = get_time();
-        let mut drawn_permanent_emitters = Vec::new();
-        let mut emitters_to_remove = Vec::new();
-
-        //Iterate remove queue first in order to not double draw 
-        self.remove_queue.retain(|(id, mut timer, pos)| {
-            if let Some(entry) = self.emitters.get_mut(id) {
-                entry.emitter.draw(*pos);
-            }
-
-            if timer.expired(now) {
-                emitters_to_remove.push(*id);
-                false
-            } else {
-                true
-            }
-        });
-
+    pub fn draw(&mut self) {
+        // Process all requests for this frame
         while let Some((id, state, pos)) = self.request_queue.pop_front() {
-            let identifier: Identifier = (id, state);
+            let identifier = (id, state);
             
-            if let Some(entry) = self.emitters.get_mut(&identifier) {
+            if let Some(config_type) = self.registrations.get(&identifier) {
                 
-                if !entry.emitter.config.emitting{
-                    entry.emitter.config.emitting = true;
-                }
-                entry.emitter.draw(pos);
-                entry.last_used_at = Some(now);
-                entry.total_draws += 1;
-
-                if entry.is_one_shot {
-                    let duration = entry.emitter.config.lifetime * 1.5;
-                    self.remove_queue.push_back((
-                        identifier, 
-                        SimpleTimer::new(duration as f64), 
-                        pos
-                    ));
-                } else {
-                    drawn_permanent_emitters.push(identifier);
-                }
+                let cache = self.cache
+                    .entry(config_type.clone())
+                    .or_insert_with(|| EmittersCache::new(config_type.get_conf()));
+                
+                cache.spawn(pos);
             }
         }
-
-        // Reset permanent emitters not drawn this frame
-        for (id, entry) in &mut self.emitters {
-            if !entry.is_one_shot &&    //if is permanent
-                !drawn_permanent_emitters.contains(id) && //and didn't draw this frame
-                entry.last_used_at.is_some() { //and it has drawn previously
-                    entry.emitter.config.emitting = false;
-            }
+        
+        // Draw all active emitter caches
+        for cache in self.cache.values_mut() {
+            cache.draw();
         }
-
-        emitters_to_remove.iter()
-            .for_each(|id| self.drop(*id));
-
-        self.request_queue.clear();
     }
 
     //Drop identifier from everywhere
     #[inline(always)]
-    fn drop(&mut self, id: Identifier) {
-        self.emitters.remove(&id);
-        self.remove_queue.retain(|(rid, _, _)| rid != &id);
+    fn drop(&mut self, id: Identifier) -> bool{
+        if let Some(_) = self.registrations.remove(&id){
+            return true
+        }
+        return false
     }
 
     #[inline(always)]
     fn add_emitter(&mut self, id: Identifier, conf: ConfigType) {
-        if !self.emitters.contains_key(&id) {
-            let config = conf.get_conf();
-            let entry = EmitterEntry {
-                is_one_shot: config.one_shot,
-                emitter: Emitter::new(config),
-                last_used_at: None,
-                total_draws: 0
-            };
-            self.emitters.insert(id, entry);
+        if !self.registrations.contains_key(&id){
+            self.registrations.insert(id, conf);
         }
     }
 

@@ -1,11 +1,11 @@
 ==============================================
 ================== Critical ==================
 - MetalArtist: 
-    - Currently, one shot emitters are not dropped correctly
-    - Permanent emitters cant be substituted in order to reset the particles
-        - A work around would be that permanent emitters are drawn every frame whether there was a request or not
-            - This would need the MetalArtist to keep a record with every particle drawn already
-        - Find a way to substitute/remove them
+    - Currently holds EmissionCache which handles emitters on its own
+        - One shot emitters are not emitting
+        - Permanent emitters emit particles that never expire
+            - Idea: Permanent emitters need a single emitter that is called every frame 
+
     - Consider chaning Entities(Enemies, Proj, Player) to pass out their current_config instead
         of their state (when collecting emitter calls)
             - This allows more control of what emission to hand out.

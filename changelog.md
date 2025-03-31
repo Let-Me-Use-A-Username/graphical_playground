@@ -1,9 +1,13 @@
 # Changelog
 
+
+### 0.2.5 Changes 31/3/2025
+- v.0.2.5 Changed MetalArtist multiple times, current iteration seems promising.
+
+
 ### 0.2.5 Changes 30/3/2025
 - v.0.2.5 Removed Tracy profiler
 - v.0.2.5 Discovered that the *memory leak* was due to tracys continues frame capture.
-- v.0.2.5 
 
 
 ### 0.2.5 Changes 24/3/2025
