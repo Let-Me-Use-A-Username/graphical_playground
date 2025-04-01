@@ -281,10 +281,13 @@ impl Moveable for Player {
         
         // Handle rotation with normal multiplier.
         let rotation_speed = Self::ROTATION_SPEED * 1.35;
+
         if self.velocity.length() > 5.0 {
+
             if is_key_down(KeyCode::D) {
                 self.rotation += rotation_speed * delta;
             }
+
             if is_key_down(KeyCode::A) {
                 self.rotation -= rotation_speed * delta;
             }
@@ -292,41 +295,53 @@ impl Moveable for Player {
         
         // Reset and update direction.
         self.direction = Vec2::ZERO;
+
         if is_key_down(KeyCode::W) {
             self.direction += forward;
         }
+
         if is_key_down(KeyCode::S) {
             self.direction -= forward;
         }
         
         if self.direction.length() > 0.0 {
             self.direction = self.direction.normalize();
+
             if self.acceleration < self.max_acceleration {
-                self.acceleration += 1.7;
+                self.acceleration += 0.8;
             }
+
             self.velocity += self.direction * self.acceleration * delta;
+            
             if self.velocity.length() > self.speed {
                 self.velocity = self.velocity.normalize() * self.speed;
             }
+
         } else {
+            
             if self.acceleration > 1.0 {
                 self.acceleration *= 0.85;
             }
-            if self.velocity.length() < 10.0 {
+            
+            if self.velocity.length() < 25.0 {
                 self.velocity = Vec2::ZERO;
             }
+
+            self.velocity += self.acceleration * delta;
         }
         
         // Apply physics for normal movement.
         let forward_speed = self.velocity.dot(forward);
         let mut forward_component = forward * forward_speed;
         let lateral_component = self.velocity - forward_component;
-        // Use standard friction values for non-drifting.
-        forward_component *= 1.0 - (0.6 * delta);
-        let lateral_component = lateral_component * (1.0 - (0.8 * delta));
+
+        // Use standard friction values for not-drifting.
+        forward_component *= 1.0 - (0.8 * delta);
+        let lateral_component = lateral_component * (1.0 - (0.9 * delta));
         
         self.velocity = forward_component + lateral_component;
         self.pos += self.velocity * delta;
+
         if self.velocity.length() < 0.1 {
             self.velocity = Vec2::ZERO;
         }
@@ -358,8 +373,15 @@ impl Drawable for Player{
 
     fn should_emit(&self) -> bool{
         if let Ok(state) = self.machine.get_state().lock(){
-            if *state != StateType::Idle{
-                return true
+            match *state{
+                StateType::Idle => return false,
+                StateType::Moving | StateType::Hit=> return true,
+                StateType::Drifting => {
+                    if self.velocity.length() > 10.0{
+                        return true
+                    }
+                    return false
+                },
             }
         }
         return false;
@@ -399,10 +421,13 @@ impl Playable for Player{
         
         // Optionally adjust rotation multiplier for drifting.
         let rotation_speed = Self::ROTATION_SPEED * 3.0;
+
         if self.velocity.length() > 5.0 {
+
             if is_key_down(KeyCode::D) {
                 self.rotation += rotation_speed * delta;
             }
+
             if is_key_down(KeyCode::A) {
                 self.rotation -= rotation_speed * delta;
             }
@@ -410,29 +435,40 @@ impl Playable for Player{
         
         // Reset and update direction.
         self.direction = Vec2::ZERO;
+
         if is_key_down(KeyCode::W) {
             self.direction += forward;
         }
+
         if is_key_down(KeyCode::S) {
             self.direction -= forward;
         }
         
         if self.direction.length() > 0.0 {
+
             self.direction = self.direction.normalize();
+
             if self.acceleration < self.max_acceleration {
-                self.acceleration += 1.7;
+                self.acceleration += 1.0;
             }
+
             self.velocity += self.direction * self.acceleration * delta;
+
             if self.velocity.length() > self.speed {
                 self.velocity = self.velocity.normalize() * self.speed;
             }
+
         } else {
+
             if self.acceleration > 1.0 {
                 self.acceleration *= 0.85;
             }
-            if self.velocity.length() < 10.0 {
+
+            if self.velocity.length() < 500.0 {
                 self.velocity = Vec2::ZERO;
             }
+
+            self.velocity += self.direction * self.acceleration * delta;
         }
         
         // Apply drifting physics with custom friction values.
@@ -441,11 +477,13 @@ impl Playable for Player{
         let lateral_component = self.velocity - forward_component;
         
         // Use drifting friction values
-        forward_component *= 1.0 - (0.2 * delta);
-        let lateral_component = lateral_component * (1.0 - (0.8 * delta));
+        forward_component *= 1.0 - (0.3 * delta); // 0.02
+        let lateral_component = lateral_component * (1.0 - (0.9 * delta)); //0.08
         
         self.velocity = forward_component + lateral_component;
+
         self.pos += self.velocity * delta;
+        
         if self.velocity.length() < 0.1 {
             self.velocity = Vec2::ZERO;
         }

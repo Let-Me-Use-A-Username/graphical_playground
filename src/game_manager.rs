@@ -82,7 +82,7 @@ impl GameManager{
         let factory = Arc::new(Mutex::new(
             Factory::new(
                 dispatcher.create_sender(), 
-                512,
+                128,
                 dispatcher.create_sender())
             ));
         let grid = Arc::new(Mutex::new(

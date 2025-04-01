@@ -155,6 +155,10 @@ impl Enemy for Circle{
         }
     }
 
+    fn set_pos(&mut self, new_pos: Vec2){
+        self.pos = new_pos
+    }
+
     fn is_alive(&self) -> bool{
         return self.is_alive
     }

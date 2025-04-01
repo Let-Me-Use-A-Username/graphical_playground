@@ -181,7 +181,7 @@ impl SpawnManager{
             let template = self.get_spawn_template(amount);
             let color = self.config.complexity.get_color();
             
-            self.publish(Event::new((template, player_pos, color, viewport), EventType::QueueTemplate)).await;
+            self.publish(Event::new((template, player_pos, color), EventType::QueueTemplate)).await;
         }
         //Review: Factory Surplus??
 
@@ -189,7 +189,7 @@ impl SpawnManager{
             self.spawn_timer.set(now, self.config.spawn_interval);
 
             if spawn_enemies != 0{
-                self.publish(Event::new(spawn_enemies, EventType::ForwardEnemiesToHandler)).await;
+                self.publish(Event::new((spawn_enemies, viewport), EventType::ForwardEnemiesToHandler)).await;
             }
         }
     }

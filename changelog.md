@@ -3,7 +3,11 @@
 ### 0.2.5 Changes 01/4/2025
 - v.0.2.5 Forked **Macroquad** for more control. Only forked project is used now
 - v.0.2.5 Changes EmitterCache caching logic in lib.rs
-- v.0.2.5 Best revision of MetalArtist till now.
+- v.0.2.5 Rivised MetalArtist again, after last commit.
+- v.0.2.5 Changed playerHit emission to be more visible
+- v.0.2.5 Changed permanent emitters to reset when they haven't drawn. The groundwork for MetalArtist is done.
+- v.0.2.5 Fixed faulty enemy spawn position, by setting it before its sent to the handler
+- v.0.2.5 Made player acceleration increase by a smaller interval. Added velocity momentum event when keys are not pressed. Increased drag in both move and drift.
 
 
 ### 0.2.5 Changes 31/3/2025

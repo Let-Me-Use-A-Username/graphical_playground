@@ -7,18 +7,10 @@
             - Breaks the _simple_ logic of State-Emitter transmition
     - Monitor memory usage
         - Consider making changes to EmitterCache
-    - Implement permanent emitters that keep particles?
-        -PlayerDrifting
 
 
 ==============================================
 ================== General todo ==============
-- Verify following work correctly.
-    - Factories enemies are spawning in player vision again, make queue smaller.
-        - Let resizing happen on queue_size increase, since more entities will be drawn, the viewport offset will be less
-        - Assign position before sending enemy to handler?
-            -  Give the handler a spawn queue and in update spawn around viewport
-        - Change how factory queues enemies?
 
 - Implement ErrorHandler
     -Change component function to return Results 

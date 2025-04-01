@@ -51,14 +51,14 @@ pub trait Playable: GameEntity{
     fn drift_to(&mut self, delta: f32) -> (f32, f32);     
 }
 
-
-
-
 #[async_trait]
 pub trait Enemy: GameEntity{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender: Sender<Event>) -> Self where Self: Sized;
+    fn set_pos(&mut self, new_pos: Vec2);
+    
     fn is_alive(&self) -> bool;
     fn set_alive(&mut self, alive: bool);
+
     fn force_state(&mut self, state: StateType);
     fn get_state(&self) -> Option<StateType>;
 }
@@ -66,8 +66,10 @@ pub trait Enemy: GameEntity{
 #[async_trait]
 pub trait Projectile: GameEntity{
     fn get_ptype(&self) -> ProjectileType;
+    
     fn is_active(&self) -> bool;
     fn set_active(&mut self, alive: bool);
+
     fn force_state(&mut self, state: StateType);
     fn get_state(&self) -> Option<StateType>;
 }

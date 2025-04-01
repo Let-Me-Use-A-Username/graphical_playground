@@ -1,10 +1,10 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use async_trait::async_trait;
-use macroquad::{color::Color, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, time::get_time, window::clear_background};
+use macroquad::{color::Color, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
 use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig, EmittersCache};
 
-use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::{machine::StateType, timer::SimpleTimer}};
+use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::machine::StateType};
 
 type Layer = i32;
 
@@ -227,7 +227,12 @@ impl ConfigType{
                     size: 3.0,
                     gravity: vec2(0.0, -1000.0),
                     atlas: Some(AtlasConfig::new(4, 4, 8..)),
-                    blend_mode: BlendMode::Additive,
+                    blend_mode: BlendMode::Alpha,
+                    colors_curve: ColorCurve {
+                        start: Color::from_rgba(0, 0, 0, 255),       // Black  
+                        mid: Color::from_rgba(128, 128, 128, 255),  // Medium Gray  
+                        end: Color::from_rgba(230, 240, 255, 255),  // Ice White (slightly bluish tint)  
+                    },
                     ..Default::default()
                 }
             }
@@ -305,7 +310,6 @@ impl EmitterType{
 }
 
 pub struct MetalArtist {
-    // Replace multiple HashMaps with a single, more efficient structure
     cache: HashMap<ConfigType, EmitterType>,
     registrations: HashMap<Identifier, ConfigType>,
     request_queue: VecDeque<(u64, StateType, Vec2)>,
@@ -330,7 +334,8 @@ impl MetalArtist{
     }
 
     pub fn draw(&mut self) {
-        // Process all requests for this frame
+        let mut have_drawn = HashSet::new();
+        
         while let Some((id, state, pos)) = self.request_queue.pop_front() {
             let identifier = (id, state);
             
@@ -340,6 +345,7 @@ impl MetalArtist{
                     match cache{
                         EmitterType::Emitter(emitter) => {
                             emitter.draw(pos);
+                            have_drawn.insert(config_type);
                         },
                         EmitterType::Cache(emitters_cache) => {
                             emitters_cache.spawn(pos);
@@ -352,6 +358,21 @@ impl MetalArtist{
         for emitter in self.cache.values_mut(){
             emitter.draw_all_cache();
         }
+
+        //Collect all EmitterTypes that didn't draw this frame
+        let rest_configs: Vec<&mut EmitterType> = self.cache.iter_mut()
+            .filter(|(key, _)| !have_drawn.contains(key))
+            .map(|(_, val)| val)
+            .collect();
+        
+        //Reset all permanent emitters, do nothing for cached ones
+        for em_type in rest_configs{
+            match em_type{
+                EmitterType::Emitter(emitter) => emitter.reset(),
+                EmitterType::Cache(_) => (),
+            }
+        }
+       
     }
 
     //Drop identifier from everywhere

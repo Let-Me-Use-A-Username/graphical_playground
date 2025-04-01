@@ -70,11 +70,11 @@ impl Factory{
         println!("to: {:?}", self.queue.capacity());
     }
 
-    fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color, viewport: Rect){
+    fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color){
         while template.len() > 0{
             if let Some(etype) = template.pop_front(){
-                let pos = self.get_enemy_spawn_position(viewport);
-                let size = thread_rng().gen_range(10..30) as f32;
+                let pos = Vec2{ x: 0.0, y: 0.0};
+                let size = thread_rng().gen_range(20..30) as f32;
 
                 match etype{
                     EnemyType::Circle => {
@@ -150,6 +150,18 @@ impl Factory{
         return self.queue.capacity()
     }
 
+
+    async fn forward(&mut self, mut enemies: Vec<Option<Box<dyn Enemy>>>, viewport: Rect){
+        enemies.iter_mut()
+            .for_each(|boxxed| {
+                if let Some(enemy) = boxxed{
+                    enemy.set_pos(self.get_enemy_spawn_position(viewport));
+                }
+            });
+        
+        self.publish(Event::new(enemies, EventType::BatchEnemySpawn)).await
+    }
+
 }
 
 #[async_trait]
@@ -184,20 +196,20 @@ impl Subscriber for Factory{
             },
             EventType::QueueTemplate => {
                 if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<(VecDeque<EnemyType>, Vec2, Color, Rect)>(){
+                    if let Some(data) = result.downcast_ref::<(VecDeque<EnemyType>, Vec2, Color)>(){
                         let template = data.0.clone();
                         let ppos = data.1;
                         let color = data.2;
-                        let viewport = data.3;
-                        self.queue_template(template, ppos, color, viewport);
+                        self.queue_template(template, ppos, color);
                     }
                 }
             },
             EventType::ForwardEnemiesToHandler => {
                 let mut queue: Vec<Option<Box<dyn Enemy>>> = Vec::new();
+                let mut viewport = None;
 
                 if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<usize>(){
+                    if let Some((data, rect)) = result.downcast_ref::<(usize, Rect)>(){
                         let amount = {
                             //Requested less than collection
                             if self.queue.len() > *data{
@@ -215,9 +227,11 @@ impl Subscriber for Factory{
                             .map(|enemy| Some(enemy))
                             .collect();
                         }
+
+                        viewport = Some(rect.to_owned())
                     }
                 }
-                self.publish(Event::new(queue, EventType::BatchEnemySpawn)).await;
+                self.forward(queue, viewport.unwrap()).await;
             },
             EventType::FactoryResize => {
                 if let Ok(result) = event.data.lock(){
