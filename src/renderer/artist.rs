@@ -189,22 +189,13 @@ impl ConfigType{
                     lifetime: 1.0,
                     lifetime_randomness: 0.0,
                     explosiveness: 0.0,
-                    // Emit a moderate number of particles per cycle.
                     amount: 30,
-                    // The emitter remains active as long as drifting occurs.
                     emitting: true,
-                    // The initial direction should be roughly opposite to the car’s forward vector.
-                    // Here we assume the car is moving upward on screen; adjust as necessary.
                     initial_direction: Vec2::new(0.0, 1.0),
-                    // Allow a slight spread so that the tire burn isn’t perfectly uniform.
-                    initial_direction_spread: 0.2, // in radians
-                    // Emit particles with a modest initial speed.
+                    initial_direction_spread: 0.2,
                     initial_velocity: 150.0,
-                    // Introduce some randomness to the speed for variation.
                     initial_velocity_randomness: 0.3,
-                    // Apply a slight negative acceleration so particles slow down after emission.
                     linear_accel: -50.0,
-                    // Start with zero rotation.
                     initial_rotation: 0.0,
                     initial_rotation_randomness: 0.5,
                     initial_angular_velocity: 0.0,
@@ -271,6 +262,7 @@ impl ConfigType{
                 return EmitterConfig {
                     local_coords: false,
                     one_shot: true,
+                    emitting: false,
                     lifetime: 2.0,           
                     lifetime_randomness: 0.2,
                     explosiveness: 1.0,      
@@ -279,7 +271,7 @@ impl ConfigType{
                     initial_velocity_randomness: 0.5,
                     size: 7.0, //10.0            
                     size_randomness: 0.3,    
-                    amount: 100,            
+                    amount: 100,
                     colors_curve: ColorCurve {
                         start: Color::from_rgba(255, 50, 50, 255),  // Brighter red
                         mid: Color::from_rgba(255, 150, 50, 150),   // Orange-red
@@ -290,37 +282,45 @@ impl ConfigType{
             },
         }
     }
-
-    fn as_list() -> Vec<ConfigType>{
-        return vec![
-            ConfigType::PlayerMove,
-            ConfigType::PlayerHit,
-            ConfigType::PlayerDrifting,
-            ConfigType::EnemyDeath
-        ]
-    }
 }
 
 type Identifier = (u64, StateType);
 
 /* 
     Emitter are either one shot or not.
-    One shot emitters are spawned on the fly and expire on their own.
-    Permanent emitters have 1 emitter that is drawn every frame
+    One shot emitters are spawned via cache and expire on their own.
+    Permanent emitters have 1 emitter that is handled by the artist exclusively.
 */
+enum EmitterType{
+    Emitter(Emitter),
+    Cache(EmittersCache)
+}
+impl EmitterType{
+    fn draw_all_cache(&mut self){
+        match self{
+            EmitterType::Emitter(_) => (),
+            EmitterType::Cache(emitters_cache) => emitters_cache.draw(),
+        }
+    }
+}
+
 pub struct MetalArtist {
     // Replace multiple HashMaps with a single, more efficient structure
-    cache: HashMap<ConfigType, EmittersCache>,
+    cache: HashMap<ConfigType, EmitterType>,
     registrations: HashMap<Identifier, ConfigType>,
     request_queue: VecDeque<(u64, StateType, Vec2)>,
 }
 impl MetalArtist{
     pub fn new() -> MetalArtist{
         let mut cache_map = HashMap::new();
-        cache_map.insert(ConfigType::EnemyDeath, EmittersCache::new(ConfigType::EnemyDeath.get_conf()));
-        cache_map.insert(ConfigType::PlayerDrifting, EmittersCache::new(ConfigType::PlayerDrifting.get_conf()));
-        cache_map.insert(ConfigType::PlayerHit, EmittersCache::new(ConfigType::PlayerHit.get_conf()));
-        cache_map.insert(ConfigType::PlayerMove, EmittersCache::new(ConfigType::PlayerMove.get_conf()));
+        cache_map.insert(ConfigType::EnemyDeath, 
+            EmitterType::Cache(EmittersCache::new(ConfigType::EnemyDeath.get_conf())));
+        cache_map.insert(ConfigType::PlayerDrifting, 
+            EmitterType::Emitter(Emitter::new(ConfigType::PlayerDrifting.get_conf())));
+        cache_map.insert(ConfigType::PlayerHit, 
+            EmitterType::Emitter(Emitter::new(ConfigType::PlayerHit.get_conf())));
+        cache_map.insert(ConfigType::PlayerMove, 
+            EmitterType::Emitter(Emitter::new(ConfigType::PlayerMove.get_conf())));
 
         return MetalArtist {
             cache: cache_map,
@@ -336,17 +336,21 @@ impl MetalArtist{
             
             if let Some(config_type) = self.registrations.get(&identifier) {
                 
-                let cache = self.cache
-                    .entry(config_type.clone())
-                    .or_insert_with(|| EmittersCache::new(config_type.get_conf()));
-                
-                cache.spawn(pos);
+                if let Some(cache) = self.cache.get_mut(config_type){
+                    match cache{
+                        EmitterType::Emitter(emitter) => {
+                            emitter.draw(pos);
+                        },
+                        EmitterType::Cache(emitters_cache) => {
+                            emitters_cache.spawn(pos);
+                        },
+                    }
+                }
             }
         }
         
-        // Draw all active emitter caches
-        for cache in self.cache.values_mut() {
-            cache.draw();
+        for emitter in self.cache.values_mut(){
+            emitter.draw_all_cache();
         }
     }
 

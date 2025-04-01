@@ -2,18 +2,21 @@
 name = "graphical_playground"
 version = "0.2.5"
 edition = "2021"
+rust-version = "1.84"   #Required versioning to avoid compatibility issues 
 
 [dependencies]
-macroquad = "0.4"
-macroquad-particles = "0.2.2"
+# macroquad = { git = "https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git", branch = "master" }
+# macroquad-particles = { git = "https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git", branch = "master", package = "macroquad-particles" }
+
+macroquad = { path = "../unsafe_macroquad" }
+macroquad-particles = { path = "../unsafe_macroquad/particles", package = "macroquad-particles" }
 rand = "0.8.5"
-async-trait = "0.1.86"
+async-trait = "0.1.88"
 futures = "0.3.31"
-mimalloc = "0.1.43"     # Quicker heap allocator
+mimalloc = "0.1.43"
 
 
 [profile.release]
 lto = "fat"             # Optimization across all crates
 opt-level = 3           # Optimization leve, 1=basic, 3=all
-panic = "abort"       # Action taken for panic.
-# debug = "full"
+panic = "abort"         # Action taken for panic

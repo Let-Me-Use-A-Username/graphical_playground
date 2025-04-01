@@ -1,15 +1,14 @@
 ==============================================
 ================== Critical ==================
-- MetalArtist: 
-    - Currently holds EmissionCache which handles emitters on its own
-        - One shot emitters are not emitting
-        - Permanent emitters emit particles that never expire
-            - Idea: Permanent emitters need a single emitter that is called every frame 
-
+- MetalArtist:
     - Consider chaning Entities(Enemies, Proj, Player) to pass out their current_config instead
         of their state (when collecting emitter calls)
             - This allows more control of what emission to hand out.
-            - Breaks the _simple_ logic of State-Emitter transmition 
+            - Breaks the _simple_ logic of State-Emitter transmition
+    - Monitor memory usage
+        - Consider making changes to EmitterCache
+    - Implement permanent emitters that keep particles?
+        -PlayerDrifting
 
 
 ==============================================

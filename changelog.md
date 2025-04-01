@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.2.5 Changes 01/4/2025
+- v.0.2.5 Forked **Macroquad** for more control. Only forked project is used now
+- v.0.2.5 Changes EmitterCache caching logic in lib.rs
+- v.0.2.5 Best revision of MetalArtist till now.
+
 
 ### 0.2.5 Changes 31/3/2025
 - v.0.2.5 Changed MetalArtist multiple times, current iteration seems promising.
