@@ -53,7 +53,7 @@ pub trait Playable: GameEntity{
 
 #[async_trait]
 pub trait Enemy: GameEntity{
-    fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender: Sender<Event>) -> Self where Self: Sized;
+    async fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender: Sender<Event>) -> Self where Self: Sized;
     fn set_pos(&mut self, new_pos: Vec2);
     
     fn is_alive(&self) -> bool;

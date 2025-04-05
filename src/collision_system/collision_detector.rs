@@ -5,7 +5,7 @@ use macroquad::time::get_time;
 
 use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher}};
 
-use super::collider::RectCollider;
+use super::collider::{Collider, RectCollider};
 
 
 pub struct CollisionDetector{
@@ -20,10 +20,10 @@ impl CollisionDetector{
         }
     }
     
-    pub async fn detect_player_collision(&self, player: RectCollider, enemies: Vec<Option<&Box<dyn Enemy>>>){
+    pub async fn detect_player_collision(&self, player: Box<&dyn Collider>, enemies: Vec<Option<&Box<dyn Enemy>>>){
         for entry in enemies{
             if let Some(enemy) = entry{
-                if enemy.collides(&player){
+                if enemy.collides(*player){
                     let _ = self.publish(Event::new(enemy.get_id(), EventType::EnemyHit)).await;
                     let _ = self.publish(Event::new(get_time(), EventType::PlayerHit)).await;
                 }

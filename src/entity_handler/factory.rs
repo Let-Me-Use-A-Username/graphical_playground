@@ -33,7 +33,7 @@ impl Factory{
         }
     }
 
-    pub fn queue_enemy<T: Enemy + 'static>(&mut self, pos: Vec2, size: f32, color: Color, player_pos: Vec2){
+    pub async fn queue_enemy<T: Enemy + 'static>(&mut self, pos: Vec2, size: f32, color: Color, player_pos: Vec2){
         let mut id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         if id > 2056{
@@ -47,7 +47,7 @@ impl Factory{
                 color, 
                 player_pos, 
                 self.enemy_sender.clone()
-            ));
+            ).await);
 
         /* 
             The idea is that, every time the queue is full, shift to the left 1 place,
@@ -70,7 +70,7 @@ impl Factory{
         println!("to: {:?}", self.queue.capacity());
     }
 
-    fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color){
+    async fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color){
         while template.len() > 0{
             if let Some(etype) = template.pop_front(){
                 let pos = Vec2{ x: 0.0, y: 0.0};
@@ -78,7 +78,7 @@ impl Factory{
 
                 match etype{
                     EnemyType::Circle => {
-                        self.queue_enemy::<Circle>(pos, size, color, player_pos);
+                        self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
                     },
                     EnemyType::Ellipse => todo!(),
                     EnemyType::Triangle => todo!(),
@@ -176,6 +176,8 @@ impl Subscriber for Factory{
     async fn notify(&mut self, event: &Event) {
         match event.event_type{
             EventType::QueueEnemy => {
+                let mut enemies = Vec::new();
+
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(EnemyType, Vec2, f32, Color, Vec2)>(){
                         let enemy_type = data.0;
@@ -183,25 +185,42 @@ impl Subscriber for Factory{
                         let size = data.2;
                         let color = data.3;
                         let player_pos = data.4;
-                        
-                        match enemy_type{
-                            EnemyType::Circle => self.queue_enemy::<Circle>(pos, size, color, player_pos),
-                            EnemyType::Ellipse => todo!(),
-                            EnemyType::Triangle => todo!(),
-                            EnemyType::Rect => todo!(),
-                            EnemyType::Hexagon => todo!(),
-                        }
+                        enemies.push((enemy_type, pos, size, color, player_pos));
+                        println!("queueing enemy");
+                    }
+                }
+
+                for (enemy_type, pos, size, color, player_pos) in enemies{
+                    match enemy_type{
+                        EnemyType::Circle => {
+                            self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
+                        },
+                        EnemyType::Ellipse => todo!(),
+                        EnemyType::Triangle => todo!(),
+                        EnemyType::Rect => todo!(),
+                        EnemyType::Hexagon => todo!(),
                     }
                 }
             },
             EventType::QueueTemplate => {
+                let mut template_order = Vec::new();
+                
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(VecDeque<EnemyType>, Vec2, Color)>(){
                         let template = data.0.clone();
                         let ppos = data.1;
                         let color = data.2;
-                        self.queue_template(template, ppos, color);
+                        template_order.push((template, ppos, color));
                     }
+                }
+
+                let entry = template_order.pop();
+
+                match entry{
+                    Some(entry) => {
+                        self.queue_template(entry.0, entry.1, entry.2).await;
+                    },
+                    None => eprintln!("Missing template in QueueTemplate|Factory"),
                 }
             },
             EventType::ForwardEnemiesToHandler => {

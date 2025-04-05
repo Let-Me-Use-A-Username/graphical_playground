@@ -34,7 +34,7 @@ pub fn window_conf() -> Conf{
 async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     
-    let mut game_manager = GameManager::new();
+    let mut game_manager = GameManager::new().await;
 
     loop {
         game_manager.update().await;

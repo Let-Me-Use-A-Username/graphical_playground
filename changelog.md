@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.5 Changes 05/4/2025
+- v.0.2.5 Implemented cleanup method for Emitter, MetalArtist forces EmitterCache to clear.
+- v.0.2.5 Changed `new` method for Player/Enemies to be asyncrhonous, in order to register Emitters in new
+rather than checking in update loop.
+- v.0.2.5 Implemented basic Shield object for player.
+- v.0.2.5 Added Shield to player, works (Except from playerHit)
+
+
 ### 0.2.5 Changes 01/4/2025
 - v.0.2.5 Forked **Macroquad** for more control. Only forked project is used now
 - v.0.2.5 Changes EmitterCache caching logic in lib.rs
@@ -7,7 +15,7 @@
 - v.0.2.5 Changed playerHit emission to be more visible
 - v.0.2.5 Changed permanent emitters to reset when they haven't drawn. The groundwork for MetalArtist is done.
 - v.0.2.5 Fixed faulty enemy spawn position, by setting it before its sent to the handler
-- v.0.2.5 Made player acceleration increase by a smaller interval. Added velocity momentum event when keys are not pressed. Increased drag in both move and drift.
+- v.0.2.5 Made player acceleration increase by a smaller interval. Added velocity momentum when keys are not pressed. Increased drag in both move and drift.
 
 
 ### 0.2.5 Changes 31/3/2025

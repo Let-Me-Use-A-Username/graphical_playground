@@ -66,7 +66,7 @@ pub struct GameManager{
 
 impl GameManager{
 
-    pub fn new() -> Self{
+    pub async fn new() -> Self{
         let (sender, receiver) = channel::<GameEvent>();
 
         let global = Global::new();
@@ -100,7 +100,7 @@ impl GameManager{
                 15.0,
                 BLACK,
                 dispatcher.create_sender()
-        )));
+        ).await));
         let metal = Arc::new(Mutex::new(MetalArtist::new()));
         
         //Player events
@@ -219,8 +219,6 @@ impl GameManager{
             // ======= Updates ========
             let delta = get_frame_time();
 
-            let mut player_collider = None;
-
             {
                 if let Ok(mut player) = self.player.try_lock(){
                     player.update(delta, vec!()).await;
@@ -228,10 +226,11 @@ impl GameManager{
 
                     self.wall.update((player_pos, player.size)).await;
                     let wall_calls = self.wall.get_draw_calls(viewport);
-                    
-                    player_collider = Some(player.collider.clone());
-                    //Queue player on highest layer
-                    draw_calls.extend(vec![(10, player.get_draw_call())]);
+
+                    //Queue players draw calls on highest layer
+                    for call in player.get_all_draw_calls(){
+                        draw_calls.extend(vec![(10, call)]);
+                    }
                     draw_calls.extend(wall_calls);
 
                     if player.should_emit(){
@@ -281,8 +280,8 @@ impl GameManager{
                             })
                             .collect();
                         //Update collision detector
-                        if let Some(collider) = player_collider{
-                            self.detector.detect_player_collision(collider, nearby_entities).await;
+                        if let Ok(player) = self.player.try_lock(){
+                            self.detector.detect_player_collision(player.get_collider(), nearby_entities).await;
                         }
                     }
 

@@ -22,7 +22,6 @@ pub struct Circle{
     //State specifics
     is_alive: bool,
     //Emittion
-    current_config: Option<ConfigType>,
     emittion_configs: Vec<(StateType, ConfigType)>,
 }
 
@@ -57,11 +56,6 @@ impl Updatable for Circle{
                     },
                     _ => (), //Unreachable
                 }
-            }
-
-            if self.current_config.is_none(){
-                self.current_config = Some(ConfigType::EnemyDeath);
-                self.publish(Event::new((self.get_id(), self.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
             }
 
             self.collider.update(self.pos);
@@ -135,8 +129,8 @@ impl GameEntity for Circle{
 
 #[async_trait]
 impl Enemy for Circle{
-    fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
-        return Circle {
+    async fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
+        let enemy =  Circle {
             id: id,
             pos: pos, 
             size: size, 
@@ -149,10 +143,13 @@ impl Enemy for Circle{
             machine: StateMachine::new(),
 
             is_alive: true,
-
-            current_config: None,
+            
             emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)]
-        }
+        };
+
+        enemy.publish(Event::new((enemy.get_id(), enemy.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
+
+        return enemy
     }
 
     fn set_pos(&mut self, new_pos: Vec2){

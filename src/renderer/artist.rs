@@ -359,7 +359,7 @@ impl MetalArtist{
             emitter.draw_all_cache();
         }
 
-        //Collect all EmitterTypes that didn't draw this frame
+        //Collect EmitterTypes that didn't draw this frame
         let rest_configs: Vec<&mut EmitterType> = self.cache.iter_mut()
             .filter(|(key, _)| !have_drawn.contains(key))
             .map(|(_, val)| val)
@@ -369,10 +369,13 @@ impl MetalArtist{
         for em_type in rest_configs{
             match em_type{
                 EmitterType::Emitter(emitter) => emitter.reset(),
-                EmitterType::Cache(_) => (),
+                EmitterType::Cache(cache) => {
+                    if cache.should_clear(){
+                        cache.clear_empty();
+                    }
+                },
             }
         }
-       
     }
 
     //Drop identifier from everywhere

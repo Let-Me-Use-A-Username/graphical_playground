@@ -1,12 +1,22 @@
 ==============================================
 ================== Critical ==================
-- MetalArtist:
-    - Consider chaning Entities(Enemies, Proj, Player) to pass out their current_config instead
-        of their state (when collecting emitter calls)
-            - This allows more control of what emission to hand out.
-            - Breaks the _simple_ logic of State-Emitter transmition
-    - Monitor memory usage
-        - Consider making changes to EmitterCache
+- Implement boost
+    - Very basic implementation added 
+    - https://claude.ai/chat/2a087df5-d1e8-4b35-8892-0a3098bb0b36
+        - Add timer
+        - Variable boost?
+        - Drifting boost will be side ways rather than forward?
+
+- Implement right click Shield
+    - Implement shield cooldown after registered collision
+    - Instead of draw call, emit ?
+    - Handle PlayerHit state
+        - Works correctly?
+
+- Consider changing state machine to be an enum type
+    - Enemy Machine
+    - Object machine
+    - Player machine etc
 
 
 ==============================================
@@ -20,11 +30,11 @@
 
 ==============================================
 ================== Gameplay ==================
-- Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
-- Implement boost
-- Implement right click Shield
-- Implement Tinkering menu for different player-based aspects, variables, skins, sounds etc
 
+
+
+==============================================
+================== Testing ===================
 - Player Test
     -Test handbrake mechanic(Check forward and lateral friction)
         -Faster or slower? (if faster revert to old frictions, else increase them)
@@ -38,11 +48,15 @@
     - Normal turn is too much
     - Firing too quickly
 
+- Component Test
+    - MetalArtist:
+        - Monitor memory usage (especially freed memory)
 
 ==============================================
 ================== Gameplay Design and Ideas==
 - Draw non-complete shapes to imitate "zombie" like creatures. I.e. circle with transparent circle top left to imitate a 3/4 circle.
-
+- Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
+- Implement Tinkering menu for different player-based aspects, variables, skins, sounds etc
 
 ==============================================
 ================== Implementation ideas ======
@@ -55,7 +69,6 @@
         - Function macroquad::window::set_fullscreen ?
             - When settings are changed, restart game to run them (hot reload)
     - Draw bullet ammunition UI
-
 
 ==============================================
 ================== Notes =====================

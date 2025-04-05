@@ -1,6 +1,4 @@
-use macroquad::{color::{BLACK, RED}, math::Vec2, shapes::{draw_rectangle_ex, DrawRectangleParams}};
-
-use crate::renderer::artist::DrawCall;
+use macroquad::math::Vec2;
 
 ///Each entity is either assigned a circle or rectangular collider.
 pub trait Collider{

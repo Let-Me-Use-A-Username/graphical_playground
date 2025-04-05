@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::bullet, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
@@ -26,6 +26,7 @@ pub struct Player{
     sender: Sender<Event>,
     machine: StateMachine,
     pub collider: RectCollider,
+    shield: Shield,
     //State specifics
     immune_timer: Timer,
     bounce: bool,
@@ -35,7 +36,6 @@ pub struct Player{
     bullet_pool: BulletPool,
     bullet_timer: SimpleTimer,
     //Emitter specifics
-    current_config: Option<ConfigType>,
     emittion_configs: Vec<(StateType, ConfigType)>,
 }
 
@@ -43,8 +43,8 @@ impl Player{
     const ROTATION_SPEED: f32 = 1.0;
     const POOL_REFILL: f64 = 7.5;
 
-    pub fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
-        return Player { 
+    pub async fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
+        let player = Player { 
             id: 0,
             pos: Vec2::new(x, y),
             direction: Vec2::new(0.0, 0.0),
@@ -58,19 +58,23 @@ impl Player{
             sender: sender.clone(),
             machine: StateMachine::new(),
             collider: RectCollider::new(x, y, size, size * 2.0),
+            shield: Shield::new(Vec2::new(x, y), (size * 3.0) as usize),
             immune_timer: Timer::new(),
             bounce: false,
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
             bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank(),
-            current_config: None,
             emittion_configs: vec![
                 (StateType::Drifting, ConfigType::PlayerDrifting),
                 (StateType::Moving, ConfigType::PlayerMove),
                 (StateType::Hit, ConfigType::PlayerHit)
             ]
-        }
+        };
+
+        player.publish(Event::new((player.get_id(), player.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
+
+        return player
     }
 
     async fn fire(&mut self){
@@ -131,10 +135,34 @@ impl Player{
         }
     }
 
+    fn boost(&mut self, delta: f32){
+        let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
+
+        let boost_force = forward * (6000.0 * delta);
+        self.velocity += boost_force;
+        
+        // Cap velocity at boost max
+        if self.velocity.length() > 1500.0 {
+            self.velocity = self.velocity.normalize() * 1500.0;
+        }
+    }
+
     pub fn get_back_position(&self) -> Vec2 {
         let front_vector = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
         let back_vector = -front_vector;
         self.pos + back_vector * self.size
+    }
+
+    pub fn get_all_draw_calls(&self) -> Vec<DrawCall>{
+        let mut calls = Vec::new();
+
+        calls.push(self.get_draw_call());
+
+        if self.shield.is_active(){
+            calls.push(self.shield.get_draw_call());
+        }
+
+        return calls
     }
 }
 
@@ -147,6 +175,7 @@ impl Updatable for Player{
         //Update collider with slight offset, in respect to the drawn rect
         self.collider.update(self.pos - vec2(self.size / 2.0, self.size));
         self.collider.set_rotation(self.rotation);
+        self.shield.update(delta, vec!(Box::new(self.get_pos()))).await;
 
         let pool_size = self.bullet_pool.get_pool_size();
 
@@ -177,14 +206,15 @@ impl Updatable for Player{
             }
         };
 
-        let can_fire = is_mouse_button_down(MouseButton::Left) & can_attack;
-
-        if self.current_config.is_none(){
-            self.current_config = Some(ConfigType::PlayerMove);
-            self.publish(Event::new((self.get_id(), self.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
-        }
-
+        //State transitions
         let is_drifting = is_key_down(KeyCode::Space);
+        
+        //Sub-state transitions
+        let can_fire = is_mouse_button_down(MouseButton::Left) & can_attack;
+        let is_boosting = is_key_down(KeyCode::LeftShift);
+
+        let shield_active = is_mouse_button_down(MouseButton::Right);
+        self.shield.set_active(shield_active);
 
         match current_state{
             StateType::Idle => {
@@ -211,6 +241,10 @@ impl Updatable for Player{
 
                 if is_drifting{
                     self.machine.transition(StateType::Drifting);
+                }
+
+                if is_boosting{
+                    self.boost(delta);
                 }
             },
             StateType::Hit => {
@@ -252,6 +286,10 @@ impl Updatable for Player{
 
             if !is_key_down(KeyCode::Space) && self.velocity.length() > 10.0{
                 self.machine.transition(StateType::Moving);
+            }
+
+            if is_boosting{
+                self.boost(delta);
             }
         }
         };
@@ -398,10 +436,18 @@ impl GameEntity for Player{
     }
 
     fn collides(&self,other: &dyn Collider) -> bool {
+        //If shield is active, register Shield collision
+        if self.shield.is_active(){
+            return self.shield.collider(other)
+        }
+        //Else register players
         return self.collider.collides_with(other)
     }
 
     fn get_collider(&self) -> Box<&dyn Collider>  {
+        if self.shield.is_active(){
+            return Box::new(&self.shield.collider)
+        }
         return Box::new(&self.collider)
     }
 }
@@ -518,7 +564,7 @@ impl Subscriber for Player {
                 }
                 //Note: Player enters hit state even when he shouldn't
                 //Note: If it momenterally slows don't the player, keep as mechanic
-                if self.immune_timer.is_set(){
+                if self.immune_timer.is_set() && !self.shield.is_active(){
                     self.bounce = true;
                     self.machine.transition(StateType::Hit);
                 }
