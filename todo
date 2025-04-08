@@ -1,17 +1,12 @@
 ==============================================
 ================== Critical ==================
+        
 - Implement boost
     - Very basic implementation added 
     - https://claude.ai/chat/2a087df5-d1e8-4b35-8892-0a3098bb0b36
         - Add timer
         - Variable boost?
         - Drifting boost will be side ways rather than forward?
-
-- Implement right click Shield
-    - Implement shield cooldown after registered collision
-    - Instead of draw call, emit ?
-    - Handle PlayerHit state
-        - Works correctly?
 
 - Consider changing state machine to be an enum type
     - Enemy Machine

@@ -30,7 +30,7 @@ impl Shield{
         return self.active
     }
 
-    pub fn collider(&self, other: &dyn Collider) -> bool{
+    pub fn collides(&self, other: &dyn Collider) -> bool{
         return other.collide_with_circle(&self.collider)
     }
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+
+### 0.2.6 Changes 08/4/2025
+- v.0.2.6 Implemented RechargableCounter for Shield component in player.
+- v.0.2.6 Changed Player so that he can only us the shield 10 times, refreshes a charge every 3.0 seconds.
+- v.0.2.6 Changed Players boost to be Rechargable. Needs a timer for active boost time.
+
+
 ### 0.2.5 Changes 05/4/2025
 - v.0.2.5 Implemented cleanup method for Emitter, MetalArtist forces EmitterCache to clear.
 - v.0.2.5 Changed `new` method for Player/Enemies to be asyncrhonous, in order to register Emitters in new
