@@ -51,6 +51,15 @@ impl Timer{
         self.set = false;
     }
 
+    pub fn on_cooldown(&self, now: f64) -> Option<bool>{
+        if let Some(last) = self.last_set{
+            if let Some(cooldown) = self.cooldown{
+                return Some(now > last + cooldown + self.duration) 
+            }
+        }
+        return None
+    }
+
 }
 
 #[derive(Clone, Copy)]

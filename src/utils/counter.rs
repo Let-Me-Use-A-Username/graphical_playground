@@ -1,3 +1,5 @@
+use std::fmt;
+
 use macroquad::time::get_time;
 
 use super::timer::SimpleTimer;
@@ -90,5 +92,14 @@ impl RechargebleCounter{
                 }
             }
         }
+    }
+}
+
+impl fmt::Debug for RechargebleCounter{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RechargebleCounter")
+            .field("usages", &self.usages)
+            .field("counter_interval", &self.counter_interval)
+            .field("remaining", &self.remaining).finish()
     }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.6 Changes 09/4/2025
+- v.0.2.6 Implemented new functions for Timer.
+- v.0.2.6 Changed players color based on `invurnerable` or not.
+
 
 ### 0.2.6 Changes 08/4/2025
 - v.0.2.6 Implemented RechargableCounter for Shield component in player.

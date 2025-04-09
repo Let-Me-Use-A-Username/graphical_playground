@@ -145,16 +145,20 @@ impl Player{
     }
 
     fn boost(&mut self, delta: f32){
+        println!("Boosting {:?}", self.boost_counter);
+
         self.boost_counter.discharge();
+        const BOOST_MULT: f32 = 1800.0;
         
         let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
 
-        let boost_force = forward * (6000.0 * delta);
+        //let boost_force = forward * (6000.0 * delta);
+        let boost_force = forward * 800.0;
         self.velocity += boost_force;
         
         // Cap velocity at boost max
-        if self.velocity.length() > 1500.0 {
-            self.velocity = self.velocity.normalize() * 1500.0;
+        if self.velocity.length() > BOOST_MULT {
+            self.velocity = self.velocity.normalize() * BOOST_MULT;
         }
     }
 
@@ -206,6 +210,7 @@ impl Updatable for Player{
 
         self.shield.update(delta, vec!(Box::new(self.get_pos()))).await;
         self.shield_counter.update();
+        self.boost_counter.update();
 
         let pool_size = self.bullet_pool.get_pool_size();
 
@@ -289,7 +294,6 @@ impl Updatable for Player{
                         false => {
                             //Reverse velocity vector
                             if self.bounce{
-                                //Review: Reduce impact
                                 self.velocity = -self.velocity * 0.9;
                                 self.bounce = false;
                             }
@@ -316,10 +320,6 @@ impl Updatable for Player{
 
             if !is_key_down(KeyCode::Space) && self.velocity.length() > 10.0{
                 self.machine.transition(StateType::Moving);
-            }
-
-            if is_boosting{
-                self.boost(delta);
             }
         }
         };
@@ -423,6 +423,19 @@ impl Drawable for Player{
     fn get_draw_call(&self) -> DrawCall {
         let p_rect_width = self.size;
         let p_rect_height = self.size * 2.0;
+        
+        let color: Color = {
+            match self.immune_timer.on_cooldown(get_time()) {
+                //If timer's cooldown hasn't ended, draw as white to signify invurnerability
+                Some(false) => {
+                    WHITE
+                },
+                //Else color black as usual
+                Some(true) | None => {
+                    self.color
+                }
+            }
+        };
 
         //player rect
         let rect = (
@@ -432,7 +445,7 @@ impl Drawable for Player{
             p_rect_height,
             DrawRectangleParams {
                 rotation: self.rotation,
-                color: self.color,
+                color: color,
                 offset: Vec2::new(0.5, 0.5), 
             });
         
@@ -574,9 +587,11 @@ impl Subscriber for Player {
     async fn notify(&mut self, event: &Event){
         match &event.event_type{
             EventType::PlayerHit => {
+                println!("Received PlayerHit event");
                 let current_time = get_time();
 
                 let entry = event.data.try_lock().unwrap();
+                let mut bypass_shield = false;
 
                 //Hit by normal enemy.Setting timer to duration sent.
                 if let Some(now) = entry.downcast_ref::<f64>(){
@@ -587,19 +602,38 @@ impl Subscriber for Player {
                 //Restrict by Wall. Timer is standard at 1.0 seconds.
                 else if let Some(wall_hit) = entry.downcast_ref::<bool>(){
                     if *wall_hit{
-                        if self.immune_timer.can_be_set(current_time){
-                            self.immune_timer.set(current_time, 1.5, Some(1.0));
-                        }
+                        self.immune_timer.set(current_time, 1.5, Some(1.0));
                     }
                 }
 
-                if self.shield.is_active(){
-                    self.shield_counter.discharge();
-                }
+                /* 
+                    Hit state is entered when
+                        A) Immune timer is set, signifying the player collided with something
+                        B) Either
+                            B.1) The shield is inactive
+                            B.2) The bypass factor is set to true, so the shield is bypassed whether
+                                it is active or not.
+                */
+                let enter_hit_state = {
+                    let shield_active = self.shield.is_active();
+                    let timer_set = self.immune_timer.is_set();
 
-                //Note: Player enters hit state even when he shouldn't
-                //Note: If it momenterally slows don't the player, keep as mechanic
-                if self.immune_timer.is_set() && !self.shield.is_active(){
+                    let bypass = {
+                        if shield_active && !bypass_shield{
+                            self.shield_counter.discharge();
+                            false
+                        }
+                        else{
+                            true
+                        }
+                    };
+
+                    timer_set && bypass
+                };
+
+                //Note: The *Wall* event should bypass the shield.
+                if enter_hit_state{
+                    println!("Entering hit state with inactive shield: {:?}", self.shield.is_active());
                     self.bounce = true;
                     self.machine.transition(StateType::Hit);
                 }

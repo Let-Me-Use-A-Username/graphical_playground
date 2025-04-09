@@ -1,5 +1,11 @@
 ==============================================
 ================== Critical ==================
+
+- PlayerHit state needs some rework.
+    - More specifically, the condition that makes the player enter the hit state.
+        - PlayerHit state should be entered only under restrictions
+        - Players `drag` mechanic when immune should still be present, but not inside hit(?)
+    - Find a way to draw the player differently if immune.
         
 - Implement boost
     - Very basic implementation added 
@@ -49,21 +55,18 @@
 
 ==============================================
 ================== Gameplay Design and Ideas==
-- Draw non-complete shapes to imitate "zombie" like creatures. I.e. circle with transparent circle top left to imitate a 3/4 circle.
 - Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
-- Implement Tinkering menu for different player-based aspects, variables, skins, sounds etc
 
 ==============================================
 ================== Implementation ideas ======
-- Implement build parameters
-    - Debug mode
-        - Enable/Disable tracy
-
 - Implement better UI
     - Implement fullscreen with  macroquad::prelude::Conf
         - Function macroquad::window::set_fullscreen ?
             - When settings are changed, restart game to run them (hot reload)
+    - Implement Tinkering menu for different player-based aspects, variables, skins, sounds etc
     - Draw bullet ammunition UI
+    - Draw Shield charges
+    - Draw Boost charges
 
 ==============================================
 ================== Notes =====================
