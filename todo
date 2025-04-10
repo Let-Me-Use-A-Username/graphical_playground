@@ -6,6 +6,9 @@
 
 - Implement different kinds of enemies.
     - Triangle first. Shooter.
+        - Implement bullet pool
+        - Implement projectile (reuse bullet?)
+        - Test move_to method and fire.
 
 
 ==============================================
@@ -16,7 +19,8 @@
 
 ==============================================
 ================== Gameplay ==================
-
+- Implement a `hold velocity` mechanic, that slows down the player but after released, provides a burst of movement
+    - Substitute with boost?
 
 
 ==============================================

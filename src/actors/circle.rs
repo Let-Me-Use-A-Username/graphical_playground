@@ -191,6 +191,7 @@ impl std::fmt::Debug for Circle{
         f.debug_struct("Circle")
             .field("id", &self.id)
             .field("pos", &self.pos)
+            .field("type", &"circle")
             .finish()
     }
 }

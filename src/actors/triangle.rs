@@ -4,9 +4,16 @@ use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
+use ::rand::{thread_rng, Rng};
 
 use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
 
+/* 
+    The triangle in comparison to the circle is more complex.
+
+    Whilst it holds the same states, the triangle moves to a more generic position than the circle.
+    After it moves to the assigned position, he fires a bullet towards the player, and then repositions itself.
+*/
 pub struct Triangle{
     //Attributes
     id: u64,
@@ -23,8 +30,103 @@ pub struct Triangle{
     is_alive: bool,
     //Emittion
     emittion_configs: Vec<(StateType, ConfigType)>,
+    //Triangle spefics
+    current_destination: Option<Vec2>,
+    approach_player: bool,
+    position_switch_distance: f32,
 }
+impl Triangle{
 
+    /* 
+        The triangle doesn't follow the player. Instead, what happens is,
+        there is a 30% chance the triangle follows the player, and 70% that
+        the next position is chosen from the following:
+
+        Randomly choose the next position based on A or B
+        A) Provides a position between the triangle and player, roughly 30-70 percent of the distance.
+        B) Generates a random point around either A)player or B) self
+    */
+    fn determine_next_position(&mut self) -> Vec2 {
+        let mut rng = thread_rng();
+        
+        // 30% chance to directly approach player
+        self.approach_player = rng.gen_bool(0.3);
+        
+        if self.approach_player {
+            // Return the player's position
+            return self.target;
+        } 
+        else {
+            // Option A: Point between player and triangle
+            if rng.gen_bool(0.5) {
+                let direction = (self.target - self.pos).normalize();
+                let distance = self.pos.distance(self.target);
+                let intermediate_distance = distance * rng.gen_range(0.3..0.7); // 30-70% of the way
+
+                return self.pos + direction * intermediate_distance;
+            }
+            // Option B: Point around triangle or player 
+            else {
+                // Around triangle
+                if rng.gen_bool(0.5) {
+                    return self.generate_position_around(self.pos);
+                } 
+                // Around player
+                else {
+                    return self.generate_position_around(self.target);
+                }
+            }
+        }
+    }
+    
+    // Generate position around a point
+    //REVIEW: Add radius multiplier to function parameters
+    fn generate_position_around(&self, center: Vec2) -> Vec2 {
+        let mut rng = thread_rng();
+        
+        let angle = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
+        
+        let radius = self.size * 10.0;
+        let distance = radius * rng.gen::<f32>().sqrt();
+        
+        let offset_x = distance * angle.cos();
+        let offset_y = distance * angle.sin();
+        
+        Vec2::new(center.x + offset_x, center.y + offset_y)
+    }
+    
+    // Check if reached destination
+    fn has_reached_destination(&self) -> bool {
+        if let Some(dest) = self.current_destination {
+            return self.pos.distance(dest) < self.position_switch_distance;
+        }
+        true
+    }
+    
+    // Check distance to player
+    fn check_player_distance(&mut self) {
+        let distance_to_player = self.pos.distance(self.target);
+        
+        // Player is close, shoot and then reposition
+        if distance_to_player < self.size * 5.0 {
+            //TODO: Shoot player and walk to random position near self.
+            //REVIEW: Shoot will be a substate like in player
+            //REVIEW: Add 2hp ?
+            self.fire();
+            self.approach_player = false;
+            self.current_destination = Some(self.generate_position_around(self.pos));
+        } 
+        // Player is far, approach player directly
+        else if distance_to_player > self.size * 30.0 {
+            self.approach_player = true;
+            self.current_destination = Some(self.target);
+        }
+    }
+
+    fn fire(&mut self){
+
+    }
+}
 //========== Triangle interfaces =========
 #[async_trait]
 impl Updatable for Triangle{
@@ -81,12 +183,27 @@ impl Object for Triangle{
 
 impl Moveable for Triangle{
     #[inline(always)]
-    fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32){
-        let mut new_pos = overide.unwrap_or(self.target);
+    fn move_to(&mut self, delta: f32, override_pos: Option<Vec2>) -> (f32, f32) {
+        // If override, simply go to it.
+        if let Some(pos) = override_pos {
+            self.current_destination = Some(pos);
+        }
+        // If we've reached destination or don't have one
+        else if self.has_reached_destination() || self.current_destination.is_none() {
+            // Check distance to player before deciding next move
+            self.check_player_distance();
+            
+            // Failsafe method in case `check_player_distance` fails to assign destination
+            if self.has_reached_destination() || self.current_destination.is_none() {
+                self.current_destination = Some(self.determine_next_position());
+            }
+        }
         
-        new_pos = self.pos.move_towards(new_pos, self.speed * delta);
-        self.pos = new_pos;
-
+        // Move toward the current destination
+        if let Some(dest) = self.current_destination {
+            self.pos = self.pos.move_towards(dest, self.speed * delta);
+        }
+        
         return self.pos.into()
     }
 }
@@ -94,21 +211,21 @@ impl Moveable for Triangle{
 impl Drawable for Triangle{
     #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
-        let top_angle = std::f32::consts::PI / 2.0; // 90 degrees
+        let top_angle = std::f32::consts::PI / 2.0;
         
-        // Calculate the three vertices
+        // Top vertex
         let v1 = Vec2::new(
             self.pos.x + self.size * f32::cos(top_angle),
-            self.pos.y - self.size * f32::sin(top_angle) // Negative to point upward
+            self.pos.y - self.size * f32::sin(top_angle)
         );
         
-        // Bottom right vertex (210 degrees)
+        // Bottom right vertex
         let v2 = Vec2::new(
             self.pos.x + self.size * f32::cos(top_angle + 2.0 * std::f32::consts::PI / 3.0),
             self.pos.y - self.size * f32::sin(top_angle + 2.0 * std::f32::consts::PI / 3.0)
         );
         
-        // Bottom left vertex (330 degrees)
+        // Bottom left vertex
         let v3 = Vec2::new(
             self.pos.x + self.size * f32::cos(top_angle + 4.0 * std::f32::consts::PI / 3.0),
             self.pos.y - self.size * f32::sin(top_angle + 4.0 * std::f32::consts::PI / 3.0)
@@ -164,7 +281,11 @@ impl Enemy for Triangle{
 
             is_alive: true,
             
-            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)]
+            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)],
+
+            current_destination: None,
+            approach_player: false,
+            position_switch_distance: 200.0,
         };
 
         enemy.publish(Event::new((enemy.get_id(), enemy.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
@@ -211,6 +332,7 @@ impl std::fmt::Debug for Triangle{
         f.debug_struct("Circle")
             .field("id", &self.id)
             .field("pos", &self.pos)
+            .field("type", &"triangle")
             .finish()
     }
 }
