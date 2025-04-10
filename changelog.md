@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.6 Changes 10/4/2025
+- v.0.2.6 Removed players drag when `running` enemies over, due to the new conditions player enters Hit state. The player will only enter Hit state if A) Wall collision, B) Collision with enemy when 1) Inactive shield and 2) Player is not immune.
+- v.0.2.6 Implemented boost timer, to have more control over boosting.
+- v.0.2.6 Increased some boosting parameters.
+- v.0.2.6 Fixed a bug in Spawner.
+- v.0.2.6 Implemented basic `Triangle` enemy.
+
+
 ### 0.2.6 Changes 09/4/2025
 - v.0.2.6 Implemented new functions for Timer.
 - v.0.2.6 Changed players color based on `invurnerable` or not.

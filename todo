@@ -1,33 +1,18 @@
 ==============================================
 ================== Critical ==================
-
-- PlayerHit state needs some rework.
-    - More specifically, the condition that makes the player enter the hit state.
-        - PlayerHit state should be entered only under restrictions
-        - Players `drag` mechanic when immune should still be present, but not inside hit(?)
-    - Find a way to draw the player differently if immune.
-        
-- Implement boost
-    - Very basic implementation added 
-    - https://claude.ai/chat/2a087df5-d1e8-4b35-8892-0a3098bb0b36
-        - Add timer
-        - Variable boost?
-        - Drifting boost will be side ways rather than forward?
-
-- Consider changing state machine to be an enum type
-    - Enemy Machine
-    - Object machine
-    - Player machine etc
-
-
-==============================================
-================== General todo ==============
-
 - Implement ErrorHandler
     -Change component function to return Results 
         -Log these results if error occurs
 
 - Implement different kinds of enemies.
+    - Triangle first. Shooter.
+
+
+==============================================
+================== General todo ==============
+
+
+
 
 ==============================================
 ================== Gameplay ==================
@@ -43,6 +28,9 @@
     -Test Players base turn rate (rotation when not drifting)
     -Not inputting movement losses velocity too fast
     -Bullet collider might not be overlapping sprite
+    -Player no longer has drag when running enemies over and is immune
+    -Players boost is quite weak, and only useful when velocity is lows
+        - Perhaps adopt this lower speed philoshophy
 -Test Results
     - Max speed too much
     - Max acceleration too much
@@ -67,6 +55,11 @@
     - Draw bullet ammunition UI
     - Draw Shield charges
     - Draw Boost charges
+
+- Consider changing state machine to be an enum type
+    - Enemy Machine
+    - Object machine
+    - Player machine etc
 
 ==============================================
 ================== Notes =====================

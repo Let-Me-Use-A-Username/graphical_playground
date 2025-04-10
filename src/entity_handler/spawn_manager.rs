@@ -12,19 +12,17 @@ use crate::entity_handler::enemy_type::EnemyType;
 #[derive(Clone, Copy)]
 pub enum EnemyComplexity {
     Simple = 1,     // 80 enemies
-    Mediocre = 2,   // 160
-    Average = 3,    // 240
-    Complex = 4,    // 320
-    Expert = 5,     // 400
-    Hell = 6,       // 480
+    Average = 2,    // 240
+    Complex = 3,    // 320
+    Expert = 4,     // 400
+    Hell = 5,       // 480
 }
 
 impl EnemyComplexity {
     #[inline(always)]
     fn next(self) -> EnemyComplexity {
         match self {
-            EnemyComplexity::Simple => EnemyComplexity::Mediocre,
-            EnemyComplexity::Mediocre => EnemyComplexity::Average,
+            EnemyComplexity::Simple => EnemyComplexity::Average,
             EnemyComplexity::Average => EnemyComplexity::Complex,
             EnemyComplexity::Complex => EnemyComplexity::Expert,
             EnemyComplexity::Expert => EnemyComplexity::Hell,
@@ -40,21 +38,17 @@ impl EnemyComplexity {
             EnemyComplexity::Simple => {
                 vec![EnemyType::Circle].into()
             },
-            EnemyComplexity::Mediocre => {
-                vec![EnemyType::Circle, EnemyType::Ellipse].into()
-            },
             EnemyComplexity::Average => {
-                vec![EnemyType::Circle, EnemyType::Ellipse, EnemyType::Triangle].into()
+                vec![EnemyType::Circle, EnemyType::Triangle].into()
             },
             EnemyComplexity::Complex => {
-                vec![EnemyType::Circle, EnemyType::Ellipse, EnemyType::Triangle, EnemyType::Rect].into()
+                vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect].into()
             },
-            //TODO: Implement the following difficulties
             EnemyComplexity::Expert => {
-                vec![EnemyType::Circle, EnemyType::Ellipse, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon].into()
+                vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon].into()
             },
             EnemyComplexity::Hell => {
-                vec![EnemyType::Circle, EnemyType::Ellipse, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon].into()
+                vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon].into()
             }, 
         };
 
@@ -68,10 +62,9 @@ impl EnemyComplexity {
     fn get_color(&self) -> Color{
         match self{
             EnemyComplexity::Simple => GREEN,
-            EnemyComplexity::Mediocre => BLUE,
-            EnemyComplexity::Average => YELLOW,
-            EnemyComplexity::Complex => ORANGE,
-            EnemyComplexity::Expert => RED,
+            EnemyComplexity::Average => BLUE,
+            EnemyComplexity::Complex => YELLOW,
+            EnemyComplexity::Expert => ORANGE,
             EnemyComplexity::Hell => RED,
         }
     }
@@ -200,7 +193,7 @@ impl SpawnManager{
         self.level_timer.set(now, self.level_interval);
         
         let complexity = self.config.complexity.next();
-        self.config.complexity = complexity.next();
+        self.config.complexity = complexity;
         self.config.enemy_count = (complexity as usize * Self::ENEMY_MULTIPLIER) as u64
     }
 

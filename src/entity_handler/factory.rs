@@ -8,6 +8,7 @@ use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::color::Color;
 use rand::{thread_rng, Rng};
 
+use crate::actors::triangle::Triangle;
 use crate::event_system::event::{Event, EventType};
 use crate::event_system::interface::{Enemy, Publisher, Subscriber};
 use crate::actors::circle::Circle;
@@ -64,10 +65,9 @@ impl Factory{
     }
 
     pub fn reserve_additional(&mut self, size: usize){
-        //REVIEW: Check if this does increase space or not
-        println!("Resized factory queue from: {:?}", self.queue.capacity());
-        self.queue.reserve(size);
-        println!("to: {:?}", self.queue.capacity());
+        if size > self.queue.capacity(){
+            self.queue.reserve(size);
+        }
     }
 
     async fn queue_template(&mut self, mut template: VecDeque<EnemyType>, player_pos: Vec2, color: Color){
@@ -80,8 +80,9 @@ impl Factory{
                     EnemyType::Circle => {
                         self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
                     },
-                    EnemyType::Ellipse => todo!(),
-                    EnemyType::Triangle => todo!(),
+                    EnemyType::Triangle => {
+                        self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
+                    },
                     EnemyType::Rect => todo!(),
                     EnemyType::Hexagon => todo!(),
                 }
@@ -195,8 +196,9 @@ impl Subscriber for Factory{
                         EnemyType::Circle => {
                             self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
                         },
-                        EnemyType::Ellipse => todo!(),
-                        EnemyType::Triangle => todo!(),
+                        EnemyType::Triangle => {
+                            self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
+                        },
                         EnemyType::Rect => todo!(),
                         EnemyType::Hexagon => todo!(),
                     }
