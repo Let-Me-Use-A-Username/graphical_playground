@@ -78,8 +78,6 @@ pub struct RectCollider{
     rotation: f32
 }
 impl RectCollider{
-    //REVIEW: Perhaps new should be a `Collider` method and have 
-    //it return a Collider obj.
     pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self{
         return RectCollider { x, y, w, h , rotation: 0.0}
     }

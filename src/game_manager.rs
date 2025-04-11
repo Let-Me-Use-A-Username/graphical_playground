@@ -12,7 +12,7 @@ use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
 use crate::entity_handler::spawn_manager::SpawnManager;
 use crate::event_system::event::Event;
-use crate::event_system::interface::{Drawable, Enemy, GameEntity, Object, Playable, Updatable};
+use crate::event_system::interface::{Drawable, Enemy, GameEntity, Object, Playable, Projectile, Updatable};
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
@@ -116,7 +116,8 @@ impl GameManager{
         dispatcher.register_listener(EventType::BatchEnemySpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletSpawn, handler.clone());
         dispatcher.register_listener(EventType::PlayerBulletHit, handler.clone());
-        dispatcher.register_listener(EventType::PlayerBulletExpired, handler.clone());
+        dispatcher.register_listener(EventType::EnemyBulletSpawn, handler.clone());
+        dispatcher.register_listener(EventType::EnemyBulletHit, handler.clone());
         dispatcher.register_listener(EventType::CollidingEnemies, handler.clone());
 
         //Factory events
@@ -271,17 +272,31 @@ impl GameManager{
                         grid.update();
                         draw_calls.extend(grid.get_draw_calls(viewport));
                         //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
-                        let nearby_entities_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
+                        let nearby_enemy_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
                         //Retrieve enemies based on Ids
-                        let nearby_entities: Vec<Option<&Box<dyn Enemy>>> = nearby_entities_ids
+                        let nearby_enemies: Vec<Option<&Box<dyn Enemy>>> = nearby_enemy_ids
                             .iter()
                             .filter_map(|id| {
                                 Some(handler.get_enemy(id).filter(|enemy| enemy.is_alive()))
                             })
                             .collect();
+                        
+                        //Retrieve projectile id's that are adjucent to the player in a -1..1 radius.
+                        let neaby_projectile_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Projectile);
+                        //Filter projectile so that we only keep active enemy projectiles.
+                        let nearby_projectiles: Vec<Option<&Box<dyn Projectile>>> = neaby_projectile_ids
+                            .iter()
+                            .filter_map(|id| {
+                                Some(handler.get_projectile(id).filter(|projectile| {
+                                    projectile.is_active() && projectile.get_ptype() == ProjectileType::Enemy
+                                }))
+                            })
+                            .collect();
+
                         //Update collision detector
                         if let Ok(player) = self.player.try_lock(){
-                            self.detector.detect_player_collision(player.get_collider(), nearby_entities).await;
+                            self.detector.detect_player_collision(player.get_collider(), nearby_enemies).await;
+                            self.detector.detect_enemy_projectile_collision(player.get_collider(), nearby_projectiles).await;
                         }
                     }
 

@@ -1,6 +1,12 @@
 # Changelog
 
 ### 0.2.6 Changes 10/4/2025
+- v.0.2.6 Implemented basic triangle enemy with fire and weave tactics.
+- v.0.2.6 Integrated bullet hit logic in Handler and Manager.
+- v.0.2.6 Refined weave tactics and general movement and firing logic. Needs some player testing.
+
+
+### 0.2.6 Changes 10/4/2025
 - v.0.2.6 Removed players drag when `running` enemies over, due to the new conditions player enters Hit state. The player will only enter Hit state if A) Wall collision, B) Collision with enemy when 1) Inactive shield and 2) Player is not immune.
 - v.0.2.6 Implemented boost timer, to have more control over boosting.
 - v.0.2.6 Increased some boosting parameters.

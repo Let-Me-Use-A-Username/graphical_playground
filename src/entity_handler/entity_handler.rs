@@ -173,6 +173,14 @@ impl Handler{
     }
 
     #[inline(always)]
+    pub fn get_projectile(&self, id: &u64) -> Option<&Box<dyn Projectile>>{
+        if let Some((_, entry)) = self.projectiles.get_key_value(&id){
+            return Some(entry)
+        }
+        return None
+    }
+
+    #[inline(always)]
     pub fn get_projectiles(&self) -> Vec<&Box<dyn Projectile>>{
         let projectiles: Vec<&Box<dyn Projectile>> = self.projectiles
             .iter()
@@ -236,7 +244,7 @@ impl Subscriber for Handler{
                     }
                 }
             },
-            EventType::PlayerBulletSpawn => {
+            EventType::PlayerBulletSpawn | EventType::EnemyBulletSpawn => {
                 if let Ok(mut entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_mut::<Option<Box<dyn Projectile>>>(){
                         let entity = data.take().unwrap();
@@ -245,7 +253,7 @@ impl Subscriber for Handler{
                     }
                 }
             },
-            EventType::PlayerBulletHit => {
+            EventType::PlayerBulletHit | EventType::EnemyBulletHit => {
                 if let Ok(mut entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_mut::<u64>(){
                         if let Some(proj) = self.projectiles.get_mut(&data){
@@ -288,9 +296,7 @@ impl Subscriber for Handler{
                     }
                 } 
             }
-            _ => {
-                todo!()
-            }
+            _ => unreachable!()
         }
     }
 }

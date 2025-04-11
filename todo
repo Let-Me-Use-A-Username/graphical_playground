@@ -1,20 +1,24 @@
 ==============================================
 ================== Critical ==================
-- Implement ErrorHandler
-    -Change component function to return Results 
-        -Log these results if error occurs
+- Suspision that Triangle projectile collider is placed on the bottom left corner
+    - Could be due to increased size
+    - Need to see if the colliders size should be proportionate to the entities size
+        - The triangle that is draw for the bullet has the pos at the center of the base,
+        if the collider is a square, then part of the tip wouldn't have a collider
+                     ^
+- Rework Collider? __|
+    - Ignore it? Hard to see..
 
 - Implement different kinds of enemies.
-    - Triangle first. Shooter.
-        - Implement bullet pool
-        - Implement projectile (reuse bullet?)
-        - Test move_to method and fire.
 
 
 ==============================================
 ================== General todo ==============
+- Consider changing Bullet to have Circle collider instead of rect.
 
-
+- Implement ErrorHandler
+    -Change component function to return Results 
+        -Log these results if error occurs
 
 
 ==============================================
@@ -35,11 +39,11 @@
     -Player no longer has drag when running enemies over and is immune
     -Players boost is quite weak, and only useful when velocity is lows
         - Perhaps adopt this lower speed philoshophy
--Test Results
-    - Max speed too much
-    - Max acceleration too much
-    - Normal turn is too much
-    - Firing too quickly
+- Enemies
+    -Triangle
+        - Firing distance 
+        - Firing cooldown (timer cooldown)
+        - Movement speed
 
 - Component Test
     - MetalArtist:
@@ -49,6 +53,8 @@
 ================== Gameplay Design and Ideas==
 - Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
 
+
+ 
 ==============================================
 ================== Implementation ideas ======
 - Implement better UI
@@ -64,6 +70,8 @@
     - Enemy Machine
     - Object machine
     - Player machine etc
+
+- Implement collision layers like in unity
 
 ==============================================
 ================== Notes =====================

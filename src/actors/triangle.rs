@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
 use async_trait::async_trait;
 use macroquad::prelude::*;
@@ -6,14 +6,19 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use ::rand::{thread_rng, Rng};
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
+use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
 /* 
     The triangle in comparison to the circle is more complex.
 
-    Whilst it holds the same states, the triangle moves to a more generic position than the circle.
-    After it moves to the assigned position, he fires a bullet towards the player, and then repositions itself.
+    The triangle constantly evaluates its position relative to the player.
+    If within firing range, it fires and immediately repositions.
+    Otherwise, it moves to an intermediate position between itself and the player.
 */
+static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2048);
+const FIRING_RANGE: f32 = 800.0;
+const FIRING_COOLDOWN: f64 = 2.8;
+
 pub struct Triangle{
     //Attributes
     id: u64,
@@ -26,123 +31,197 @@ pub struct Triangle{
     sender: Sender<Event>,
     collider: CircleCollider,
     machine: StateMachine,
+    bullet_pool: BulletPool,
+    bullets_to_publish: Vec<Box<dyn Projectile>>,
     //State specifics
     is_alive: bool,
     //Emittion
     emittion_configs: Vec<(StateType, ConfigType)>,
-    //Triangle spefics
+    //Positioning specifics
     current_destination: Option<Vec2>,
     approach_player: bool,
     position_switch_distance: f32,
+    //Fire specifics
+    fire_cooldown: SimpleTimer,
+    has_fired: bool,
 }
+
 impl Triangle{
-
     /* 
-        The triangle doesn't follow the player. Instead, what happens is,
-        there is a 30% chance the triangle follows the player, and 70% that
-        the next position is chosen from the following:
-
-        Randomly choose the next position based on A or B
-        A) Provides a position between the triangle and player, roughly 30-70 percent of the distance.
-        B) Generates a random point around either A)player or B) self
+        Calculates an intermediate position between triangle and player.
+        The triangle is more aggressive now - it frequently evaluates whether to fire,
+        and immediately repositions after firing.
     */
     fn determine_next_position(&mut self) -> Vec2 {
         let mut rng = thread_rng();
         
-        // 30% chance to directly approach player
-        self.approach_player = rng.gen_bool(0.3);
+        // If we just fired, always reposition away from player
+        if self.has_fired{
+            self.has_fired = false;
+            return self.generate_evasive_position();
+        }
         
-        if self.approach_player {
-            // Return the player's position
+        let distance_to_player = self.pos.distance(self.target);
+        
+        // Close to player - prefer evasive positioning
+        if distance_to_player < FIRING_RANGE {
+            if rng.gen_bool(0.7) { // 70% chance to evade after getting close
+                return self.generate_evasive_position();
+            }
+        }
+        
+        // Default positioning logic
+        if rng.gen_bool(0.6) { // 60%
+            // Intermediate Triangle - Player position
+            let direction = (self.target - self.pos).normalize();
+            let distance = self.pos.distance(self.target);
+            let intermediate_distance = distance * rng.gen_range(0.4..0.8); // 40-80% of the way
+            
+            return self.pos + direction * intermediate_distance;
+        }  
+        else if rng.gen_bool(0.1) { //10%
+            // Directly approach player
             return self.target;
         } 
-        else {
-            // Option A: Point between player and triangle
-            if rng.gen_bool(0.5) {
-                let direction = (self.target - self.pos).normalize();
-                let distance = self.pos.distance(self.target);
-                let intermediate_distance = distance * rng.gen_range(0.3..0.7); // 30-70% of the way
-
-                return self.pos + direction * intermediate_distance;
-            }
-            // Option B: Point around triangle or player 
-            else {
-                // Around triangle
-                if rng.gen_bool(0.5) {
-                    return self.generate_position_around(self.pos);
-                } 
-                // Around player
-                else {
-                    return self.generate_position_around(self.target);
-                }
+        else {                      // 30%
+            // Position around triangle or player
+            if rng.gen_bool(0.5) {  //coinflip
+                return self.generate_position_around(self.pos);
+            } else {
+                return self.generate_position_around(self.target);
             }
         }
     }
     
-    // Generate position around a point
-    //REVIEW: Add radius multiplier to function parameters
+    /* 
+        Generates an evasive position that faces away from the player and 
+        is *almost* perpendicular due to some (-60, 60) randomness. The 
+        distance is our size * (10..15)
+    */
+    fn generate_evasive_position(&self) -> Vec2 {
+        let mut rng = thread_rng();
+        
+        let from_player = (self.pos - self.target).normalize();
+        
+        let angle = rng.gen_range(-0.6..0.6) + std::f32::consts::FRAC_PI_2;
+        let perpendicular = Vec2::new(
+            from_player.x * angle.cos() - from_player.y * angle.sin(),
+            from_player.x * angle.sin() + from_player.y * angle.cos()
+        ).normalize();
+        
+        let evasive_direction = (from_player + perpendicular * 0.8).normalize();
+        let distance = self.size * rng.gen_range(10.0..15.0);
+        
+        self.pos + evasive_direction * distance
+    }
+    
+    // Generate position around a point with improved variability
     fn generate_position_around(&self, center: Vec2) -> Vec2 {
         let mut rng = thread_rng();
         
         let angle = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
         
-        let radius = self.size * 10.0;
+        let radius = self.size * rng.gen_range(20.0..50.0); //Radius randomness
         let distance = radius * rng.gen::<f32>().sqrt();
         
         let offset_x = distance * angle.cos();
         let offset_y = distance * angle.sin();
         
-        Vec2::new(center.x + offset_x, center.y + offset_y)
+        return Vec2::new(center.x + offset_x, center.y + offset_y)
     }
     
     // Check if reached destination
     fn has_reached_destination(&self) -> bool {
         if let Some(dest) = self.current_destination {
+
             return self.pos.distance(dest) < self.position_switch_distance;
         }
-        true
+        return true
     }
     
-    // Check distance to player
-    fn check_player_distance(&mut self) {
+    // Continuous check for player distance and firing opportunities
+    fn check_player_interaction(&mut self){
+        let now = get_time();
         let distance_to_player = self.pos.distance(self.target);
-        
-        // Player is close, shoot and then reposition
-        if distance_to_player < self.size * 5.0 {
-            //TODO: Shoot player and walk to random position near self.
-            //REVIEW: Shoot will be a substate like in player
-            //REVIEW: Add 2hp ?
-            self.fire();
-            self.approach_player = false;
-            self.current_destination = Some(self.generate_position_around(self.pos));
-        } 
-        // Player is far, approach player directly
-        else if distance_to_player > self.size * 30.0 {
-            self.approach_player = true;
-            self.current_destination = Some(self.target);
+
+        // Within firing range
+        if distance_to_player < FIRING_RANGE{
+            //Attempt to fire at the player no matter the distance to him.
+            if self.fire_cooldown.expired(now){
+                if !self.has_fired{
+                    self.fire();
+                    self.has_fired = true;
+                    self.fire_cooldown.set(now, FIRING_COOLDOWN);
+                }
+            }
+
+            self.current_destination = Some(self.generate_evasive_position());
         }
+        // Out of firing range, approach more directly
+        else if distance_to_player > FIRING_RANGE * 2.0 {
+            self.approach_player = true;
+
+            let direction = (self.target - self.pos).normalize();
+            let approach_pos = self.pos + direction * (distance_to_player * 0.6);
+
+            self.current_destination = Some(approach_pos);
+        } 
     }
 
     fn fire(&mut self){
+        if let Some(mut bullet) = self.bullet_pool.get(){
+            let direction_to_player = (self.target - self.pos).normalize();
+            let spawn_pos = self.pos;
 
+            let mut id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+            if id >= 4086{ // Bullet pool size
+                id = BULLETCOUNTER.swap(2048, std::sync::atomic::Ordering::SeqCst);
+            }
+
+            bullet.set(
+                id,
+                spawn_pos,
+                350.0, // Increased bullet speed from 300.0
+                direction_to_player,
+                10.0,
+                22.0,
+            );
+            
+            self.bullets_to_publish.push(Box::new(bullet));
+        }
+    }
+
+    async fn publish_bullets(&mut self){
+        let bullets = std::mem::take(&mut self.bullets_to_publish);
+        
+        for bullet in bullets {
+            self.publish(Event::new(Some(bullet as Box<dyn Projectile>), EventType::EnemyBulletSpawn)).await;
+        }
     }
 }
+
 //========== Triangle interfaces =========
 #[async_trait]
 impl Updatable for Triangle{
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
-            //Update target position
-            let mut overide = None;
-
+            //Publish all bullets
+            self.publish_bullets().await;
+            
+            let mut override_pos = None;
+            
             while let Some(param_item) = params.pop(){
                 if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
                     self.target = *player_pos;
                 }
                 if let Some(overide_pos) = param_item.downcast_ref::<Option<Vec2>>(){
-                    overide = *overide_pos;
+                    override_pos = *overide_pos;
                 }
             }
+
+            // Check for interaction with player before movement
+            self.check_player_interaction();
 
             //Update based on state machine
             if let Ok(state) = self.machine.get_state().try_lock(){
@@ -151,7 +230,7 @@ impl Updatable for Triangle{
                         self.machine.transition(StateType::Moving);
                     },
                     StateType::Moving => {
-                        self.move_to(delta, overide);
+                        self.move_to(delta, override_pos);
                     },
                     StateType::Hit => {
                         self.set_alive(false);
@@ -188,15 +267,9 @@ impl Moveable for Triangle{
         if let Some(pos) = override_pos {
             self.current_destination = Some(pos);
         }
-        // If we've reached destination or don't have one
+        // If we've reached destination or don't have one, get a new one
         else if self.has_reached_destination() || self.current_destination.is_none() {
-            // Check distance to player before deciding next move
-            self.check_player_distance();
-            
-            // Failsafe method in case `check_player_distance` fails to assign destination
-            if self.has_reached_destination() || self.current_destination.is_none() {
-                self.current_destination = Some(self.determine_next_position());
-            }
+            self.current_destination = Some(self.determine_next_position());
         }
         
         // Move toward the current destination
@@ -267,17 +340,21 @@ impl GameEntity for Triangle{
 #[async_trait]
 impl Enemy for Triangle{
     async fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
-        let enemy =  Triangle {
+        let bullet_pool = BulletPool::new(8, sender.clone(), ProjectileType::Enemy);
+
+        let enemy = Triangle {
             id: id,
             pos: pos, 
             size: size, 
-            speed: 100.0,
+            speed: 120.0,
             color: color,
             target: player_pos,
 
             sender: sender,
             collider: CircleCollider::new(pos.x, pos.y, size),
             machine: StateMachine::new(),
+            bullet_pool: bullet_pool,
+            bullets_to_publish: Vec::new(),
 
             is_alive: true,
             
@@ -285,7 +362,10 @@ impl Enemy for Triangle{
 
             current_destination: None,
             approach_player: false,
-            position_switch_distance: 200.0,
+            position_switch_distance: 250.0,
+            
+            fire_cooldown: SimpleTimer::new(FIRING_COOLDOWN),
+            has_fired: false,
         };
 
         enemy.publish(Event::new((enemy.get_id(), enemy.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
@@ -315,7 +395,6 @@ impl Enemy for Triangle{
         }
         return None
     }
-
 }
 
 #[async_trait]
@@ -324,8 +403,6 @@ impl Publisher for Triangle{
         let _ = self.sender.send(event);
     }
 }
-
-
 
 impl std::fmt::Debug for Triangle{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -336,4 +413,3 @@ impl std::fmt::Debug for Triangle{
             .finish()
     }
 }
-

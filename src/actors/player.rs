@@ -8,7 +8,7 @@ use std::sync::{atomic::AtomicU64, mpsc::Sender};
 use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
-static BULLETCOUNTER: AtomicU64 = AtomicU64::new(1);
+static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2);
 
 pub struct Player{
     //Attributes

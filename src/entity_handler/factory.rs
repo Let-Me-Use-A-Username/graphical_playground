@@ -16,7 +16,7 @@ use crate::utils::globals;
 
 use super::enemy_type::EnemyType;
 
-static COUNTER: AtomicU64 = AtomicU64::new(1025);
+static COUNTER: AtomicU64 = AtomicU64::new(1026);
 
 
 pub struct Factory{

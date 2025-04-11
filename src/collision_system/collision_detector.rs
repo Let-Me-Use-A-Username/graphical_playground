@@ -31,6 +31,17 @@ impl CollisionDetector{
         }
     }
 
+    pub async fn detect_enemy_projectile_collision(&self, player: Box<&dyn Collider>, projectiles: Vec<Option<&Box<dyn Projectile>>>){
+        for entry in projectiles{
+            if let Some(projectile) = entry{
+                if projectile.collides(*player){
+                    let _ = self.publish(Event::new(projectile.get_id(), EventType::EnemyBulletHit)).await;
+                    let _ = self.publish(Event::new(get_time(), EventType::PlayerHit)).await;
+                }
+            }
+        }
+    }
+
     pub async fn detect_players_projectile_collision(&self, projectile: &Box<dyn Projectile>, enemies: Vec<Option<&Box<dyn Enemy>>>){
         let collider = projectile.get_collider();
         let id = projectile.get_id();
@@ -56,12 +67,12 @@ impl CollisionDetector{
             if let Some(enemy_i) = enemies.pop(){
                 enemies_cloned.retain(|enemy| enemy.get_id() != enemy_i.get_id());
                 
-                for enemy in &enemies_cloned {
-                    let collider = *enemy.get_collider();
+                for enemy_j in &enemies_cloned {
+                    let collider = *enemy_j.get_collider();
     
                     if enemy_i.collides(collider) {
                         // Now we can use await here
-                        let _ = self.publish(Event::new((enemy_i.get_id(), enemy.get_id()), EventType::CollidingEnemies)).await;
+                        let _ = self.publish(Event::new((enemy_i.get_id(), enemy_j.get_id()), EventType::CollidingEnemies)).await;
                     }
                 }
             }
