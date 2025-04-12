@@ -72,4 +72,5 @@ pub trait Projectile: GameEntity{
 
     fn force_state(&mut self, state: StateType);
     fn get_state(&self) -> Option<StateType>;
+    fn get_all_draw_calls(&self) -> Vec<DrawCall>;  //REVIEW: Currently only serves debugging purposes.
 }

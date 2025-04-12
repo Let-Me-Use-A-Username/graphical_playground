@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.6 Changes 12/4/2025
+- v.0.2.6 Modified Bullets collider placement logic.<mark> Bullets create colliders with size offsets, based on their size, additionally, when
+providing their position to Colliders, bullets give a slight offset so that the collider captures the whole sprite.</mark>. The player on
+the other hand, simply provides his position and no other modification is needed.
+- v.0.2.6 Changed separating axis theorem to check all 4 corners. This removed the case where some parallel collisions weren't occuring,
+and also some edge cases where two edges were touching but not colliding.
+
+
 ### 0.2.6 Changes 10/4/2025
 - v.0.2.6 Implemented basic triangle enemy with fire and weave tactics.
 - v.0.2.6 Integrated bullet hit logic in Handler and Manager.

@@ -8,6 +8,7 @@ use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::color::Color;
 use rand::{thread_rng, Rng};
 
+use crate::actors::rect;
 use crate::actors::triangle::Triangle;
 use crate::event_system::event::{Event, EventType};
 use crate::event_system::interface::{Enemy, Publisher, Subscriber};
@@ -74,16 +75,20 @@ impl Factory{
         while template.len() > 0{
             if let Some(etype) = template.pop_front(){
                 let pos = Vec2{ x: 0.0, y: 0.0};
-                let size = thread_rng().gen_range(20..30) as f32;
 
                 match etype{
                     EnemyType::Circle => {
+                        let size = thread_rng().gen_range(15..25) as f32;
                         self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
                     },
                     EnemyType::Triangle => {
+                        let size = thread_rng().gen_range(20..30) as f32;
                         self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
                     },
-                    EnemyType::Rect => todo!(),
+                    EnemyType::Rect => {
+                        let size = thread_rng().gen_range(80..200) as f32;
+                        self.queue_enemy::<rect::Rect>(pos, size, color, player_pos).await;
+                    },
                     EnemyType::Hexagon => todo!(),
                 }
             }
@@ -186,8 +191,8 @@ impl Subscriber for Factory{
                         let size = data.2;
                         let color = data.3;
                         let player_pos = data.4;
+
                         enemies.push((enemy_type, pos, size, color, player_pos));
-                        println!("queueing enemy");
                     }
                 }
 
@@ -199,7 +204,9 @@ impl Subscriber for Factory{
                         EnemyType::Triangle => {
                             self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
                         },
-                        EnemyType::Rect => todo!(),
+                        EnemyType::Rect => {
+                            self.queue_enemy::<rect::Rect>(pos, size, color, player_pos).await;
+                        },
                         EnemyType::Hexagon => todo!(),
                     }
                 }

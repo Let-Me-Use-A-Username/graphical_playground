@@ -1,4 +1,6 @@
-use macroquad::math::Vec2;
+use macroquad::{color::PINK, math::Vec2, shapes::DrawRectangleParams};
+
+use crate::renderer::artist::DrawCall;
 
 ///Each entity is either assigned a circle or rectangular collider.
 pub trait Collider{
@@ -95,10 +97,10 @@ impl RectCollider{
         let center_y = self.y + half_height;
 
         let relative_corners = [
-            (-half_width, -half_height), //Top left
-            (-half_width, half_height), // Bottom left
-            (half_width, -half_height), //Top right
-            (half_width, half_height), // Bottom right
+            (-half_width, -half_height), // Top left
+            (half_width, -half_height),  // Top right
+            (half_width, half_height),   // Bottom right
+            (-half_width, half_height)   // Bottom left
         ];
 
         //Why does this translate to world coords
@@ -117,6 +119,20 @@ impl RectCollider{
         }
 
         return rotated_corners
+    }
+
+    //Visual debugging method.
+    pub fn get_draw_call(&self) -> DrawCall{
+        return DrawCall::RotatedRectangle(
+            self.x, 
+            self.y, 
+            self.w, 
+            self.h, 
+            DrawRectangleParams{
+                rotation: self.rotation,
+                color: PINK,
+                offset: Vec2::new(0.5, 0.5)
+            })
     }
 
 }
@@ -182,28 +198,23 @@ impl Collider for RectCollider{
         // For two rectangles, we need to check 4 axes (2 from each rectangle)
         
         // Check axes from the first rectangle
-        for i in 0..2 {
-            let j = (i + 1) % 4;
+        for i in 0..4 {
             let axis = normalize(
-                corners1[j].0 - corners1[i].0,
-                corners1[j].1 - corners1[i].1
+                corners1[(i+1)%4].0 - corners1[i].0,
+                corners1[(i+1)%4].1 - corners1[i].1
             );
-            
             if is_separating_axis(axis, &corners1, &corners2) {
-                return false;  // Found a separating axis, no collision
+                return false;
             }
         }
         
-        // Check axes from the second rectangle
-        for i in 0..2 {
-            let j = (i + 1) % 4;
+        for i in 0..4 {
             let axis = normalize(
-                corners2[j].0 - corners2[i].0,
-                corners2[j].1 - corners2[i].1
+                corners2[(i+1)%4].0 - corners2[i].0,
+                corners2[(i+1)%4].1 - corners2[i].1
             );
-            
             if is_separating_axis(axis, &corners1, &corners2) {
-                return false;  // Found a separating axis, no collision
+                return false;
             }
         }
         

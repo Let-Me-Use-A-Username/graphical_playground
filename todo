@@ -1,26 +1,26 @@
 ==============================================
 ================== Critical ==================
-- Suspision that Triangle projectile collider is placed on the bottom left corner
-    - Could be due to increased size
-    - Need to see if the colliders size should be proportionate to the entities size
-        - The triangle that is draw for the bullet has the pos at the center of the base,
-        if the collider is a square, then part of the tip wouldn't have a collider
-                     ^
-- Rework Collider? __|
-    - Ignore it? Hard to see..
-
 - Implement different kinds of enemies.
+    - Rect
+        - Not sure if sprite - Collider overlap
+        - health removal not working, probably because its triggered every frame.
+        - Inter enemy collision is a bit weird. Check collider
 
 
 ==============================================
 ================== General todo ==============
-- Consider changing Bullet to have Circle collider instead of rect.
+- Idea for re-implementing player movement:
+    - Player Moving/Drifting
+        - Consider the following:
+            - Change players Moving (rotating) anchor point (offset in Rect) to be top middle
+                - In drift, change it to be the middle
+            - Change back tires to provide moving force
 
 - Implement ErrorHandler
     -Change component function to return Results 
         -Log these results if error occurs
 
-
+    
 ==============================================
 ================== Gameplay ==================
 - Implement a `hold velocity` mechanic, that slows down the player but after released, provides a burst of movement
@@ -35,7 +35,6 @@
         -Turns too much or too little?
     -Test Players base turn rate (rotation when not drifting)
     -Not inputting movement losses velocity too fast
-    -Bullet collider might not be overlapping sprite
     -Player no longer has drag when running enemies over and is immune
     -Players boost is quite weak, and only useful when velocity is lows
         - Perhaps adopt this lower speed philoshophy
@@ -80,6 +79,9 @@
     - Grids operation queue doesn't drain properly
     - Emitters aren't dropped correctly from MetalArtist
     - Cyrcle Arc references inside game manager
+
+- Colliders:
+    - Projectile colliders extend past the sprite, only forward.
 
 ==============================================
 ================== Study =====================

@@ -195,6 +195,7 @@ impl Player{
         let mut calls = Vec::new();
 
         calls.push(self.get_draw_call());
+        //calls.push(self.collider.get_draw_call());
 
         if self.shield.is_active(){
             calls.push(self.shield.get_draw_call());
@@ -211,7 +212,7 @@ impl Updatable for Player{
         let now = get_time();
 
         //Update collider with slight offset, in respect to the drawn rect
-        self.collider.update(self.pos - vec2(self.size / 2.0, self.size));
+        self.collider.update(self.pos);
         self.collider.set_rotation(self.rotation);
 
         self.shield.update(delta, vec!(Box::new(self.get_pos()))).await;

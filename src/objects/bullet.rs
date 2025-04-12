@@ -70,7 +70,12 @@ impl Bullet{
         self.size = size;
         self.direction = direction.normalize(); 
         self.timer = SimpleTimer::new(remove_time); 
-        self.collider = RectCollider::new(pos.x, pos.y, size, size);
+        self.collider = RectCollider::new(
+            pos.x,
+            pos.y,
+            size * 1.25,  // Total length from base to tip + the backward extension
+            size * 0.5    // Because size mod is 0.25 times 2 is 0.5
+        );
         self.is_active = true;
     }
 }
@@ -101,7 +106,6 @@ impl Moveable for Bullet{
 
 impl Drawable for Bullet{
     #[inline(always)]
-    //Review: If bullet is implemented for other entities, swap the get_draw_call function based on the origin type.
     fn get_draw_call(&self) -> DrawCall {
         let dir = self.direction;
 
@@ -136,9 +140,11 @@ impl Updatable for Bullet{
                     match *state{
                         StateType::Idle => self.machine.transition(StateType::Moving),
                         StateType::Moving => {
+                            // Update collider position and rotation
+                            let new_pos = self.pos + self.direction * (self.size * 0.5);
+                            
                             self.move_to(delta, None);
-
-                            self.collider.update(self.pos);
+                            self.collider.update(new_pos);
                             self.collider.set_rotation(self.direction.y.atan2(self.direction.x));
                         },
                         //drop bullet
@@ -199,6 +205,13 @@ impl Projectile for Bullet{
     
     fn force_state(&mut self,state:StateType) {
         self.machine.transition(state);
+    }
+
+    fn get_all_draw_calls(&self) -> Vec<DrawCall>{
+        let mut selfcall = vec![self.get_draw_call()];
+        selfcall.push(self.collider.get_draw_call());
+
+        return selfcall
     }
 }
 
