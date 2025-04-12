@@ -190,9 +190,6 @@ impl GameManager{
         camera.target = camera_pos;
         camera.zoom = vec2(zoom_level, zoom_level);
 
-        let mut draw_calls: Vec<(i32, DrawCall)> = Vec::with_capacity(1024);
-        let mut emitter_calls: Vec<(u64, StateType, Vec2)> = Vec::with_capacity(1024);
-
         loop {
             // Mouse wheel
             if mouse_wheel().1 != 0.0 {
@@ -200,177 +197,33 @@ impl GameManager{
                 camera.zoom = vec2(zoom_level, zoom_level);
             }
 
-            let viewport = {
-                let screen_width = screen_width();
-                let screen_height = screen_height();
-                let viewport_width = screen_width * (3000.0 * camera.zoom.x);
-                let viewport_height = screen_height * (3000.0 * camera.zoom.y);
-                
-                let half_width = viewport_width / 2.0;
-                let half_height = viewport_height / 2.0;
-                
-                Rect::new(
-                    camera.target.x - half_width,
-                    camera.target.y - half_height,
-                    viewport_width,
-                    viewport_height
-                )
-            };
+            
+            // ======== RENDERING ========
+            {
+                clear_background(WHITE);
+            }
 
             // ======= Updates ========
             let delta = get_frame_time();
-
-            {
-                if let Ok(mut player) = self.player.try_lock(){
-                    player.update(delta, vec!()).await;
-                    player_pos = player.get_pos();
-
-                    self.wall.update((player_pos, player.size)).await;
-                    let wall_calls = self.wall.get_draw_calls(viewport);
-
-                    //Queue players draw calls on highest layer
-                    for call in player.get_all_draw_calls(){
-                        draw_calls.extend(vec![(10, call)]);
-                    }
-                    draw_calls.extend(wall_calls);
-
-                    if player.should_emit(){
-                        let effect_pos;
-                        let state = player.get_state().unwrap_or(StateType::Idle);
-                        
-                        match state{
-                            StateType::Idle | StateType::Hit => effect_pos = player.get_pos(),
-                            StateType::Moving | StateType::Drifting => effect_pos = player.get_back_position(),
-                        }
-                        emitter_calls.push((player.get_id(), state, effect_pos));
-                    }
-                }
-            }
-
-            if let Ok(mut handler) = self.handler.try_lock(){
-                {
-                    handler.update(delta, player_pos).await;
-                    
-                    draw_calls.extend(handler.get_draw_calls(viewport));
-                    emitter_calls.extend(handler.get_emitter_calls());
-                }
-
-                if let Ok(mut spawner) = self.spawner.try_lock(){
-                    {
-                        if let Ok(factory) = self.factory.try_lock(){
-                            spawner.update(player_pos, 
-                                handler.get_active_enemy_count(), 
-                                viewport,
-                                factory.get_queue_size(),
-                            factory.get_queue_capacity()).await;
-                        }
-                    }
-                }
             
-                if let Ok(mut grid) = self.grid.try_lock(){
-                    {
-                        grid.update();
-                        draw_calls.extend(grid.get_draw_calls(viewport));
-                        //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
-                        let nearby_enemy_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
-                        //Retrieve enemies based on Ids
-                        let nearby_enemies: Vec<Option<&Box<dyn Enemy>>> = nearby_enemy_ids
-                            .iter()
-                            .filter_map(|id| {
-                                Some(handler.get_enemy(id).filter(|enemy| enemy.is_alive()))
-                            })
-                            .collect();
-                        
-                        //Retrieve projectile id's that are adjucent to the player in a -1..1 radius.
-                        let neaby_projectile_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Projectile);
-                        //Filter projectile so that we only keep active enemy projectiles.
-                        let nearby_projectiles: Vec<Option<&Box<dyn Projectile>>> = neaby_projectile_ids
-                            .iter()
-                            .filter_map(|id| {
-                                Some(handler.get_projectile(id).filter(|projectile| {
-                                    projectile.is_active() && projectile.get_ptype() == ProjectileType::Enemy
-                                }))
-                            })
-                            .collect();
-
-                        //Update collision detector
-                        if let Ok(player) = self.player.try_lock(){
-                            self.detector.detect_player_collision(player.get_collider(), nearby_enemies).await;
-                            self.detector.detect_enemy_projectile_collision(player.get_collider(), nearby_projectiles).await;
-                        }
-                    }
-
-                    {
-                        //Fetch all projectiles
-                        for projectile in handler.get_projectiles(){
-                            //For each projectile, if approximate entities exist
-                            if let Some(approximate) = grid.get_approximate_entities(projectile.get_pos()){
-                                
-                                let player_projectiles = approximate.iter()
-                                    .filter(|(etype, _)| {
-                                        //Player origin, Enemy entities
-                                        projectile.get_ptype() == ProjectileType::Player && *etype == EntityType::Enemy
-                                    })
-                                    .map(|(etype, id)| (*etype, *id))
-                                    .collect::<Vec<(EntityType, u64)>>();
-                                //Todo: Implement the same filtering as above, for enemy projectiles and player collider.
-
-                                //Collect enemies from handler
-                                let enemies: Vec<Option<&Box<dyn Enemy>>> = player_projectiles.iter()
-                                    .map(|(_, id)| {
-                                        handler.get_enemy(id)
-                                    })
-                                    .collect();
-
-                                //Check for collision on each enemy
-                                self.detector.detect_players_projectile_collision(projectile, enemies).await;
-                            }
-                        }
-                    }
-                    
-                    {
-                        //Get populated cells
-                        let populated_cells = grid.get_populated_cells();
-                        //Iterate ids and map to enemies
-                        for cell in populated_cells{
-                            let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
-
-                            for id in cell{
-                                if let Some(enemy) = handler.get_enemy(&id){
-                                    cell_enemies.push(enemy);
-                                }
-                            }
-                            //Trigger collision detector
-                            self.detector.detect_enemy_collision(cell_enemies).await;
-                        }
-                    }
+            if let Ok(mut player) = self.player.try_lock(){
+                player.update(delta, vec!()).await;
+                player_pos = player.get_pos();
+                let call = player.get_draw_call();
+                
+                match call{
+                    DrawCall::RotatedRectangle(x, y, w, h, draw_rectangle_params) => {
+                        draw_rectangle_ex(x, y, w, h, draw_rectangle_params);
+                    },
+                    _ => ()
                 }
             }
+
     
             // Camera
             camera_pos = camera_pos + (player_pos - camera_pos) * delta * 5.0;
             camera.target = camera_pos;
             set_camera(&camera);
-    
-            {
-                self.dispatcher.dispatch().await;
-            }
-    
-            // ======== RENDERING ========
-            {
-                self.artist.queue_calls(draw_calls.clone());
-                self.artist.draw_background(LIGHTGRAY);
-                self.artist.draw();
-            }
-            {            
-                if let Ok(mut emitter) = self.metal.try_lock(){
-                    emitter.add_batch_request(emitter_calls.clone());
-                    emitter.draw();
-                }
-            }
-
-            draw_calls.clear();
-            emitter_calls.clear();
             
             set_default_camera();
             

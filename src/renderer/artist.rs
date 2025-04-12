@@ -17,7 +17,7 @@ pub enum DrawType{
     Triangle
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DrawCall{
     //x1, y1, x2, y2, thickness, color
     Line(f32, f32, f32, f32, f32, Color),

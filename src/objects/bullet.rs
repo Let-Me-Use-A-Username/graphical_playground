@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{color::RED, math::Vec2, time::get_time};
+use macroquad::{color::RED, math::Vec2, shapes::draw_triangle, time::get_time};
 
 use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::{machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::collision_system::collider::Collider;
@@ -113,6 +113,8 @@ impl Drawable for Bullet{
 
         let base_left = self.pos - dir * size_mod + left;
         let base_right = self.pos - dir * size_mod + right;
+
+        draw_triangle(tip, base_left, base_right, RED);
 
         return DrawCall::Triangle(tip, base_left, base_right, RED);
     }
