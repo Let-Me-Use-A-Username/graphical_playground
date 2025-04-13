@@ -175,6 +175,12 @@ impl Enemy for Circle{
         return None
     }
 
+    fn get_all_draw_calls(&self) -> Vec<DrawCall>{
+        let selfcal = self.get_draw_call();
+
+        return vec![selfcal]
+    }
+
 }
 
 #[async_trait]

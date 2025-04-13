@@ -1,5 +1,11 @@
 # Changelog
 
+### 0.2.6 Changes 13/4/2025
+- v.0.2.6 Minor fixes to Collider, had some issues with Rect to Circle collision.
+- v.0.2.6 Rect now has correct collider and collision detection.
+- v.0.2.6 Implemented two-emission types for rect. <mark> The Moving emission is forcefully called from the rect. </mark>
+
+
 ### 0.2.6 Changes 12/4/2025
 - v.0.2.6 Modified Bullets collider placement logic.<mark> Bullets create colliders with size offsets, based on their size, additionally, when
 providing their position to Colliders, bullets give a slight offset so that the collider captures the whole sprite.</mark>. The player on

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use async_trait::async_trait;
 use macroquad::{color::Color, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
-use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig, EmittersCache};
+use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig, EmittersCache, ParticleShape};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::machine::StateType};
 
@@ -177,6 +177,7 @@ pub enum ConfigType{
     PlayerHit,
     PlayerMove,
     EnemyDeath,
+    RectHit
 }
 impl ConfigType{
     pub fn get_conf(&self) -> EmitterConfig{
@@ -285,6 +286,37 @@ impl ConfigType{
                     ..Default::default()
                 }
             },
+            ConfigType::RectHit => {
+                return EmitterConfig {
+                    local_coords: false, // So particles are placed in world space
+                    emission_shape: EmissionShape::Point, // All particles spawn from same point
+                    one_shot: true,
+                    lifetime: 0.25,
+                    lifetime_randomness: 0.0,
+                    explosiveness: 1.0, // All emitted at once
+                    amount: 4, // One for each side
+                    emitting: false, // Call `.emit()` when hit occurs
+                    // Emit in 4 fixed directions
+                    initial_direction: vec2(1.0, 0.0), // Placeholder
+                    initial_direction_spread: 0.0, // No randomness
+                    // We'll use velocity randomness to spread them
+                    initial_velocity: 150.0,
+                    initial_velocity_randomness: 0.0, // We'll control manually via a custom direction curve (see below)
+                    linear_accel: 0.0,
+                    initial_rotation: 0.0,
+                    initial_rotation_randomness: 0.0,
+                    initial_angular_velocity: 0.0,
+                    initial_angular_velocity_randomness: 0.0,
+                    angular_accel: 0.0,
+                    angular_damping: 0.0,
+                    size: 20.0, // This will be overridden by size_curve
+                    size_randomness: 0.0,
+                    size_curve: None, // Optional: could use to shrink over time
+                    blend_mode: BlendMode::Alpha,
+                    gravity: vec2(0.0, 0.0),
+                    ..Default::default()
+                }
+            }
         }
     }
 }
@@ -319,6 +351,8 @@ impl MetalArtist{
         let mut cache_map = HashMap::new();
         cache_map.insert(ConfigType::EnemyDeath, 
             EmitterType::Cache(EmittersCache::new(ConfigType::EnemyDeath.get_conf())));
+        cache_map.insert(ConfigType::RectHit, 
+            EmitterType::Cache(EmittersCache::new(ConfigType::RectHit.get_conf())));
         cache_map.insert(ConfigType::PlayerDrifting, 
             EmitterType::Emitter(Emitter::new(ConfigType::PlayerDrifting.get_conf())));
         cache_map.insert(ConfigType::PlayerHit, 

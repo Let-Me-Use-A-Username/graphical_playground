@@ -43,6 +43,8 @@ impl Updatable for Rect{
                 }
             }
 
+            let mut was_hit = false;
+
             //Update based on state machine
             if let Ok(state) = self.machine.get_state().try_lock(){
                 match *state{
@@ -54,16 +56,26 @@ impl Updatable for Rect{
                     },
                     StateType::Hit => {
                         self.health -= 1;
-                        
+
                         if self.health <= 0 {
                             self.set_alive(false);
                         }
+                        else{
+                            self.machine.transition(StateType::Moving);
+                        }
+
+                        was_hit = self.health > 0;
                     },
                     _ => (), //Unreachable
                 }
             }
 
-            self.collider.update(self.pos);
+            if was_hit{
+                self.publish(Event::new((self.id, StateType::Moving, vec2(self.pos.x + self.size / 2.0, self.pos.y + self.size / 2.0)), EventType::DrawEmitter)).await;
+            }
+
+            self.collider.update(vec2(self.pos.x, self.pos.y));
+            self.collider.set_rotation(0.0);
             self.publish(Event::new((self.id, EntityType::Enemy, self.pos), EventType::InsertOrUpdateToGrid)).await
         }
     }
@@ -104,7 +116,7 @@ impl Drawable for Rect{
 
     fn should_emit(&self) -> bool{
         if let Ok(state) = self.machine.get_state().try_lock(){
-            if state.eq(&StateType::Hit){
+            if state.eq(&StateType::Hit) && !self.is_alive{
                 return true
             }
         }
@@ -145,12 +157,18 @@ impl Enemy for Rect{
             health: 10,
 
             sender: sender,
-            collider: RectCollider::new(pos.x, pos.y, size, size),
+            collider: RectCollider::new(
+                pos.x + size / 2.0, 
+                pos.y + size / 2.0, 
+                size, 
+                size),
             machine: StateMachine::new(),
 
             is_alive: true,
             
-            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)]
+            emittion_configs: vec![
+                (StateType::Moving, ConfigType::RectHit),
+                (StateType::Hit, ConfigType::EnemyDeath)]
         };
 
         enemy.publish(Event::new((enemy.get_id(), enemy.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
@@ -179,6 +197,13 @@ impl Enemy for Rect{
             return Some(*entry)
         }
         return None
+    }
+
+    fn get_all_draw_calls(&self) -> Vec<DrawCall>{
+        let col_cal = self.collider.get_draw_call();
+        let selfcal = self.get_draw_call();
+
+        return vec![selfcal, col_cal]
     }
 
 }

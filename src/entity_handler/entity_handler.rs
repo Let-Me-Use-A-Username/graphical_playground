@@ -123,8 +123,8 @@ impl Handler{
 
     
     /* 
-        All entities that are handled by the handler (inlcuding the player) must first
-        return a `should_emit()` true, before their emitter called is valid.
+        All entities that are handled by the handler must first
+        return a `should_emit()` true, before their emission call is valid.
 
         Even if a valid emitter call is presented, if the entity doesn't have a corresponding 
         emitter for said State, it won't do anything, and the call will be dropped by the MetalArtist.

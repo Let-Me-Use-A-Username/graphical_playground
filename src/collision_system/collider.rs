@@ -42,8 +42,9 @@ impl Collider for CircleCollider{
     fn collide_with_rect(&self, rect: &RectCollider) -> bool{
         // If no rotation, calculate squared distance and if less or equal to radius, collision 
         if rect.rotation == 0.0 {
-            let closest_x = self.x.max(self.x).min(self.x + rect.w);
-            let closest_y = self.y.max(self.y).min(self.y + rect.h);
+            let closest_x = self.x.max(rect.x).min(rect.x + rect.w);
+            let closest_y = self.y.max(rect.y).min(rect.y + rect.h);
+
             return distance_squared(self.x, self.y, closest_x, closest_y) <= self.radius * self.radius
         }
 
@@ -151,6 +152,7 @@ impl Collider for RectCollider{
         if self.rotation == 0.0 {
             let closest_x = circle.x.max(self.x).min(self.x + self.w);
             let closest_y = circle.y.max(self.y).min(self.y + self.h);
+
             return distance_squared(circle.x, circle.y, closest_x, closest_y) <= circle.radius * circle.radius
         }
         
