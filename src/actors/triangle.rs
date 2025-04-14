@@ -6,7 +6,7 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use ::rand::{thread_rng, Rng};
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+use crate::{collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
 /* 
     The triangle in comparison to the circle is more complex.
@@ -400,6 +400,10 @@ impl Enemy for Triangle{
         let selfcal = self.get_draw_call();
 
         return vec![selfcal]
+    }
+
+    fn get_type(&self) -> EnemyType{
+        return EnemyType::Triangle
     }
 }
 

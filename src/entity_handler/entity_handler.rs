@@ -1,9 +1,11 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::math::{Rect, Vec2};
+use macroquad::math::{vec2, Rect, Vec2};
 
 use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::machine::StateType};
+
+use super::enemy_type::EnemyType;
 
 pub enum OverideType{
     Displace(Vec2)
@@ -136,7 +138,16 @@ impl Handler{
                 enemy.should_emit()
             })
             .map(|(id, enemy)| {
-            (*id, enemy.get_state().unwrap_or(StateType::Idle) , enemy.get_pos())
+                let mut pos = enemy.get_pos();
+                //Rect enemies have assigned position on top left corner.
+                if enemy.get_type() == EnemyType::Rect{
+                    let half_size = enemy.get_size() / 2.0;
+                    
+                    //Correct with an offset so that the particle comes from center of rect.
+                    pos = vec2(pos.x + half_size, pos.y + half_size)
+                }
+
+                (*id, enemy.get_state().unwrap_or(StateType::Idle) , pos)
             })
             .collect::<Vec<(u64, StateType, Vec2)>>();
         

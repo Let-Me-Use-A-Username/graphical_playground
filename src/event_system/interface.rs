@@ -3,7 +3,7 @@ use std::{any::Any, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::{color::Color, math::Vec2};
 
-use crate::{collision_system::collider::Collider, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::machine::StateType};
+use crate::{collision_system::collider::Collider, entity_handler::enemy_type::EnemyType, event_system::event::Event, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::machine::StateType};
 
 //========= Event related interfaces ==========
 #[async_trait]
@@ -63,6 +63,7 @@ pub trait Enemy: GameEntity{
     fn get_state(&self) -> Option<StateType>;
 
     fn get_all_draw_calls(&self) -> Vec<DrawCall>;  //REVIEW: Currently only serves debugging purposes.
+    fn get_type(&self) -> EnemyType;
 }
 
 #[async_trait]

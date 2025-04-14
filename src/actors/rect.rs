@@ -5,7 +5,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
+use crate::{collision_system::collider::{Collider, RectCollider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
 pub struct Rect{
     //Attributes
@@ -15,7 +15,10 @@ pub struct Rect{
     speed: f32,
     color: Color,
     target: Vec2,
+    //Health variables
     health: i32,
+    was_hit: bool,
+    hit_timer: SimpleTimer,
     //Components
     sender: Sender<Event>,
     collider: RectCollider,
@@ -32,6 +35,7 @@ impl Updatable for Rect{
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
             //Update target position
+            let now = get_time();
             let mut overide = None;
 
             while let Some(param_item) = params.pop(){
@@ -43,7 +47,9 @@ impl Updatable for Rect{
                 }
             }
 
-            let mut was_hit = false;
+            if self.hit_timer.expired(now){
+                self.was_hit = false;
+            }
 
             //Update based on state machine
             if let Ok(state) = self.machine.get_state().try_lock(){
@@ -64,14 +70,13 @@ impl Updatable for Rect{
                             self.machine.transition(StateType::Moving);
                         }
 
-                        was_hit = self.health > 0;
+                        if !self.was_hit{
+                            self.was_hit = true;
+                            self.hit_timer.set(now, 0.3);
+                        }
                     },
                     _ => (), //Unreachable
                 }
-            }
-
-            if was_hit{
-                self.publish(Event::new((self.id, StateType::Moving, vec2(self.pos.x + self.size / 2.0, self.pos.y + self.size / 2.0)), EventType::DrawEmitter)).await;
             }
 
             self.collider.update(vec2(self.pos.x, self.pos.y));
@@ -119,6 +124,9 @@ impl Drawable for Rect{
             if state.eq(&StateType::Hit) && !self.is_alive{
                 return true
             }
+            else if state.eq(&StateType::Moving) && self.was_hit{
+                return true
+            }
         }
         
         return false
@@ -154,7 +162,10 @@ impl Enemy for Rect{
             speed: 100.0,
             color: color,
             target: player_pos,
+
             health: 10,
+            was_hit: false,
+            hit_timer: SimpleTimer::blank(),
 
             sender: sender,
             collider: RectCollider::new(
@@ -204,6 +215,10 @@ impl Enemy for Rect{
         let selfcal = self.get_draw_call();
 
         return vec![selfcal, col_cal]
+    }
+
+    fn get_type(&self) -> EnemyType{
+        return EnemyType::Rect
     }
 
 }

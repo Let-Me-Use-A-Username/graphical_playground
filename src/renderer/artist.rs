@@ -288,32 +288,36 @@ impl ConfigType{
             },
             ConfigType::RectHit => {
                 return EmitterConfig {
-                    local_coords: false, // So particles are placed in world space
-                    emission_shape: EmissionShape::Point, // All particles spawn from same point
-                    one_shot: true,
-                    lifetime: 0.25,
-                    lifetime_randomness: 0.0,
-                    explosiveness: 1.0, // All emitted at once
-                    amount: 4, // One for each side
-                    emitting: false, // Call `.emit()` when hit occurs
-                    // Emit in 4 fixed directions
-                    initial_direction: vec2(1.0, 0.0), // Placeholder
-                    initial_direction_spread: 0.0, // No randomness
-                    // We'll use velocity randomness to spread them
-                    initial_velocity: 150.0,
-                    initial_velocity_randomness: 0.0, // We'll control manually via a custom direction curve (see below)
-                    linear_accel: 0.0,
+                    local_coords: false, 
+                    emission_shape: EmissionShape::Rect {
+                        width: 70.0,
+                        height: 70.0,
+                    },
+                    one_shot: true, 
+                    amount: 30, 
+                    explosiveness: 1.0,
+                    lifetime: 0.6,
+                    lifetime_randomness: 0.2,
+                    shape: ParticleShape::Circle { subdivisions: 10}, 
+                    initial_direction: vec2(1.0, 0.0), 
+                    initial_direction_spread: 2.0 * std::f32::consts::PI, 
+                    initial_velocity: 100.0,
+                    initial_velocity_randomness: 0.5,
+                    linear_accel: -30.0, 
                     initial_rotation: 0.0,
-                    initial_rotation_randomness: 0.0,
-                    initial_angular_velocity: 0.0,
-                    initial_angular_velocity_randomness: 0.0,
+                    initial_rotation_randomness: 1.0,
+                    initial_angular_velocity: 2.0,
+                    initial_angular_velocity_randomness: 1.0,
                     angular_accel: 0.0,
-                    angular_damping: 0.0,
-                    size: 20.0, // This will be overridden by size_curve
-                    size_randomness: 0.0,
-                    size_curve: None, // Optional: could use to shrink over time
-                    blend_mode: BlendMode::Alpha,
-                    gravity: vec2(0.0, 0.0),
+                    angular_damping: 0.2,
+                    size: 50.0, //5.0
+                    size_randomness: 0.5,
+                    blend_mode: BlendMode::Additive, 
+                    colors_curve: ColorCurve {
+                        start: Color::new(1.0, 0.0, 0.0, 0.7),
+                        mid: Color::new(1.0, 0.5, 0.5, 0.3),
+                        end: Color::new(1.0, 0.0, 0.0, 0.0), // fade out 
+                    },
                     ..Default::default()
                 }
             }

@@ -5,7 +5,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
+use crate::{collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
 
 pub struct Circle{
     //Attributes
@@ -179,6 +179,10 @@ impl Enemy for Circle{
         let selfcal = self.get_draw_call();
 
         return vec![selfcal]
+    }
+
+    fn get_type(&self) -> EnemyType{
+        return EnemyType::Circle
     }
 
 }

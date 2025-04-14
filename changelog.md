@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.2.6 Changes 14/4/2025
+- v.0.2.6 Fixed Rect Emitter position, by having the handler specify the emission position when collecting calls.
+- v.0.2.6 Made Rects emissions more idiomatic according to the project.
+
+
 ### 0.2.6 Changes 13/4/2025
 - v.0.2.6 Minor fixes to Collider, had some issues with Rect to Circle collision.
 - v.0.2.6 Rect now has correct collider and collision detection.

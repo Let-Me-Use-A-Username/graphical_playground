@@ -4,11 +4,12 @@
     - Rect
         - Health removal works, but triggers at least 2 times per frame.
             - Fix this. Timer?
-        - Emissions are emitted from the top left corner..
-            - Create a way to distinguish Rect from other enemies, and in Handler assign the correct centered position.
-        - Two emissions but Moving state one is called from update loop
-            - could be yielded from `should_emit` by timing when the Rect was hit
-            and how long ago it was.
+            - Keep it to provide true randomness ? XD
+
+- Players Shield might need a slight rework regarding the Chargers discharge.
+    - Collision with Rect triggers all usages
+        - When shield is used, add a timer to count when to remove a charge
+- Implement bosses
 
 ==============================================
 ================== General todo ==============

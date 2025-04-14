@@ -86,7 +86,7 @@ impl Factory{
                         self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
                     },
                     EnemyType::Rect => {
-                        let size = thread_rng().gen_range(80..200) as f32;
+                        let size = thread_rng().gen_range(180..200) as f32;
                         self.queue_enemy::<rect::Rect>(pos, size, color, player_pos).await;
                     },
                     EnemyType::Hexagon => todo!(),
