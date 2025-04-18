@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.2.6 Changes 18/4/2025
+- v.0.2.6 Implemented CollisionTracker for more accurate collision handling.
+- v.0.2.6 Collisions are now registered and checked, before any events are published in CollisionDetector.
+
+
 ### 0.2.6 Changes 14/4/2025
 - v.0.2.6 Fixed Rect Emitter position, by having the handler specify the emission position when collecting calls.
 - v.0.2.6 Made Rects emissions more idiomatic according to the project.

@@ -228,8 +228,11 @@ impl Grid{
     ///Translates a (f32, f32) pair into a cell position.
     #[inline(always)]
     fn world_to_cell(&self, coord: (f32, f32)) -> CellPos{
-        let x = (coord.0.div_euclid(self.cell_size as f32)) as i32;
-        let y = (coord.1.div_euclid(self.cell_size as f32)) as i32;
+        let epsilon = 0.0001;
+    
+        // Use simple floor operation for more predictable behavior
+        let x = (coord.0 / self.cell_size as f32 + epsilon).floor() as i32;
+        let y = (coord.1 / self.cell_size as f32 + epsilon).floor() as i32;
         
         return (x, y)
     }

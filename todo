@@ -2,14 +2,18 @@
 ================== Critical ==================
 - Implement different kinds of enemies.
     - Rect
-        - Health removal works, but triggers at least 2 times per frame.
-            - Fix this. Timer?
-            - Keep it to provide true randomness ? XD
 
-- Players Shield might need a slight rework regarding the Chargers discharge.
-    - Collision with Rect triggers all usages
-        - When shield is used, add a timer to count when to remove a charge
-- Implement bosses
+- Collision are captured multiple times or none at all at times.
+    - Created a collision tracker to keep track of collisions
+        - Player collision (Shield charges issue) has been resolved
+        - Player projectile collisio appears rigid with this system
+            - Either lower projectile collision cooldown
+            - register all projectile collisions despite circumstances
+            - ..?
+        - Projectile collision fault could be due to grid?
+            -https://claude.ai/share/4c48b4ed-8a9a-4d81-add5-af6bcfe051e5
+        -Test to make sure
+
 
 ==============================================
 ================== General todo ==============
@@ -24,6 +28,7 @@
     -Change component function to return Results 
         -Log these results if error occurs
 
+- Implement bosses
     
 ==============================================
 ================== Gameplay ==================
@@ -42,6 +47,11 @@
     -Player no longer has drag when running enemies over and is immune
     -Players boost is quite weak, and only useful when velocity is lows
         - Perhaps adopt this lower speed philoshophy
+
+    - Playetest results: 
+        -trch: 
+            - Θα ηθελα πιο μεγαλο rotation speed, μεγαλυτερα projectiles, λιγοτερο firepower για να χρειαστει να κανω kyte και να μην παιζω turret mode
+
 - Enemies
     -Triangle
         - Firing distance 

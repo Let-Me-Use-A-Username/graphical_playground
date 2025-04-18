@@ -268,6 +268,7 @@ impl GameManager{
                 }
             
                 if let Ok(mut grid) = self.grid.try_lock(){
+                    //Phase 1. Detect Player collisions.
                     {
                         grid.update();
                         draw_calls.extend(grid.get_draw_calls(viewport));
@@ -295,11 +296,20 @@ impl GameManager{
 
                         //Update collision detector
                         if let Ok(player) = self.player.try_lock(){
-                            self.detector.detect_player_collision(player.get_collider(), nearby_enemies).await;
-                            self.detector.detect_enemy_projectile_collision(player.get_collider(), nearby_projectiles).await;
+                            self.detector.detect_player_collision(
+                                player.get_id(),
+                                player.get_collider(), 
+                                nearby_enemies
+                            ).await;
+                            
+                            self.detector.detect_enemy_projectile_collision(
+                                player.get_collider(), 
+                                nearby_projectiles
+                            ).await;
                         }
                     }
 
+                     //Phase 2. Detect Players projectile collisions.
                     {
                         //Fetch all projectiles
                         for projectile in handler.get_projectiles(){
@@ -313,7 +323,6 @@ impl GameManager{
                                     })
                                     .map(|(etype, id)| (*etype, *id))
                                     .collect::<Vec<(EntityType, u64)>>();
-                                //Todo: Implement the same filtering as above, for enemy projectiles and player collider.
 
                                 //Collect enemies from handler
                                 let enemies: Vec<Option<&Box<dyn Enemy>>> = player_projectiles.iter()
@@ -328,6 +337,7 @@ impl GameManager{
                         }
                     }
                     
+                     //Phase 3. Detect inter-Enemy collisions.
                     {
                         //Get populated cells
                         let populated_cells = grid.get_populated_cells();
