@@ -3,16 +3,13 @@
 - Implement different kinds of enemies.
     - Rect
 
-- Collision are captured multiple times or none at all at times.
-    - Created a collision tracker to keep track of collisions
-        - Player collision (Shield charges issue) has been resolved
-        - Player projectile collisio appears rigid with this system
-            - Either lower projectile collision cooldown
-            - register all projectile collisions despite circumstances
-            - ..?
-        - Projectile collision fault could be due to grid?
-            -https://claude.ai/share/4c48b4ed-8a9a-4d81-add5-af6bcfe051e5
-        -Test to make sure
+- Implemented bounary check in Grid when updating entity
+    - Cell cleanup isn't correct and causes memory buildup 
+        - Collect all previous positions in `entity_table`
+    - Remove operations aren't prioritized, and updates occur on "dead" entities
+        - Prioritize remove operations and remove Update operations that contain the ids
+    - Every time an entity is removed the whole grid is checked, the operation is not very performant
+        - If all previous positions are kept, then we can collect them and remove them more efficiently
 
 
 ==============================================
@@ -61,6 +58,8 @@
 - Component Test
     - MetalArtist:
         - Monitor memory usage (especially freed memory)
+    - Collision Detector/Tracker and Collider 
+        - Check responsiveness of Collision system in general
 
 ==============================================
 ================== Gameplay Design and Ideas==

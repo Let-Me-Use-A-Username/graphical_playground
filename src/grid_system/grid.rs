@@ -54,15 +54,8 @@ impl Cell{
             },
             //If maximum length is exceeded, double the capacity.
             false => {
+                self.entities.reserve(self.capacity);
                 self.capacity *= 2;
-                let mut new_entities: HashSet<Entity> = HashSet::with_capacity(self.capacity);
-
-                self.entities.iter().for_each(|ent| {
-                    new_entities.insert(ent.clone());
-                });
-
-                self.entities = new_entities;
-                eprintln!("|Grid Cell|insert()| Maximum cell entities reached. Doubling size")
             },
         }
     }
@@ -72,7 +65,7 @@ impl Cell{
 //Represents an operation to queue
 #[derive(Clone)]
 enum GridOperation{
-    Update(EntityId, EntityType, Vec2),
+    Update(EntityId, EntityType, Vec2, f32),
     Remove(EntityId)
 }
 
@@ -115,8 +108,8 @@ impl Grid{
         
         for op in self.op_queue.drain(..) {
             match op {
-                GridOperation::Update(id, etype, pos) => {
-                    updates.push((id, etype, pos));
+                GridOperation::Update(id, etype, pos, size) => {
+                    updates.push((id, etype, pos, size));
                 },
                 GridOperation::Remove(id) => {
                     removals.push(id);
@@ -124,8 +117,8 @@ impl Grid{
             }
         }
         
-        for (id, etype, pos) in updates {
-            self.update_entity(id, etype, pos);
+        for (id, etype, pos, size) in updates {
+            self.update_entity(id, etype, pos, size);
         }
         
         for id in removals {
@@ -136,27 +129,56 @@ impl Grid{
     /// Updates an entity by first checking if it present inside the grid.
     /// Proceeds to insert it, if already present, removes old entry.
     #[inline(always)]
-    pub fn update_entity(&mut self, id: EntityId, entity_type: EntityType, pos: Vec2) {
-        let new_pos = self.world_to_cell(pos.into());
-
-        if let Some(&old_pos) = self.entity_table.get(&id){
-            if old_pos == new_pos {
+    pub fn update_entity(&mut self, id: EntityId, entity_type: EntityType, pos: Vec2, size: f32) {
+        let center_cell = self.world_to_cell(pos.into());
+        
+        // Determine which cells the entity overlaps
+        let min_x = ((pos.x - size) / self.cell_size as f32).floor() as i32;
+        let max_x = ((pos.x + size) / self.cell_size as f32).ceil() as i32;
+        let min_y = ((pos.y - size) / self.cell_size as f32).floor() as i32;
+        let max_y = ((pos.y + size) / self.cell_size as f32).ceil() as i32;
+        
+        // First remove from old cells
+        if let Some(&old_center) = self.entity_table.get(&id) {
+            // Only proceed with removal if the center cell has changed
+            if old_center != center_cell {
+                self.remove_from_all(id);
+            } else {
+                // Center hasn't changed, avoid unnecessary removal/insertion
                 return;
             }
+        }
+        
+        // Add to all overlapping cells
+        for x in min_x..=max_x {
+            for y in min_y..=max_y {
+                if let Some(cell) = self.cells.get_mut(&(x, y)) {
+                    cell.insert(entity_type, id);
+                }
+            }
+        }
+        
+        // Update entity table with center cell
+        self.entity_table.insert(id, center_cell);
+    }
 
+    fn remove_from_all(&mut self, id: EntityId){
+        let mut occupations = 0;
+        //Collect all cells that contain the id
+        let occupied_cells: Vec<_> = self.cells.iter()
+            .filter(|(_, cell)| cell.entities.iter().any(|e| e.entity_id == id))
+            .map(|(pos, _)| *pos)
+            .collect();
+            
+        // Remove from all those cells
+        for old_pos in occupied_cells {
             if let Some(cell) = self.cells.get_mut(&old_pos) {
+                occupations += 1;
                 cell.entities.retain(|entity| entity.entity_id != id);
             }
         }
 
-        //Add to new position
-        if let Some(new_cell) = self.cells.get_mut(&new_pos) {
-            new_cell.insert(entity_type, id);
-            self.entity_table.insert(id, new_pos);
-        }
-        else{
-            eprintln!("|Grid|update_entity()| Cell: {:?} not found for pos {:?}", new_pos, pos);
-        }
+        println!("id: {:?} | Occurances: {:?}", id, occupations);
     }
 
     ///Removes first occurance of an element from a cell.
@@ -164,14 +186,8 @@ impl Grid{
     /// Doesn't check for double references.
     #[inline(always)]
     pub fn remove_entity(&mut self, id: EntityId) {
-        if let Some(ent) = self.entity_table.get(&id){
-            if let Some(cell) = self.cells.get_mut(ent){
-                cell.entities.retain(|entity| entity.entity_id != id);
-                self.entity_table.remove(&id);
-            }
-            else{
-                eprintln!("|Grid|remove_entity()| Cell not found for pos: {:?} ", ent);
-            }
+        if let Some(_) = self.entity_table.remove(&id){
+            self.remove_from_all(id);
         }
     }
 
@@ -322,8 +338,8 @@ impl Subscriber for Grid{
         match &event.event_type{
             EventType::InsertOrUpdateToGrid => {
                 if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2)>(){
-                        self.op_queue.push(GridOperation::Update(data.0, data.1, data.2));
+                    if let Some(data) = result.downcast_ref::<(EntityId, EntityType, Vec2, f32)>(){
+                        self.op_queue.push(GridOperation::Update(data.0, data.1, data.2, data.3));
                     }
                 }
             },

@@ -17,7 +17,7 @@ impl CollisionTracker {
     pub fn new() -> CollisionTracker {
         CollisionTracker { 
             entries: HashMap::new(),
-            projectile_cooldown: 0.05,
+            projectile_cooldown: 0.01,
             entity_cooldown: 0.25,
             last_cleanup: get_time(),
             cleanup_interval: 5.0,

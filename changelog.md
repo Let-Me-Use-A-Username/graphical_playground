@@ -1,5 +1,12 @@
 # Changelog
 
+### 0.2.6 Changes 24/4/2025
+- v.0.2.6 Added "dynamic" Rect color based on remaining health.
+- v.0.2.6 Changed CollisionTracker projectile cooldown and implemented it Detector.
+- v.0.2.6 Changed Grid's update and remove to include multiple positions based on a boundary check. 
+Isn't entirely yet and needs work. 
+
+
 ### 0.2.6 Changes 18/4/2025
 - v.0.2.6 Implemented CollisionTracker for more accurate collision handling.
 - v.0.2.6 Collisions are now registered and checked, before any events are published in CollisionDetector.

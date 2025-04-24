@@ -153,7 +153,7 @@ impl Updatable for Bullet{
                     }
                 }
 
-                self.publish(Event::new((self.id, EntityType::Projectile, self.pos), EventType::InsertOrUpdateToGrid)).await
+                self.publish(Event::new((self.id, EntityType::Projectile, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await
             }
             else{
                 //drop bullet

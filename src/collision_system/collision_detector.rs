@@ -61,12 +61,12 @@ impl CollisionDetector{
             if let Some(enemy) = entry{
                 let enemy_id = enemy.get_id();
 
-                //if self.tracker.register_projectile_collision(player_projectile_id, enemy_id){
+                if self.tracker.register_projectile_collision(player_projectile_id, enemy_id){
                     if enemy.collides(*collider){
                         let _ = self.publish(Event::new(enemy_id, EventType::EnemyHit)).await;
                         let _ = self.publish(Event::new(player_projectile_id, EventType::PlayerBulletHit)).await;
                     }
-                //}
+                }
             }
         }
     }

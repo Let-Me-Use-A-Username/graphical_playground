@@ -240,7 +240,7 @@ impl Updatable for Triangle{
             }
 
             self.collider.update(self.pos);
-            self.publish(Event::new((self.id, EntityType::Enemy, self.pos), EventType::InsertOrUpdateToGrid)).await
+            self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await
         }
     }
 }

@@ -81,7 +81,7 @@ impl Updatable for Rect{
 
             self.collider.update(vec2(self.pos.x, self.pos.y));
             self.collider.set_rotation(0.0);
-            self.publish(Event::new((self.id, EntityType::Enemy, self.pos), EventType::InsertOrUpdateToGrid)).await
+            self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await
         }
     }
 }
@@ -116,7 +116,10 @@ impl Moveable for Rect{
 impl Drawable for Rect{
     #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
-        return DrawCall::Rectangle(self.pos.x, self.pos.y, self.size, self.size, self.color)
+        let health = self.health as f32;
+        let alpha = 0.1 + (health.clamp(0.2, 10.0) / 10.0) * 0.9;
+        
+        return DrawCall::Rectangle(self.pos.x, self.pos.y, self.size, self.size, self.color.with_alpha(alpha))
     }
 
     fn should_emit(&self) -> bool{
