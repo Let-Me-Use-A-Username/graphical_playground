@@ -491,11 +491,11 @@ impl GameEntity for Player{
         return self.collider.collides_with(other)
     }
 
-    fn get_collider(&self) -> Box<&dyn Collider>  {
+    fn get_collider(&self) -> &dyn Collider  {
         if self.shield.is_active(){
-            return Box::new(&self.shield.collider)
+            return &self.shield.collider
         }
-        return Box::new(&self.collider)
+        return &self.collider
     }
 }
 

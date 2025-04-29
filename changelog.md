@@ -1,5 +1,18 @@
 # Changelog
 
+### 0.2.63 Changes 29/4/2025
+- v.0.2.63 Changed Handler to pass out references instead of Boxed enemies.
+- v.0.2.63 Fixed Grid's history, entity removal process and history catalogue
+- v.0.2.63 Added Collision Tracker periodic reset function.
+
+
+### 0.2.63 Changes 28/4/2025
+- v.0.2.63 Changed Grids update loop to sort vectors before updating.
+- v.0.2.63 Changed Grid to hold a history in order to minimize Cell searches
+
+### 0.2.62 Changes 25/4/2025
+- v.0.2.62 Changed Grid to skip Operation on entities that have been removed.
+
 ### 0.2.6 Changes 24/4/2025
 - v.0.2.6 Added "dynamic" Rect color based on remaining health.
 - v.0.2.6 Changed CollisionTracker projectile cooldown and implemented it Detector.

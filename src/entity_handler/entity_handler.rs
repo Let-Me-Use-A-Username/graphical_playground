@@ -176,26 +176,26 @@ impl Handler{
     }
 
     #[inline(always)]
-    pub fn get_enemy(&self, id: &u64) -> Option<&Box<dyn Enemy>>{
+    pub fn get_enemy(&self, id: &u64) -> Option<&dyn Enemy>{
         if let Some((_, entry)) = self.enemies.get_key_value(&id){
-            return Some(entry)
+            return Some(entry.as_ref())
         }
         return None
     }
 
     #[inline(always)]
-    pub fn get_projectile(&self, id: &u64) -> Option<&Box<dyn Projectile>>{
+    pub fn get_projectile(&self, id: &u64) -> Option<&dyn Projectile>{
         if let Some((_, entry)) = self.projectiles.get_key_value(&id){
-            return Some(entry)
+            return Some(entry.as_ref())
         }
         return None
     }
 
     #[inline(always)]
-    pub fn get_projectiles(&self) -> Vec<&Box<dyn Projectile>>{
-        let projectiles: Vec<&Box<dyn Projectile>> = self.projectiles
+    pub fn get_projectiles(&self) -> Vec<&dyn Projectile>{
+        let projectiles: Vec<&dyn Projectile> = self.projectiles
             .iter()
-            .map(|(_, projectile)| projectile)
+            .map(|(_, projectile)| projectile.as_ref())
             .collect();
 
         return projectiles

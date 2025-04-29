@@ -42,7 +42,7 @@ pub trait GameEntity: Updatable + Drawable{
     fn get_id(&self) -> u64;
     fn get_size(&self) -> f32;
     fn collides(&self, other: &dyn Collider) -> bool;
-    fn get_collider(&self) -> Box<&dyn Collider>;
+    fn get_collider(&self) -> &dyn Collider;
 }
 
 #[async_trait]

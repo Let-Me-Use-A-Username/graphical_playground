@@ -11,6 +11,8 @@ pub struct CollisionTracker {
     entity_cooldown: f64,
     last_cleanup: f64,
     cleanup_interval: f64,
+    last_reset: f64,
+    reset_interval: f64
 }
 
 impl CollisionTracker {
@@ -20,7 +22,9 @@ impl CollisionTracker {
             projectile_cooldown: 0.01,
             entity_cooldown: 0.25,
             last_cleanup: get_time(),
-            cleanup_interval: 5.0,
+            cleanup_interval: 3.0,
+            last_reset: get_time(),
+            reset_interval: 10.0,
         }
     }
 
@@ -37,7 +41,8 @@ impl CollisionTracker {
     ///Registers a collision based on the last time this collision pair was registered.
     fn register_with_cooldown(&mut self, pair: CollisionPair, cooldown: f64) -> bool {
         let now = get_time();
-        self.maybe_cleanup(now);
+        self.periodic_cleanup(now);
+        self.periodic_reset(now);
         
         let normalized_pair = self.normalize_pair(pair);
 
@@ -67,10 +72,18 @@ impl CollisionTracker {
     }
 
     ///Periodic cleanup to remove inactive pairs.
-    fn maybe_cleanup(&mut self, now: f64) {
+    fn periodic_cleanup(&mut self, now: f64) {
         if now - self.last_cleanup > self.cleanup_interval {
             self.entries.retain(|_, timer| !timer.expired(now));
             self.last_cleanup = now;
+        }
+    }
+
+    ///Periodic reset entiry collision catalogue.
+    fn periodic_reset(&mut self, now: f64){
+        if now - self.last_reset > self.reset_interval {
+            self.entries = HashMap::new();
+            self.last_reset = now;
         }
     }
 }

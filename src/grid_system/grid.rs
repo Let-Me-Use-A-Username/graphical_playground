@@ -50,7 +50,11 @@ impl Cell{
     fn insert(&mut self, entity_type: EntityType, id: u64){
         match self.entities.len() <= self.entities.capacity(){
             true => {
-                self.entities.insert(Entity::new(entity_type, id));
+                let entity = Entity::new(entity_type, id);
+
+                if !self.entities.contains(&entity){
+                    self.entities.insert(entity);
+                }
             },
             //If maximum length is exceeded, double the capacity.
             false => {
@@ -74,6 +78,7 @@ enum GridOperation{
 /// Each cell position has a cell that holds a vec of entities. Where entity is entity_type and id.
 pub struct Grid{
     entity_table: HashMap<EntityId, CellPos>,
+    history: HashMap<EntityId, Vec<CellPos>>,
     cells: HashMap<CellPos, Cell>,
     cell_size: i32,
     grid_size: i32,
@@ -93,6 +98,7 @@ impl Grid{
         
         return Grid{
             entity_table: HashMap::new(),
+            history: HashMap::new(),
             cells: cells,
             cell_size: cell_size,
             grid_size: grid_size,
@@ -104,8 +110,10 @@ impl Grid{
     #[inline(always)]
     pub fn update(&mut self) {
         let mut updates = Vec::new();
+        let mut to_skip = Vec::new();
         let mut removals = Vec::new();
         
+        //Sort operation queue into two collections
         for op in self.op_queue.drain(..) {
             match op {
                 GridOperation::Update(id, etype, pos, size) => {
@@ -117,13 +125,30 @@ impl Grid{
             }
         }
         
-        for (id, etype, pos, size) in updates {
-            self.update_entity(id, etype, pos, size);
-        }
-        
+        //First remove and add ids to collection
         for id in removals {
             self.remove_entity(id);
+            to_skip.push(id);
         }
+
+        //Sort both lists by incrementing id
+        to_skip.sort();
+        updates.sort_by(|entry1, entry2| {
+            entry1.0.cmp(&entry2.0)
+        });
+
+        //If entity hasn't been removed, update it
+        for (id, etype, pos, size) in updates {
+            
+            //Both lists are sorted, and `to_skip` gets smaller every iteration
+            //So practically this is somehting similar to O(n*log(m))
+            if !to_skip.contains(&id){
+                self.update_entity(id, etype, pos, size);
+                to_skip.retain(|entity_id| entity_id != &id);
+            }
+        }
+
+        drop(to_skip);
     }
 
     /// Updates an entity by first checking if it present inside the grid.
@@ -132,23 +157,19 @@ impl Grid{
     pub fn update_entity(&mut self, id: EntityId, entity_type: EntityType, pos: Vec2, size: f32) {
         let center_cell = self.world_to_cell(pos.into());
         
+        // Check if center of entity has changed
+        if let Some(&old_center) = self.entity_table.get(&id) {
+            if old_center == center_cell {
+                return;
+            }
+        }
+
         // Determine which cells the entity overlaps
         let min_x = ((pos.x - size) / self.cell_size as f32).floor() as i32;
         let max_x = ((pos.x + size) / self.cell_size as f32).ceil() as i32;
         let min_y = ((pos.y - size) / self.cell_size as f32).floor() as i32;
         let max_y = ((pos.y + size) / self.cell_size as f32).ceil() as i32;
-        
-        // First remove from old cells
-        if let Some(&old_center) = self.entity_table.get(&id) {
-            // Only proceed with removal if the center cell has changed
-            if old_center != center_cell {
-                self.remove_from_all(id);
-            } else {
-                // Center hasn't changed, avoid unnecessary removal/insertion
-                return;
-            }
-        }
-        
+
         // Add to all overlapping cells
         for x in min_x..=max_x {
             for y in min_y..=max_y {
@@ -160,34 +181,35 @@ impl Grid{
         
         // Update entity table with center cell
         self.entity_table.insert(id, center_cell);
+        //Update history with center
+        self.history.entry(id)
+            .and_modify(|entry| entry.push(center_cell));
     }
-
-    fn remove_from_all(&mut self, id: EntityId){
-        let mut occupations = 0;
-        //Collect all cells that contain the id
-        let occupied_cells: Vec<_> = self.cells.iter()
-            .filter(|(_, cell)| cell.entities.iter().any(|e| e.entity_id == id))
-            .map(|(pos, _)| *pos)
-            .collect();
-            
-        // Remove from all those cells
-        for old_pos in occupied_cells {
-            if let Some(cell) = self.cells.get_mut(&old_pos) {
-                occupations += 1;
-                cell.entities.retain(|entity| entity.entity_id != id);
-            }
-        }
-
-        println!("id: {:?} | Occurances: {:?}", id, occupations);
-    }
-
-    ///Removes first occurance of an element from a cell.
-    /// Also removes from cataloged entities.
-    /// Doesn't check for double references.
+    
+    
     #[inline(always)]
     pub fn remove_entity(&mut self, id: EntityId) {
-        if let Some(_) = self.entity_table.remove(&id){
-            self.remove_from_all(id);
+        self.entity_table.remove(&id);
+        
+        //If entity exists remove it from history
+        if let Some(entry) = self.history.remove(&id){
+            //Iterate all previous entries
+            for e in entry.clone(){
+                //Expand search around center by a -1, +1 radius
+                for x in -1..=1 {
+                    for y in -1..=1 {
+                        //And if the coordinates aren't in the next searches
+                        let new_pos = (e.0 + x, e.1 + y);
+                        
+                        if !entry.contains(&new_pos){
+                            //Retrieve cell and remove entity
+                            if let Some(cell) = self.cells.get_mut(&new_pos) {
+                                cell.entities.retain(|entity| entity.entity_id != id);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

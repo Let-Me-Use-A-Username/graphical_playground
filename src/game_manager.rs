@@ -275,7 +275,7 @@ impl GameManager{
                         //Retrieve enemy id's that are adjacent to the player in a -1..1 radius.
                         let nearby_enemy_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Enemy);
                         //Retrieve enemies based on Ids
-                        let nearby_enemies: Vec<Option<&Box<dyn Enemy>>> = nearby_enemy_ids
+                        let nearby_enemies: Vec<Option<&dyn Enemy>> = nearby_enemy_ids
                             .iter()
                             .filter_map(|id| {
                                 Some(handler.get_enemy(id).filter(|enemy| enemy.is_alive()))
@@ -285,7 +285,7 @@ impl GameManager{
                         //Retrieve projectile id's that are adjucent to the player in a -1..1 radius.
                         let neaby_projectile_ids = grid.get_nearby_entities_by_type(player_pos, EntityType::Projectile);
                         //Filter projectile so that we only keep active enemy projectiles.
-                        let nearby_projectiles: Vec<Option<&Box<dyn Projectile>>> = neaby_projectile_ids
+                        let nearby_projectiles: Vec<Option<&dyn Projectile>> = neaby_projectile_ids
                             .iter()
                             .filter_map(|id| {
                                 Some(handler.get_projectile(id).filter(|projectile| {
@@ -325,7 +325,7 @@ impl GameManager{
                                     .collect::<Vec<(EntityType, u64)>>();
 
                                 //Collect enemies from handler
-                                let enemies: Vec<Option<&Box<dyn Enemy>>> = player_projectiles.iter()
+                                let enemies: Vec<Option<&dyn Enemy>> = player_projectiles.iter()
                                     .map(|(_, id)| {
                                         handler.get_enemy(id)
                                     })
@@ -343,7 +343,7 @@ impl GameManager{
                         let populated_cells = grid.get_populated_cells();
                         //Iterate ids and map to enemies
                         for cell in populated_cells{
-                            let mut cell_enemies: Vec<&Box<dyn Enemy>> = Vec::new();
+                            let mut cell_enemies: Vec<&dyn Enemy> = Vec::new();
 
                             for id in cell{
                                 if let Some(enemy) = handler.get_enemy(&id){
@@ -362,9 +362,7 @@ impl GameManager{
             camera.target = camera_pos;
             set_camera(&camera);
     
-            {
-                self.dispatcher.dispatch().await;
-            }
+            self.dispatcher.dispatch().await;
     
             // ======== RENDERING ========
             {

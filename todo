@@ -1,17 +1,19 @@
 ==============================================
 ================== Critical ==================
+- Current memory leak on collisions
+    - Tracker appears to have a role in it. Not the responsible one for the whole leak.
+    
+
+
+- Change player 
+    - When pressing left or right, add velocity
+        - Because if no gas is given but we have velocity, the car should turn 
+    - When vurnerable, don't make him white
+    - Make shield change color or shade based on charges left 
+        -(Blue - Yellow - Orange - Red)
+        -(Blue - Lighter Blue till almost white)
+
 - Implement different kinds of enemies.
-    - Rect
-
-- Implemented bounary check in Grid when updating entity
-    - Cell cleanup isn't correct and causes memory buildup 
-        - Collect all previous positions in `entity_table`
-    - Remove operations aren't prioritized, and updates occur on "dead" entities
-        - Prioritize remove operations and remove Update operations that contain the ids
-    - Every time an entity is removed the whole grid is checked, the operation is not very performant
-        - If all previous positions are kept, then we can collect them and remove them more efficiently
-
-
 ==============================================
 ================== General todo ==============
 - Idea for re-implementing player movement:

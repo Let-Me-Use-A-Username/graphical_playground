@@ -150,8 +150,8 @@ impl GameEntity for Rect{
         return self.collider.collides_with(other)
     }
 
-    fn get_collider(&self) -> Box<&dyn Collider> {
-        return Box::new(&self.collider)
+    fn get_collider(&self) -> &dyn Collider {
+        return &self.collider
     }
 }
 
