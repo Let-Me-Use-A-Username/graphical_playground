@@ -1,5 +1,8 @@
 # Changelog
 
+### 0.2.63 Changes 30/4/2025
+- v.0.2.63 Cause of **memory leak** was the RectHit config in MetalArtist.
+
 ### 0.2.63 Changes 29/4/2025
 - v.0.2.63 Changed Handler to pass out references instead of Boxed enemies.
 - v.0.2.63 Fixed Grid's history, entity removal process and history catalogue

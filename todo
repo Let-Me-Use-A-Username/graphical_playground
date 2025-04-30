@@ -1,8 +1,9 @@
 ==============================================
 ================== Critical ==================
 - Current memory leak on collisions
-    - Tracker appears to have a role in it. Not the responsible one for the whole leak.
-    
+    - Specifically the RectHit config 
+
+- Gameplay after level up feels laggy
 
 
 - Change player 

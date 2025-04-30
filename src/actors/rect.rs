@@ -181,7 +181,7 @@ impl Enemy for Rect{
             is_alive: true,
             
             emittion_configs: vec![
-                (StateType::Moving, ConfigType::RectHit),
+                //(StateType::Moving, ConfigType::RectHit),
                 (StateType::Hit, ConfigType::EnemyDeath)]
         };
 

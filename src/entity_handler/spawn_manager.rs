@@ -12,7 +12,7 @@ use crate::entity_handler::enemy_type::EnemyType;
 #[derive(Clone, Copy)]
 pub enum EnemyComplexity {
     Simple = 1,     // 80 enemies
-    Average = 2,    // 240
+    Average = 2,    // 160
     Complex = 3,    // 320
     Expert = 4,     // 400
     Hell = 5,       // 480
@@ -36,8 +36,7 @@ impl EnemyComplexity {
 
         let pool: Vec<EnemyType> = match self {
             EnemyComplexity::Simple => {
-                //vec![EnemyType::Circle].into()
-                vec![EnemyType::Rect].into()
+                vec![EnemyType::Circle].into()
             },
             EnemyComplexity::Average => {
                 vec![EnemyType::Circle, EnemyType::Triangle].into()
