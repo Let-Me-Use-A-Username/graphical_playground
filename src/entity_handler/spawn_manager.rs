@@ -102,7 +102,7 @@ pub struct SpawnManager{
 }
 
 impl SpawnManager{
-    const ENEMY_MULTIPLIER: usize = 80;
+    const ENEMY_MULTIPLIER: usize = 160;
 
     pub fn new(sender: Sender<Event>, level_interval: f64, spawn_interval: f64) -> SpawnManager{
         return SpawnManager{
@@ -164,7 +164,8 @@ impl SpawnManager{
         //If enemy count exceeds factory limits, increase capacity, and set queue size to `active_enemies`.
         if enemy_count > factory_queue_capacity{
             self.publish(Event::new(enemy_count - factory_queue_capacity, EventType::FactoryResize)).await;
-            factory_surplus = (false, active_enemies);
+            //hotfix for testing different enemy amounts
+            factory_surplus = (false, std::cmp::max(active_enemies, 20));
         }
 
 

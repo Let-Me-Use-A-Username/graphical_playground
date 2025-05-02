@@ -78,15 +78,15 @@ impl Factory{
 
                 match etype{
                     EnemyType::Circle => {
-                        let size = thread_rng().gen_range(15..25) as f32;
+                        let size = thread_rng().gen_range(35..45) as f32;
                         self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
                     },
                     EnemyType::Triangle => {
-                        let size = thread_rng().gen_range(20..30) as f32;
+                        let size = thread_rng().gen_range(40..50) as f32;
                         self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
                     },
                     EnemyType::Rect => {
-                        let size = thread_rng().gen_range(180..200) as f32;
+                        let size = thread_rng().gen_range(220..240) as f32;
                         self.queue_enemy::<rect::Rect>(pos, size, color, player_pos).await;
                     },
                     EnemyType::Hexagon => todo!(),

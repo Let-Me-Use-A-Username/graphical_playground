@@ -4,6 +4,11 @@
     - Specifically the RectHit config 
 
 - Gameplay after level up feels laggy
+    - Isn't caused by level up, time progression plays may play some role
+    - Or the nummer of enemies?
+    - Neither, its with killing enemies
+        - Enemies aren't dropped properly?
+            - Create a pool?
 
 
 - Change player 

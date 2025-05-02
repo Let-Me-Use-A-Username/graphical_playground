@@ -85,7 +85,9 @@ impl Handler{
         for id in enemies_remove{
             if let Some(enemy) = self.enemies.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
-                drop(enemy);
+                self.publish(Event::new((enemy.get_id(), StateType::Hit), EventType::UnregisterEmitterConf)).await;
+                
+                std::mem::drop(enemy);
             }
             self.enemy_overides.remove(&id);
         }

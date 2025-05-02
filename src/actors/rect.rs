@@ -117,7 +117,7 @@ impl Drawable for Rect{
     #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
         let health = self.health as f32;
-        let alpha = 0.1 + (health.clamp(0.2, 10.0) / 10.0) * 0.9;
+        let alpha = 0.1 + (health.clamp(0.4, 10.0) / 10.0) * 0.9;
         
         return DrawCall::Rectangle(self.pos.x, self.pos.y, self.size, self.size, self.color.with_alpha(alpha))
     }
