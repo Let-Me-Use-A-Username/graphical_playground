@@ -1,9 +1,14 @@
 # Changelog
 
+### 0.2.63 Changes 3/5/2025
+- v.0.2.63 Implmented basic Recycler for factory. 
+
 
 ### 0.2.63 Changes 2/5/2025
 - v.0.2.63 Added Factory fail-safe if there exist no active enemies.
-- v.0.2.63 Attempted to increase enemy amount and resulted in rigidness. 
+- v.0.2.63 Attempted to increase enemy amount and resulted in rigidness.
+- v.0.2.63 Changed Handler to remove Configs from MetalArtist on entity death.
+- v.0.2.63 Increased opacity in Rect as health drops
 
 
 ### 0.2.63 Changes 30/4/2025

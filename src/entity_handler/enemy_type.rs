@@ -1,6 +1,6 @@
 
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EnemyType{
     Circle,
     Triangle,

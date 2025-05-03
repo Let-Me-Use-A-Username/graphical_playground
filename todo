@@ -1,14 +1,12 @@
 ==============================================
 ================== Critical ==================
-- Current memory leak on collisions
-    - Specifically the RectHit config 
-
-- Gameplay after level up feels laggy
-    - Isn't caused by level up, time progression plays may play some role
-    - Or the nummer of enemies?
-    - Neither, its with killing enemies
-        - Enemies aren't dropped properly?
-            - Create a pool?
+- Due to continues enemy allocation there is possible memory fragmentation and unoptimized memory allocation/deallocation
+    - Implement a Recycler struct that maintains pools of enemies
+        - The factory will maintain its own queue for ready enemies and a Recycler
+            - Spawner will maintain role of managing factory (queue handling, forwarding enemies)
+        - When the Handler has an inactive enemy (dead) he will emit an event so that its recycled and added back to the pool
+    -architecture reference: https://claude.ai/chat/efa444ec-0021-4d45-a663-7755429fcb7a
+- How to handle Emitter configs???
 
 
 - Change player 
@@ -20,6 +18,8 @@
         -(Blue - Lighter Blue till almost white)
 
 - Implement different kinds of enemies.
+    - Rect 
+        - Make rect emit signal on death, to spawn entity on it
 ==============================================
 ================== General todo ==============
 - Idea for re-implementing player movement:
@@ -100,6 +100,7 @@
     - Grids operation queue doesn't drain properly
     - Emitters aren't dropped correctly from MetalArtist
     - Cyrcle Arc references inside game manager
+    - MetalArtists Config is set to one shot but spawns every frame. (RectMove incident)
 
 - Colliders:
     - Projectile colliders extend past the sprite, only forward.

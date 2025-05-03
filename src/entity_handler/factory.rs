@@ -27,7 +27,8 @@ pub struct Factory{
 }
 
 impl Factory{
-    pub fn new(sender: Sender<Event>, size: usize, enemy_sender: Sender<Event>) -> Self{
+    pub async fn new(sender: Sender<Event>, size: usize, enemy_sender: Sender<Event>) -> Self{
+
         return Factory {
             queue: VecDeque::with_capacity(size),
             sender: sender,

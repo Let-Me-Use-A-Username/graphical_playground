@@ -6,6 +6,11 @@ impl Global{
     pub fn new() -> Self{
         return Global {}
     }
+
+
+    /* 
+            General
+    */
     pub fn get_screen_width(&self) -> f32{
         return screen_width();
     }
@@ -14,6 +19,10 @@ impl Global{
         return screen_height();
     }
 
+
+    /* 
+            Grid 
+    */
     pub fn get_cell_size(&self) -> i32{
         return 720
     }
@@ -26,6 +35,23 @@ impl Global{
         return 0
     }
 
-    //180 * 1024 = 184.320
+
+    /* 
+            Factory
+    */
+    pub fn get_factory_size(&self) -> usize{
+        return 256
+    }
+
+    /* 
+            Spawner
+    */
+    pub fn get_level_interval(&self) -> f64{
+        return 180.0
+    }
+
+    pub fn get_spawn_interval(&self) -> f64{
+        return 1.0
+    }
 }
 

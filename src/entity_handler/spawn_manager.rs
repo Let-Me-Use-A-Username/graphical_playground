@@ -102,6 +102,7 @@ pub struct SpawnManager{
 }
 
 impl SpawnManager{
+    //FIXME: Change back to 80
     const ENEMY_MULTIPLIER: usize = 160;
 
     pub fn new(sender: Sender<Event>, level_interval: f64, spawn_interval: f64) -> SpawnManager{

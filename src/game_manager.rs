@@ -76,14 +76,14 @@ impl GameManager{
         let spawner = Arc::new(Mutex::new(
             SpawnManager::new(
                 dispatcher.create_sender(), 
-                180.0,
-                1.0
+                global.get_level_interval(),
+                global.get_spawn_interval()
             )));
         let factory = Arc::new(Mutex::new(
             Factory::new(
                 dispatcher.create_sender(), 
-                256,
-                dispatcher.create_sender())
+                global.get_factory_size(),
+                dispatcher.create_sender()).await
             ));
         let grid = Arc::new(Mutex::new(
             Grid::new(
