@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.2.63 Changes 10/5/2025
+- v.0.2.63 Fixed Collision Tracker who was tracking, ALL collissions regardless.
+- v.0.2.63 Changed Recycler to also soft-reset enemies when handing them out.
+
+
 ### 0.2.63 Changes 3/5/2025
 - v.0.2.63 Implmented basic Recycler for factory. 
 

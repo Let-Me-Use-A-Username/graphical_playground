@@ -30,8 +30,8 @@ impl CollisionDetector{
                 let enemy_id = enemy.get_id();
 
                 //Only publish the collision events, if the collision can be registered.
-                if self.tracker.register_entity_collision(player_id, enemy_id){
-                    if enemy.collides(player){
+                if enemy.collides(player){
+                    if self.tracker.register_entity_collision(player_id, enemy_id){
                         self.publish(Event::new(enemy.get_id(), EventType::EnemyHit)).await;
                         self.publish(Event::new(get_time(), EventType::PlayerHit)).await;
                     }
@@ -61,8 +61,9 @@ impl CollisionDetector{
             if let Some(enemy) = entry{
                 let enemy_id = enemy.get_id();
 
-                if self.tracker.register_projectile_collision(player_projectile_id, enemy_id){
-                    if enemy.collides(collider){
+                if enemy.collides(collider){
+                    if self.tracker.register_projectile_collision(player_projectile_id, enemy_id){
+                        
                         self.publish(Event::new(enemy_id, EventType::EnemyHit)).await;
                         self.publish(Event::new(player_projectile_id, EventType::PlayerBulletHit)).await;
                     }

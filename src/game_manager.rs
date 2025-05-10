@@ -125,6 +125,7 @@ impl GameManager{
         dispatcher.register_listener(EventType::QueueTemplate, factory.clone());
         dispatcher.register_listener(EventType::ForwardEnemiesToHandler, factory.clone());
         dispatcher.register_listener(EventType::FactoryResize, factory.clone());
+        dispatcher.register_listener(EventType::BatchRecycle, factory.clone());
 
         //MetalArtist events
         dispatcher.register_listener(EventType::RegisterEmitterConf, metal.clone());

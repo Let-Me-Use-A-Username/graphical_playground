@@ -21,6 +21,8 @@ pub enum EventType{
     QueueTemplate,
     ForwardEnemiesToHandler,
     FactoryResize,
+    //Factory-Recycler
+    BatchRecycle,
     //Grid
     InsertOrUpdateToGrid,
     RemoveEntityFromGrid,

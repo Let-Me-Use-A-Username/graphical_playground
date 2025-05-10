@@ -157,7 +157,7 @@ impl GameEntity for Rect{
 
 #[async_trait]
 impl Enemy for Rect{
-    async fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
+    fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
         let enemy =  Rect {
             id: id,
             pos: pos, 
@@ -185,13 +185,31 @@ impl Enemy for Rect{
                 (StateType::Hit, ConfigType::EnemyDeath)]
         };
 
-        enemy.publish(Event::new((enemy.get_id(), enemy.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
-
         return enemy
+    }
+
+    fn set_id(&mut self, id: u64){
+        self.id = id;
+    }
+
+    async fn register_configs(&self){
+        self.publish(Event::new((self.get_id(), self.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
     }
 
     fn set_pos(&mut self, new_pos: Vec2){
         self.pos = new_pos
+    }
+
+    fn set_color(&mut self, new_color: Color){
+        self.color = new_color;
+    }
+
+    fn set_size(&mut self, new_size: f32){
+        self.size = new_size;
+    }
+
+    fn set_target(&mut self, new_target: Vec2){
+        self.target = new_target;
     }
 
     fn is_alive(&self) -> bool{

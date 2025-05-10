@@ -9,12 +9,11 @@ static COUNTER: AtomicU64 = AtomicU64::new(1026);
 
 pub struct Recycler{
     pools: HashMap<EnemyType, VecDeque<Box<dyn Enemy>>>,
-    sender: Sender<Event>,
     enemy_sender: Sender<Event>,
 }
 
 impl Recycler{
-    pub async fn new(sender: Sender<Event>, enemy_sender: Sender<Event>) -> Self {
+    pub async fn new(enemy_sender: Sender<Event>) -> Self {
         let mut pools = HashMap::new();
         
         pools.insert(EnemyType::Circle, VecDeque::new());
@@ -24,7 +23,6 @@ impl Recycler{
         
         Recycler {
             pools,
-            sender,
             enemy_sender,
         }
     }
@@ -50,13 +48,16 @@ impl Recycler{
                     default_size, 
                     default_color, 
                     default_pos
-                ).await;
+                );
                 
-                self.recycle(enemy);
+                if let Some(pool) = self.pools.get_mut(&enemy_type) {
+                    pool.push_back(enemy);
+                }
             }
         }
     }
 
+    
     pub async fn get_enemy(&mut self, 
         enemy_type: EnemyType, 
         pos: Vec2, 
@@ -66,10 +67,16 @@ impl Recycler{
 
         if let Some(pool) = self.pools.get_mut(&enemy_type) {
             if let Some(mut enemy) = pool.pop_front() {
-                // FIXME: Reset enemy
+                
+                enemy.set_id(self.generate_id());
                 enemy.set_pos(pos);
+                enemy.set_size(size);
+                enemy.set_color(color);
+                enemy.set_target(player_pos);
+
                 enemy.set_alive(true);
                 enemy.force_state(StateType::Idle);
+                enemy.register_configs().await;
 
                 return Some(enemy);
             }
@@ -78,7 +85,7 @@ impl Recycler{
         return None
     }
 
-    pub async fn generate_enemy(&mut self, 
+    pub fn generate_enemy(&mut self, 
                           enemy_type: EnemyType, 
                           pos: Vec2, 
                           size: f32, 
@@ -87,43 +94,43 @@ impl Recycler{
         match enemy_type {
             EnemyType::Circle => {
                 Box::new(Circle::new(
-                    self.generate_id(), 
+                    0, 
                     pos, 
                     size, 
                     color, 
                     player_pos, 
                     self.enemy_sender.clone()
-                ).await)
+                ))
             },
             EnemyType::Triangle => {
                 Box::new(Triangle::new(
-                    self.generate_id(), 
+                    0, 
                     pos, 
                     size, 
                     color, 
                     player_pos, 
                     self.enemy_sender.clone()
-                ).await)
+                ))
             },
             EnemyType::Rect => {
                 Box::new(rect::Rect::new(
-                    self.generate_id(), 
+                    0, 
                     pos, 
                     size, 
                     color, 
                     player_pos, 
                     self.enemy_sender.clone()
-                ).await)
+                ))
             },
             EnemyType::Hexagon => {
                 Box::new(Circle::new(
-                    self.generate_id(), 
+                    0, 
                     pos, 
                     size, 
                     color, 
                     player_pos, 
                     self.enemy_sender.clone()
-                ).await)
+                ))
             },
         }
     }

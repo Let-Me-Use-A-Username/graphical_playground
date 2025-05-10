@@ -82,14 +82,20 @@ impl Handler{
             .collect::<Vec<u64>>();
 
         
+        let mut to_recycle = Vec::new();
+
         for id in enemies_remove{
             if let Some(enemy) = self.enemies.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
                 self.publish(Event::new((enemy.get_id(), StateType::Hit), EventType::UnregisterEmitterConf)).await;
                 
-                std::mem::drop(enemy);
+                to_recycle.push(Some(enemy));
+                self.enemy_overides.remove(&id);
             }
-            self.enemy_overides.remove(&id);
+        }
+
+        if !to_recycle.is_empty(){
+            self.publish(Event::new(to_recycle, EventType::BatchRecycle)).await;
         }
 
         for id in projecitles_remove{
@@ -252,6 +258,7 @@ impl Subscriber for Handler{
                         data.iter_mut().for_each(|entry| {
                             let entity = entry.take().unwrap();
                             let id = entity.get_id();
+                            
                             self.insert_enemy(id, entity);
                         });
                     }
