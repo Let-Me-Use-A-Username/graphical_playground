@@ -1,10 +1,9 @@
 ==============================================
 ================== Critical ==================
-- Current problem: Not all collisitions are registered
-    - Recycler is at fault, but not sure why. Changing to old factory works
-    - After monitoring RAM usage, the old factory (no recycler) doesn't seem to hog memory, 
-        likely scenario is that bullets are causing the leak.
-        - Bullet pool doesn't follow the same logic as the recycler. Note, that this might be a cause for leaks
+Problems: Still leaking memory, unsure if its because of enemies or bullets
+    - Recycler doesn't work correctly, collisions aren't triggered correctly
+    - Bullet pool might cause some leaks
+    - Increasing enemy multiplier from 80 to 160 (Spawner) freezed level up
 
 
 - Change player 
