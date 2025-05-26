@@ -23,6 +23,8 @@ pub enum EventType{
     FactoryResize,
     //Factory-Recycler
     BatchRecycle,
+    //BulletPool
+    RecycleProjectile,
     //Grid
     InsertOrUpdateToGrid,
     RemoveEntityFromGrid,

@@ -1,5 +1,9 @@
 # Changelog
 
+
+### 0.2.63 Changes 26/5/2025
+- v.0.2.63 Implemented template for centralized bullet pool.
+
 ### 0.2.63 Changes 10/5/2025
 - v.0.2.63 Fixed Collision Tracker who was tracking, ALL collissions regardless.
 - v.0.2.63 Changed Recycler to also soft-reset enemies when handing them out.

@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::{vec2, Rect, Vec2};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::machine::StateType};
+use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, objects::bullet::Bullet, renderer::artist::DrawCall, utils::machine::StateType};
 
 use super::enemy_type::EnemyType;
 
@@ -84,6 +84,7 @@ impl Handler{
         
         let mut to_recycle = Vec::new();
 
+        //Drop enemies
         for id in enemies_remove{
             if let Some(enemy) = self.enemies.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
@@ -94,15 +95,17 @@ impl Handler{
             }
         }
 
-        if !to_recycle.is_empty(){
-            self.publish(Event::new(to_recycle, EventType::BatchRecycle)).await;
-        }
-
+        //Drop projectiles
         for id in projecitles_remove{
             if let Some(proj) = self.projectiles.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
-                drop(proj);
+                
             }
+        }
+
+        //Recycle enemies
+        if !to_recycle.is_empty(){
+            self.publish(Event::new(to_recycle, EventType::BatchRecycle)).await;
         }
     }
 

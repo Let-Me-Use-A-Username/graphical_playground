@@ -1,10 +1,18 @@
 ==============================================
 ================== Critical ==================
-Problems: Still leaking memory, unsure if its because of enemies or bullets
-    - Recycler doesn't work correctly, collisions aren't triggered correctly
-    - Bullet pool might cause some leaks
-    - Increasing enemy multiplier from 80 to 160 (Spawner) freezed level up
 
+- Implement centralized *BulletPool*
+    - Entity_Handler: Send enemies to pool for recycling
+    - Player / Triangle: Retrieve bullets from pool via event
+
+- Bullet pool might cause some leaks
+    - Create a centralized BulletPool that in turn provides bullets to the  Player and Triangles
+    - *NOTE*: If the bullet pool fix doesn't provide steady performance over time, (as well as mitigating
+        memory hogging) then the Recycler (Factory) HAS to be implemented
+
+- Recycler isn't working properly
+    - Faulty collisions
+    - Hogs too much memory
 
 - Change player 
     - When pressing left or right, add velocity

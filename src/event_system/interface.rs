@@ -83,4 +83,6 @@ pub trait Projectile: GameEntity{
     fn get_state(&self) -> Option<StateType>;
     
     fn get_all_draw_calls(&self) -> Vec<DrawCall>;  //REVIEW: Currently only serves debugging purposes.
+
+    fn reset(&mut self, id: u64);
 }

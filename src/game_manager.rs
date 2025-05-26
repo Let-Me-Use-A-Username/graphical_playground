@@ -31,9 +31,11 @@ pub enum GameState{
     GameOver
 }
 
+
 pub enum GameEventType{
     SpawnEnemies
 }
+
 
 pub struct GameEvent{
     data: Box<dyn Any>,
@@ -233,6 +235,7 @@ impl GameManager{
                     for call in player.get_all_draw_calls(){
                         draw_calls.extend(vec![(10, call)]);
                     }
+
                     draw_calls.extend(wall_calls);
 
                     if player.should_emit(){
@@ -310,7 +313,7 @@ impl GameManager{
                         }
                     }
 
-                     //Phase 2. Detect Players projectile collisions.
+                    //Phase 2. Detect Players projectile collisions.
                     {
                         //Fetch all projectiles
                         for projectile in handler.get_projectiles(){
@@ -338,7 +341,7 @@ impl GameManager{
                         }
                     }
                     
-                     //Phase 3. Detect inter-Enemy collisions.
+                    //Phase 3. Detect inter-Enemy collisions.
                     {
                         //Get populated cells
                         let populated_cells = grid.get_populated_cells();

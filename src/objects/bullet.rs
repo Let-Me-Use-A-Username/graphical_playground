@@ -9,7 +9,9 @@ use crate::collision_system::collider::Collider;
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum ProjectileType{
     Player,
-    Enemy
+    Enemy,
+
+    NOTASSIGNED
 }
 
 pub struct Bullet{
@@ -28,21 +30,22 @@ pub struct Bullet{
     machine: StateMachine
 }
 impl Bullet{
-    pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>, ptype: ProjectileType) -> Self{
-        return Bullet {
-            id: id, 
-            pos: pos,
-            speed: speed,
-            size: size,
-            direction: direction.normalize(), 
-            timer: SimpleTimer::new(remove_time),
-            collider: RectCollider::new(pos.x, pos.y, size, size),
-            sender: sender,
-            is_active: true,
-            origin: ptype,
-            machine: StateMachine::new()
-        };
-    }
+    // Review: Not Used
+    // pub fn spawn(id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, sender: Sender<Event>, ptype: ProjectileType) -> Self{
+    //     return Bullet {
+    //         id: id, 
+    //         pos: pos,
+    //         speed: speed,
+    //         size: size,
+    //         direction: direction.normalize(), 
+    //         timer: SimpleTimer::new(remove_time),
+    //         collider: RectCollider::new(pos.x, pos.y, size, size),
+    //         sender: sender,
+    //         is_active: true,
+    //         origin: ptype,
+    //         machine: StateMachine::new()
+    //     };
+    // }
 
     pub fn get_blank(sender: Sender<Event>, ptype: ProjectileType) -> Self{
         return Bullet {
@@ -60,11 +63,10 @@ impl Bullet{
         }   
     }
 
-    pub fn set(&mut self, id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32){
+    pub fn set(&mut self, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, origin: ProjectileType){
         let mut timer = Timer::new();
         timer.set(get_time(), remove_time, None);
 
-        self.id = id;
         self.pos = pos;
         self.speed = speed;
         self.size = size;
@@ -77,6 +79,7 @@ impl Bullet{
             size * 0.5    // Because size mod is 0.25 times 2 is 0.5
         );
         self.is_active = true;
+        self.origin = origin;
     }
 }
 
@@ -133,33 +136,34 @@ impl Drawable for Bullet{
 #[async_trait]
 impl Updatable for Bullet{
     async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {
-        if self.is_active{
-            if !self.timer.expired(get_time()) {    
-                
-                if let Ok(state) = self.machine.get_state().try_lock(){
-                    match *state{
-                        StateType::Idle => self.machine.transition(StateType::Moving),
-                        StateType::Moving => {
-                            // Update collider position and rotation
-                            let new_pos = self.pos + self.direction * (self.size * 0.5);
-                            
-                            self.move_to(delta, None);
-                            self.collider.update(new_pos);
-                            self.collider.set_rotation(self.direction.y.atan2(self.direction.x));
-                        },
-                        //drop bullet
-                        StateType::Hit => self.is_active = false,
-                        _ => (), //Unreachable
-                    }
-                }
+        if !self.is_active{
+            return;
+        }
 
-                self.publish(Event::new((self.id, EntityType::Projectile, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await
-            }
-            else{
+        if self.timer.expired(get_time()){
+            self.is_active = false;
+            return ;
+        }
+
+        if let Ok(state) = self.machine.get_state().try_lock(){
+            match *state{
+                StateType::Idle => self.machine.transition(StateType::Moving),
+                StateType::Moving => {
+                    // Update collider position and rotation
+                    let new_pos = self.pos + self.direction * (self.size * 0.5);
+                    
+                    self.move_to(delta, None);
+                    self.collider.update(new_pos);
+                    self.collider.set_rotation(self.direction.y.atan2(self.direction.x));
+                },
                 //drop bullet
-                self.is_active = false;
+                StateType::Hit => self.is_active = false,
+                _ => (), //Unreachable
             }
         }
+
+        self.publish(Event::new((self.id, EntityType::Projectile, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await
+        
     }
 }
 
@@ -212,6 +216,24 @@ impl Projectile for Bullet{
         selfcall.push(self.collider.get_draw_call());
 
         return selfcall
+    }
+
+    /* 
+    //Review: Following aren't re-initialized
+    collider: RectCollider,
+    sender: Sender<Event>,
+    */
+    fn reset(&mut self, id: u64){
+        self.id = id;
+        self.pos = Vec2::ZERO;
+        self.speed = 0.0;
+        self.size = 0.0;
+        self.direction = Vec2::ZERO;
+        self.is_active = false;
+        self.origin = ProjectileType::NOTASSIGNED;
+        self.timer = SimpleTimer::blank();
+        self.collider.update(self.pos);
+        self.machine.transition(StateType::Idle);
     }
 }
 
