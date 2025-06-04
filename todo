@@ -1,18 +1,37 @@
 ==============================================
+================== Final Roadmap =============
+- Implement critical problems
+
+- Implement different kinds of enemies.
+    - Hexagon
+        - Emit signal on death, to spawn entity on it ?
+
+- Implement Boss
+
+- Implement music and sound effects
+
+- Implement basic menu UI
+
+- Implement score?
+
+==============================================
 ================== Critical ==================
 
 - Implement centralized *BulletPool*
-    - Entity_Handler: Send enemies to pool for recycling
-    - Player / Triangle: Retrieve bullets from pool via event
+    - Player / Triangle: 
+        - Request bullet from pool (Either single or collection)
+        - Spawn bullet and send to Handler
+    - Entity_Handler: Hold inactive bullets, when threshold exceeds (or timer expired) recycle via pool
 
-- Bullet pool might cause some leaks
-    - Create a centralized BulletPool that in turn provides bullets to the  Player and Triangles
-    - *NOTE*: If the bullet pool fix doesn't provide steady performance over time, (as well as mitigating
-        memory hogging) then the Recycler (Factory) HAS to be implemented
+    - Bullet pool might cause some leaks
+        - Create a centralized BulletPool that in turn provides bullets to the  Player and Triangles
+        - *NOTE*: If the bullet pool fix doesn't provide steady performance over time, (as well as mitigating
+            memory hogging) then the Recycler (Factory) HAS to be implemented. Due to memory hogging from some entity.
 
-- Recycler isn't working properly
-    - Faulty collisions
-    - Hogs too much memory
+- Factory
+    - Recycler isn't working properly
+        - Faulty collisions
+        - Hogs too much memory
 
 - Change player 
     - When pressing left or right, add velocity
@@ -22,9 +41,6 @@
         -(Blue - Yellow - Orange - Red)
         -(Blue - Lighter Blue till almost white)
 
-- Implement different kinds of enemies.
-    - Rect 
-        - Make rect emit signal on death, to spawn entity on it
 ==============================================
 ================== General todo ==============
 - Idea for re-implementing player movement:
@@ -37,8 +53,6 @@
 - Implement ErrorHandler
     -Change component function to return Results 
         -Log these results if error occurs
-
-- Implement bosses
     
 ==============================================
 ================== Gameplay ==================
