@@ -1,5 +1,8 @@
 # Changelog
 
+### 0.2.63 Changes 4/6/2025
+- v.0.2.63 Implemented centralized Bullet pool. Introduced slow-spawn for bullets. Will implement a collection fetch.
+- v.0.2.63 Changed Player, Triangles and Handler to work accordingly to new BulletPool.
 
 ### 0.2.63 Changes 26/5/2025
 - v.0.2.63 Implemented template for centralized bullet pool.

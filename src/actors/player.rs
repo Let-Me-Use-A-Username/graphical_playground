@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{self, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2);
@@ -37,7 +37,6 @@ pub struct Player{
     //Firing specifics
     left_fire: bool,
     attack_speed: SimpleTimer,
-    bullet_pool: BulletPool,
     bullet_timer: SimpleTimer,
     //Emitter specifics
     emittion_configs: Vec<(StateType, ConfigType)>,
@@ -73,7 +72,6 @@ impl Player{
             bounce: false,
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
-            bullet_pool: BulletPool::new(1024, sender.clone(), bullet::ProjectileType::Player),
             bullet_timer: SimpleTimer::blank(),
             
             emittion_configs: vec![
@@ -89,61 +87,50 @@ impl Player{
     }
 
     async fn fire(&mut self){
-        if let Some(mut bullet) = self.bullet_pool.get(){
-            //Invert facing direction
-            let front_vector = Vec2::new(
-                self.rotation.sin(),
-                -self.rotation.cos()
-            ).normalize();
+        //Invert facing direction
+        let front_vector = Vec2::new(
+            self.rotation.sin(),
+            -self.rotation.cos()
+        ).normalize();
 
-            //Calculate side vector
-            let side_vector = Vec2::new(
-                self.rotation.cos(),
-                self.rotation.sin()
-            ).normalize();
+        //Calculate side vector
+        let side_vector = Vec2::new(
+            self.rotation.cos(),
+            self.rotation.sin()
+        ).normalize();
 
-            //Apply rotation
-            let rotation = Vec2::new(
-                self.size * side_vector.x,
-                self.size * side_vector.y
-            );
+        //Apply rotation
+        let rotation = Vec2::new(
+            self.size * side_vector.x,
+            self.size * side_vector.y
+        );
 
-            //Add offset to position at middle of rect
-            let vertical_offset = front_vector * self.size / 2.0;
-            let base_pos = self.pos - vertical_offset;
-            
-            let spawn_pos: Vec2;
+        //Add offset to position at middle of rect
+        let vertical_offset = front_vector * self.size / 2.0;
+        let base_pos = self.pos - vertical_offset;
+        
+        let spawn_pos: Vec2;
 
-            if self.left_fire{
-                spawn_pos = base_pos - rotation;
-            }
-            else{
-                spawn_pos = base_pos + rotation;
-            }
-
-            self.left_fire = !self.left_fire;
-
-            let mut id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-            if id >= 1024{ //Bullet pool size
-                id = BULLETCOUNTER.swap(0, std::sync::atomic::Ordering::SeqCst);
-            }
-            
-            let pos = spawn_pos;
-
-            bullet.set(
-                id,
-                pos,
-                3000.0,
-                front_vector,
-                2.0,
-                11.0,
-            );
-            
-            let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
-
-            self.publish(bullet_spawn).await;
+        if self.left_fire{
+            spawn_pos = base_pos - rotation;
         }
+        else{
+            spawn_pos = base_pos + rotation;
+        }
+
+        self.left_fire = !self.left_fire;
+        
+        let pos = spawn_pos;
+        
+        self.publish(Event::new((
+            pos,
+            3000.0,
+            front_vector,
+            2.0,
+            11.0,
+            ProjectileType::Player), 
+            EventType::RequestBullet)
+        ).await;
     }
 
     fn boost(&mut self, _delta: f32){
@@ -219,20 +206,6 @@ impl Updatable for Player{
         self.shield_counter.update();
         self.boost_counter.update();
 
-        let pool_size = self.bullet_pool.get_pool_size();
-
-        self.bullet_pool.update(|current, capacity|{
-            if !self.bullet_timer.is_set(){
-                self.bullet_timer.set(now, Self::POOL_REFILL);
-            }
-            
-            if self.bullet_timer.expired(now) && current < capacity{
-                self.bullet_timer.set(now, Self::POOL_REFILL);
-                return (true, pool_size)
-            }
-            return (false, 0)
-        });
-
         let current_state = self.machine.get_state().lock().unwrap().clone();
 
         let can_attack: bool = {
@@ -252,7 +225,7 @@ impl Updatable for Player{
         let is_drifting = is_key_down(KeyCode::Space);
         
         //Sub-state transitions
-        let can_fire = is_mouse_button_down(MouseButton::Left) & can_attack;
+        let is_firing = is_mouse_button_down(MouseButton::Left) & can_attack;
         let is_boosting = self.activate_boost() && self.boost_timer.expired(now);
 
         let is_shielding = self.activate_shield();
@@ -265,7 +238,7 @@ impl Updatable for Player{
                     self.machine.transition(StateType::Moving);
                 }
 
-                if can_fire{
+                if is_firing{
                     self.fire().await;
                 } 
             }
@@ -277,7 +250,7 @@ impl Updatable for Player{
                     self.machine.transition(StateType::Idle);
                 }
                 
-                if can_fire{
+                if is_firing{
                     self.fire().await;
                 }
 
@@ -318,7 +291,7 @@ impl Updatable for Player{
         StateType::Drifting => {
             self.drift_to(delta);
 
-            if can_fire{
+            if is_firing{
                 self.fire().await;
             }
 

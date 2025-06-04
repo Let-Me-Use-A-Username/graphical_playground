@@ -235,6 +235,10 @@ impl Projectile for Bullet{
         self.collider.update(self.pos);
         self.machine.transition(StateType::Idle);
     }
+    
+    fn as_bullet(self: Box<Self>) -> Bullet {
+        *self
+    }
 }
 
 #[async_trait]

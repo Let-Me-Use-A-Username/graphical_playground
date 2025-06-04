@@ -19,6 +19,7 @@ use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
 use crate::objects::bullet::ProjectileType;
 use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
+use crate::utils::bullet_pool::BulletPool;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
 use crate::utils::timer::Timer;
@@ -104,6 +105,11 @@ impl GameManager{
                 dispatcher.create_sender()
         ).await));
         let metal = Arc::new(Mutex::new(MetalArtist::new()));
+
+        let bullet_pool = Arc::new(Mutex::new(BulletPool::new(
+            1024, 
+            dispatcher.create_sender()
+        )));
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -133,6 +139,10 @@ impl GameManager{
         dispatcher.register_listener(EventType::RegisterEmitterConf, metal.clone());
         dispatcher.register_listener(EventType::UnregisterEmitterConf, metal.clone());
         dispatcher.register_listener(EventType::DrawEmitter, metal.clone());
+
+        //BulletPool events
+        dispatcher.register_listener(EventType::RecycleBullet, bullet_pool.clone());
+        dispatcher.register_listener(EventType::RequestBullet, bullet_pool.clone());
 
         return GameManager { 
             state: GameState::Playing,

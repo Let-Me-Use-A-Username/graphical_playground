@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::{vec2, Rect, Vec2};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, objects::bullet::Bullet, renderer::artist::DrawCall, utils::machine::StateType};
+use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::machine::StateType};
 
 use super::enemy_type::EnemyType;
 
@@ -99,7 +99,9 @@ impl Handler{
         for id in projecitles_remove{
             if let Some(proj) = self.projectiles.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
-                
+
+                let boxed_bullet = Some(Box::new(proj.as_bullet()));
+                self.publish(Event::new(boxed_bullet, EventType::RecycleBullet)).await;
             }
         }
 
@@ -270,9 +272,11 @@ impl Subscriber for Handler{
             EventType::PlayerBulletSpawn | EventType::EnemyBulletSpawn => {
                 if let Ok(mut entry) = event.data.lock(){
                     if let Some(data) = entry.downcast_mut::<Option<Box<dyn Projectile>>>(){
-                        let entity = data.take().unwrap();
-                        let id = entity.get_id();
-                        self.insert_projectile(id, entity);
+                        
+                        if let Some(entity) = data.take(){
+                            let id = entity.get_id();
+                            self.insert_projectile(id, entity);
+                        }
                     }
                 }
             },

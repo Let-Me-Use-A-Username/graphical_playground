@@ -18,15 +18,11 @@
 ================== Critical ==================
 
 - Implement centralized *BulletPool*
-    - Player / Triangle: 
-        - Request bullet from pool (Either single or collection)
-        - Spawn bullet and send to Handler
-    - Entity_Handler: Hold inactive bullets, when threshold exceeds (or timer expired) recycle via pool
-
-    - Bullet pool might cause some leaks
-        - Create a centralized BulletPool that in turn provides bullets to the  Player and Triangles
-        - *NOTE*: If the bullet pool fix doesn't provide steady performance over time, (as well as mitigating
-            memory hogging) then the Recycler (Factory) HAS to be implemented. Due to memory hogging from some entity.
+    - Works, however due to the asynchronous spawning, only few bullets are spawned
+        - Make entities request a list of bullets. 126 Player | 10 Triangles
+            - If player runs out, he re-requests and masks the asynchronous delay as reloading
+            - If Triangle runs out, it suicides
+        - *Note* If centralized bullet pool doesn't work and despair hits, pull stash 0.
 
 - Factory
     - Recycler isn't working properly

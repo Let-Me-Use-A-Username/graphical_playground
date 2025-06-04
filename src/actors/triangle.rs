@@ -1,4 +1,4 @@
-use std::sync::{atomic::AtomicU64, mpsc::Sender};
+use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
 use macroquad::prelude::*;
@@ -6,7 +6,11 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use ::rand::{thread_rng, Rng};
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+use crate::{collision_system::collider::{CircleCollider, Collider}, 
+            entity_handler::enemy_type::EnemyType, 
+            event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, 
+            grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, 
+            utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
 /* 
     The triangle in comparison to the circle is more complex.
@@ -15,7 +19,6 @@ use crate::{collision_system::collider::{CircleCollider, Collider}, entity_handl
     If within firing range, it fires and immediately repositions.
     Otherwise, it moves to an intermediate position between itself and the player.
 */
-static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2048);
 const FIRING_RANGE: f32 = 800.0;
 const FIRING_COOLDOWN: f64 = 2.8;
 
@@ -31,8 +34,7 @@ pub struct Triangle{
     sender: Sender<Event>,
     collider: CircleCollider,
     machine: StateMachine,
-    bullet_pool: BulletPool,
-    bullets_to_publish: Vec<Box<dyn Projectile>>,
+    //bullets_to_publish: Vec<Box<dyn Projectile>>,
     //State specifics
     is_alive: bool,
     //Emittion
@@ -140,7 +142,7 @@ impl Triangle{
     }
     
     // Continuous check for player distance and firing opportunities
-    fn check_player_interaction(&mut self){
+    async fn check_player_interaction(&mut self){
         let now = get_time();
         let distance_to_player = self.pos.distance(self.target);
 
@@ -149,7 +151,7 @@ impl Triangle{
             //Attempt to fire at the player no matter the distance to him.
             if self.fire_cooldown.expired(now){
                 if !self.has_fired{
-                    self.fire();
+                    self.fire().await;
                     self.has_fired = true;
                     self.fire_cooldown.set(now, FIRING_COOLDOWN);
                 }
@@ -168,37 +170,30 @@ impl Triangle{
         } 
     }
 
-    fn fire(&mut self){
-        if let Some(mut bullet) = self.bullet_pool.get(){
-            let direction_to_player = (self.target - self.pos).normalize();
-            let spawn_pos = self.pos;
+    async fn fire(&mut self){
+        let direction_to_player = (self.target - self.pos).normalize();
+        let spawn_pos = self.pos;
 
-            let mut id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-            if id >= 4086{ // Bullet pool size
-                id = BULLETCOUNTER.swap(2048, std::sync::atomic::Ordering::SeqCst);
-            }
-
-            bullet.set(
-                id,
-                spawn_pos,
-                350.0, // Increased bullet speed from 300.0
-                direction_to_player,
-                10.0,
-                22.0,
-            );
+        self.publish(Event::new((
+            spawn_pos,
+            350.0, // Increased bullet speed from 300.0
+            direction_to_player,
+            10.0,
+            22.0,
+            ProjectileType::Enemy), 
+            EventType::RequestBullet)
+        ).await;
             
-            self.bullets_to_publish.push(Box::new(bullet));
-        }
+        //self.bullets_to_publish.push(Box::new(bullet));
     }
 
-    async fn publish_bullets(&mut self){
-        let bullets = std::mem::take(&mut self.bullets_to_publish);
+    // async fn publish_bullets(&mut self){
+    //     let bullets = std::mem::take(&mut self.bullets_to_publish);
         
-        for bullet in bullets {
-            self.publish(Event::new(Some(bullet as Box<dyn Projectile>), EventType::EnemyBulletSpawn)).await;
-        }
-    }
+    //     for bullet in bullets {
+    //         self.publish(Event::new(Some(bullet as Box<dyn Projectile>), EventType::EnemyBulletSpawn)).await;
+    //     }
+    // }
 }
 
 //========== Triangle interfaces =========
@@ -207,7 +202,7 @@ impl Updatable for Triangle{
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
             //Publish all bullets
-            self.publish_bullets().await;
+            //self.publish_bullets().await;
             
             let mut override_pos = None;
             
@@ -221,7 +216,7 @@ impl Updatable for Triangle{
             }
 
             // Check for interaction with player before movement
-            self.check_player_interaction();
+            self.check_player_interaction().await;
 
             //Update based on state machine
             if let Ok(state) = self.machine.get_state().try_lock(){
@@ -340,7 +335,6 @@ impl GameEntity for Triangle{
 #[async_trait]
 impl Enemy for Triangle{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
-        let bullet_pool = BulletPool::new(8, sender.clone(), ProjectileType::Enemy);
 
         let enemy = Triangle {
             id: id,
@@ -353,8 +347,7 @@ impl Enemy for Triangle{
             sender: sender,
             collider: CircleCollider::new(pos.x, pos.y, size),
             machine: StateMachine::new(),
-            bullet_pool: bullet_pool,
-            bullets_to_publish: Vec::new(),
+            //bullets_to_publish: Vec::new(),
 
             is_alive: true,
             
