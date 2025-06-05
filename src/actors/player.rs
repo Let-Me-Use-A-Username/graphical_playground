@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{self, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{self, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2);
@@ -72,6 +72,7 @@ impl Player{
             bounce: false,
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
+            bullet_pool: BulletPool::new(1024, sender.clone(), ProjectileType::Player),
             bullet_timer: SimpleTimer::blank(),
             
             emittion_configs: vec![
@@ -118,19 +119,30 @@ impl Player{
             spawn_pos = base_pos + rotation;
         }
 
-        self.left_fire = !self.left_fire;
-        
-        let pos = spawn_pos;
-        
-        self.publish(Event::new((
-            pos,
-            3000.0,
-            front_vector,
-            2.0,
-            11.0,
-            ProjectileType::Player), 
-            EventType::RequestBullet)
-        ).await;
+            self.left_fire = !self.left_fire;
+
+            let mut id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+
+            if id >= 1024{ //Bullet pool size
+                id = BULLETCOUNTER.swap(0, std::sync::atomic::Ordering::SeqCst);
+            }
+            
+            let pos = spawn_pos;
+
+            bullet.set_with_id(
+                id,
+                pos,
+                3000.0,
+                front_vector,
+                2.0,
+                11.0,
+                ProjectileType::Player
+            );
+            
+            let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
+
+            self.publish(bullet_spawn).await;
+        }
     }
 
     fn boost(&mut self, _delta: f32){

@@ -81,6 +81,26 @@ impl Bullet{
         self.is_active = true;
         self.origin = origin;
     }
+
+    pub fn set_with_id(&mut self, id: u64, pos: Vec2, speed: f32, direction: Vec2, remove_time: f64, size: f32, origin: ProjectileType){
+        let mut timer = Timer::new();
+        timer.set(get_time(), remove_time, None);
+
+        self.id = id;
+        self.pos = pos;
+        self.speed = speed;
+        self.size = size;
+        self.direction = direction.normalize(); 
+        self.timer = SimpleTimer::new(remove_time); 
+        self.collider = RectCollider::new(
+            pos.x,
+            pos.y,
+            size * 1.25,  // Total length from base to tip + the backward extension
+            size * 0.5    // Because size mod is 0.25 times 2 is 0.5
+        );
+        self.is_active = true;
+        self.origin = origin;
+    }
 }
 
 impl Object for Bullet{

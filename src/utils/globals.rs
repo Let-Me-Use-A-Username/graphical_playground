@@ -47,7 +47,7 @@ impl Global{
             Spawner
     */
     pub fn get_level_interval(&self) -> f64{
-        return 180.0
+        return 60.0
     }
 
     pub fn get_spawn_interval(&self) -> f64{
