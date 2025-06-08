@@ -113,6 +113,7 @@ impl GameManager{
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
+        dispatcher.register_listener(EventType::ForwardCollectionToPlayer, player.clone());
 
         //Grid events
         dispatcher.register_listener(EventType::InsertOrUpdateToGrid, grid.clone());
@@ -142,7 +143,8 @@ impl GameManager{
 
         //BulletPool events
         dispatcher.register_listener(EventType::RecycleBullet, bullet_pool.clone());
-        dispatcher.register_listener(EventType::RequestBullet, bullet_pool.clone());
+        dispatcher.register_listener(EventType::RequestBlankCollection, bullet_pool.clone());
+
 
         return GameManager { 
             state: GameState::Playing,

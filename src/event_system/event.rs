@@ -25,14 +25,17 @@ pub enum EventType{
     BatchRecycle,
     //BulletPool
     RecycleBullet,
-    RequestBullet,
+    RequestBlankCollection,
     //Grid
     InsertOrUpdateToGrid,
     RemoveEntityFromGrid,
     //MetalArtist
     RegisterEmitterConf,
     UnregisterEmitterConf,
-    DrawEmitter
+    DrawEmitter,
+    //Actors
+    ForwardCollectionToPlayer,
+    ForwardCollectionToEntity,
 }
 
 #[derive(Clone, Debug)]

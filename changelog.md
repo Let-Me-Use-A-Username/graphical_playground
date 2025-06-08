@@ -1,11 +1,17 @@
 # Changelog
 
+### 0.2.63 Changes 8/6/2025
+- v.0.2.63 Event system was responsible for *memory leak*. Dropping the event in dispatcher fixed it. Consult *Critical* in todo.
+
+
 ### 0.2.63 Changes 4/6/2025
-- v.0.2.63 Implemented centralized Bullet pool. Introduced slow-spawn for bullets. Will implement a collection fetch.
-- v.0.2.63 Changed Player, Triangles and Handler to work accordingly to new BulletPool.
+- v.0.2.63 Implemented centralized Bullet pool.
+- v.0.2.63 Changed Player and Handler to work accordingly to new BulletPool.
+
 
 ### 0.2.63 Changes 26/5/2025
 - v.0.2.63 Implemented template for centralized bullet pool.
+
 
 ### 0.2.63 Changes 10/5/2025
 - v.0.2.63 Fixed Collision Tracker who was tracking, ALL collissions regardless.

@@ -6,7 +6,7 @@ use macroquad::{color::RED, math::Vec2, time::get_time};
 use crate::{collision_system::collider::RectCollider, event_system::{event::{Event, EventType}, interface::{Drawable, GameEntity, Moveable, Object, Projectile, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::DrawCall, utils::{machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::collision_system::collider::Collider;
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum ProjectileType{
     Player,
     Enemy,
@@ -238,11 +238,6 @@ impl Projectile for Bullet{
         return selfcall
     }
 
-    /* 
-    //Review: Following aren't re-initialized
-    collider: RectCollider,
-    sender: Sender<Event>,
-    */
     fn reset(&mut self, id: u64){
         self.id = id;
         self.pos = Vec2::ZERO;
@@ -252,8 +247,14 @@ impl Projectile for Bullet{
         self.is_active = false;
         self.origin = ProjectileType::NOTASSIGNED;
         self.timer = SimpleTimer::blank();
-        self.collider.update(self.pos);
+        self.machine = StateMachine::new();
         self.machine.transition(StateType::Idle);
+        self.collider = RectCollider::new(
+            self.pos.x,
+            self.pos.y,
+            self.size * 1.25,  // Total length from base to tip + the backward extension
+            self.size * 0.5    // Because size mod is 0.25 times 2 is 0.5
+        );
     }
     
     fn as_bullet(self: Box<Self>) -> Bullet {

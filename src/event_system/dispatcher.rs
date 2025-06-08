@@ -41,6 +41,7 @@ impl Dispatcher{
                     }
                 }
             }
+            drop(event);
         }
     }
 

@@ -174,33 +174,17 @@ impl Triangle{
         let direction_to_player = (self.target - self.pos).normalize();
         let spawn_pos = self.pos;
 
-            let mut id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-            if id >= 4086{ // Bullet pool size
-                id = BULLETCOUNTER.swap(2048, std::sync::atomic::Ordering::SeqCst);
-            }
-
-            bullet.set_with_id(
-                id,
-                spawn_pos,
-                350.0, // Increased bullet speed from 300.0
-                direction_to_player,
-                10.0,
-                22.0,
-                ProjectileType::Enemy
-            );
-            
-            self.bullets_to_publish.push(Box::new(bullet));
-        }
+        //FIXME: FIX BULLET POOL IMPLEMENTATION
+        // self.publish(Event::new((
+        //     spawn_pos,
+        //     350.0, // Increased bullet speed from 300.0
+        //     direction_to_player,
+        //     10.0,
+        //     22.0,
+        //     ProjectileType::Enemy), 
+        //     EventType::RequestBullet)
+        // ).await;
     }
-
-    // async fn publish_bullets(&mut self){
-    //     let bullets = std::mem::take(&mut self.bullets_to_publish);
-        
-    //     for bullet in bullets {
-    //         self.publish(Event::new(Some(bullet as Box<dyn Projectile>), EventType::EnemyBulletSpawn)).await;
-    //     }
-    // }
 }
 
 //========== Triangle interfaces =========

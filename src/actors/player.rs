@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::{atomic::AtomicU64, mpsc::Sender};
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{self, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{bullet_pool::BulletPool, counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2);
@@ -38,6 +38,7 @@ pub struct Player{
     left_fire: bool,
     attack_speed: SimpleTimer,
     bullet_timer: SimpleTimer,
+    bullets: Vec<Bullet>,
     //Emitter specifics
     emittion_configs: Vec<(StateType, ConfigType)>,
 }
@@ -67,12 +68,13 @@ impl Player{
             shield_counter: RechargebleCounter::new(10, 1, true, Some(3.0)),
             boost_counter: RechargebleCounter::new(5, 1, true, Some(2.0)),
             boost_timer: SimpleTimer::blank(),
+            bullets: vec![],
 
             immune_timer: Timer::new(),
             bounce: false,
+
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
-            bullet_pool: BulletPool::new(1024, sender.clone(), ProjectileType::Player),
             bullet_timer: SimpleTimer::blank(),
             
             emittion_configs: vec![
@@ -88,49 +90,43 @@ impl Player{
     }
 
     async fn fire(&mut self){
-        //Invert facing direction
-        let front_vector = Vec2::new(
-            self.rotation.sin(),
-            -self.rotation.cos()
-        ).normalize();
+        if let Some(mut bullet) = self.bullets.pop(){
+            //Invert facing direction
+            let front_vector = Vec2::new(
+                self.rotation.sin(),
+                -self.rotation.cos()
+            ).normalize();
 
-        //Calculate side vector
-        let side_vector = Vec2::new(
-            self.rotation.cos(),
-            self.rotation.sin()
-        ).normalize();
+            //Calculate side vector
+            let side_vector = Vec2::new(
+                self.rotation.cos(),
+                self.rotation.sin()
+            ).normalize();
 
-        //Apply rotation
-        let rotation = Vec2::new(
-            self.size * side_vector.x,
-            self.size * side_vector.y
-        );
+            //Apply rotation
+            let rotation = Vec2::new(
+                self.size * side_vector.x,
+                self.size * side_vector.y
+            );
 
-        //Add offset to position at middle of rect
-        let vertical_offset = front_vector * self.size / 2.0;
-        let base_pos = self.pos - vertical_offset;
-        
-        let spawn_pos: Vec2;
+            //Add offset to position at middle of rect
+            let vertical_offset = front_vector * self.size / 2.0;
+            let base_pos = self.pos - vertical_offset;
+            
+            let spawn_pos: Vec2;
 
-        if self.left_fire{
-            spawn_pos = base_pos - rotation;
-        }
-        else{
-            spawn_pos = base_pos + rotation;
-        }
+            if self.left_fire{
+                spawn_pos = base_pos - rotation;
+            }
+            else{
+                spawn_pos = base_pos + rotation;
+            }
 
             self.left_fire = !self.left_fire;
-
-            let mut id: u64 = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-            if id >= 1024{ //Bullet pool size
-                id = BULLETCOUNTER.swap(0, std::sync::atomic::Ordering::SeqCst);
-            }
             
             let pos = spawn_pos;
 
-            bullet.set_with_id(
-                id,
+            bullet.set(
                 pos,
                 3000.0,
                 front_vector,
@@ -138,10 +134,13 @@ impl Player{
                 11.0,
                 ProjectileType::Player
             );
-            
-            let bullet_spawn = Event::new(Some(Box::new(bullet) as Box<dyn Projectile>), EventType::PlayerBulletSpawn);
 
-            self.publish(bullet_spawn).await;
+            let proj = Box::new(bullet) as Box<dyn Projectile>;
+            
+            self.publish(Event::new(Some(proj), EventType::PlayerBulletSpawn)).await;
+        }
+        else if self.bullets.is_empty(){
+            self.publish(Event::new((128 as usize, ProjectileType::Player), EventType::RequestBlankCollection)).await;
         }
     }
 
@@ -613,6 +612,20 @@ impl Subscriber for Player {
                     }
                 }
             },
+            EventType::ForwardCollectionToPlayer => {
+                if let Ok(mut result) = event.data.lock(){
+                    if let Some(data) = result.downcast_mut::<Option<Vec<Bullet>>>(){
+                        if let Some(bullets) = data.take(){
+                            
+                            if !self.bullets.is_empty(){
+                                println!("Attempting to extend while not empty");
+                            }
+                            self.bullets.clear();
+                            self.bullets.extend(bullets);
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
