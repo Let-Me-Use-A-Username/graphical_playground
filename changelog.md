@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.63 Changes 9/6/2025
+- v.0.2.63 Changed back to enemy recycling. Caused more memory allocation, but provided better perfomance, visually at least.
+
+
 ### 0.2.63 Changes 8/6/2025
 - v.0.2.63 Event system was responsible for *memory leak*. Dropping the event in dispatcher fixed it. Consult *Critical* in todo.
 

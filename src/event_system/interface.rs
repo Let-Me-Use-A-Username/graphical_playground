@@ -70,6 +70,8 @@ pub trait Enemy: GameEntity{
 
     fn get_all_draw_calls(&self) -> Vec<DrawCall>;  //REVIEW: Currently only serves debugging purposes.
     fn get_type(&self) -> EnemyType;
+
+    fn reset(&mut self, id: u64, pos: Vec2, color: Color, size: f32, target: Vec2, is_alive: bool);
 }
 
 #[async_trait]

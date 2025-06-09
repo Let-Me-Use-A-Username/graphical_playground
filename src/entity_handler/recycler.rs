@@ -67,14 +67,8 @@ impl Recycler{
 
         if let Some(pool) = self.pools.get_mut(&enemy_type) {
             if let Some(mut enemy) = pool.pop_front() {
-                //FIXME: Implement proper reset, similar to bullet
-                enemy.set_id(self.generate_id());
-                enemy.set_pos(pos);
-                enemy.set_size(size);
-                enemy.set_color(color);
-                enemy.set_target(player_pos);
+                enemy.reset(self.generate_id(), pos, color, size, player_pos, true);
 
-                enemy.set_alive(true);
                 enemy.force_state(StateType::Idle);
                 enemy.register_configs().await;
 

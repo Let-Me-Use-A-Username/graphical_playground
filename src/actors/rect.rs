@@ -242,6 +242,25 @@ impl Enemy for Rect{
         return EnemyType::Rect
     }
 
+    fn reset(&mut self, id: u64, pos: Vec2, color: Color, size: f32, target: Vec2, is_alive: bool){
+        self.id = id;
+        self.pos = pos;
+        self.color = color;
+        self.size = size;
+        self.target = target;
+        self.is_alive = is_alive;
+        self.collider = RectCollider::new(
+            pos.x + size / 2.0, 
+            pos.y + size / 2.0, 
+            size, 
+            size);
+        self.machine.transition(StateType::Idle);
+
+        self.health = 10;
+        self.was_hit = false;
+        self.hit_timer = SimpleTimer::blank();
+    }
+
 }
 
 #[async_trait]

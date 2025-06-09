@@ -203,6 +203,16 @@ impl Enemy for Circle{
         return EnemyType::Circle
     }
 
+    fn reset(&mut self, id: u64, pos: Vec2, color: Color, size: f32, target: Vec2, is_alive: bool){
+        self.id = id;
+        self.pos = pos;
+        self.color = color;
+        self.size = size;
+        self.target = target;
+        self.is_alive = is_alive;
+        self.collider = CircleCollider::new(pos.x, pos.y, size);
+        self.machine.transition(StateType::Idle);
+    }
 }
 
 #[async_trait]

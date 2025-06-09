@@ -2,7 +2,7 @@ use std::{collections::VecDeque, sync::{atomic::AtomicU64, mpsc::Sender}};
 
 use async_trait::async_trait;
 
-use crate::{event_system::{event::{Event, EventType}, interface::{GameEntity, Projectile, Publisher, Subscriber}}, objects::bullet::{Bullet, ProjectileType}};
+use crate::{event_system::{event::{Event, EventType}, interface::{Projectile, Publisher, Subscriber}}, objects::bullet::{Bullet, ProjectileType}};
 
 
 static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2);
@@ -100,8 +100,6 @@ impl Subscriber for BulletPool {
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<(usize, ProjectileType)>(){
                         collection = self.get_blanks(data.0);
-
-                        println!("Requested collection: {:?}", data.1);
 
                         match data.1{
                                 ProjectileType::Player => from_player = true,

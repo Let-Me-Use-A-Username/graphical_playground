@@ -407,6 +407,24 @@ impl Enemy for Triangle{
     fn get_type(&self) -> EnemyType{
         return EnemyType::Triangle
     }
+
+    fn reset(&mut self, id: u64, pos: Vec2, color: Color, size: f32, target: Vec2, is_alive: bool){
+        self.id = id;
+        self.pos = pos;
+        self.color = color;
+        self.size = size;
+        self.target = target;
+        self.is_alive = is_alive;
+        self.collider = CircleCollider::new(pos.x, pos.y, size);
+        self.machine.transition(StateType::Idle);
+
+        self.current_destination = None;
+        self.approach_player = false;
+        self.position_switch_distance = 250.0;
+        
+        self.fire_cooldown = SimpleTimer::new(FIRING_COOLDOWN);
+        self.has_fired = false;
+}
 }
 
 #[async_trait]

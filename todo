@@ -25,11 +25,16 @@
         2. Test by dropping event after propagation.
             - *SUCCESS* Handler appears to free some memory
         3. Test factory recycling again.
+            - Some reference, mostly likely wrong: https://claude.ai/chat/7f3a8b22-a0ef-49bb-8044-dc8f7d46debf
 
 - Implement centralized bullet handler for Triangle
     - Create a centralized triangle handler that manages Triangles bullets
     - Triangles request bullets from it
     - When a Triangle uses all bullets, Triangle Hanlder requests more for it
+
+- Spawner:
+    - Level up doesn't trigger periodically
+        - Factory surrplus error?
 
 - Change player 
     - When pressing left or right, add velocity

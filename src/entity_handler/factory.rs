@@ -1,5 +1,4 @@
-use std::collections::VecDeque;
-use std::sync::atomic::AtomicU64;
+use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
@@ -8,62 +7,62 @@ use macroquad::math::{vec2, Rect, Vec2};
 use macroquad::color::Color;
 use rand::{thread_rng, Rng};
 
-use crate::actors::rect;
-use crate::actors::triangle::Triangle;
 use crate::event_system::event::{Event, EventType};
 use crate::event_system::interface::{Enemy, Publisher, Subscriber};
-use crate::actors::circle::Circle;
 use crate::utils::globals;
 
 use super::enemy_type::EnemyType;
-
-static COUNTER: AtomicU64 = AtomicU64::new(1026);
+use super::recycler::Recycler;
 
 
 pub struct Factory{
     queue: VecDeque<Box<dyn Enemy>>,
     sender: Sender<Event>,
-    enemy_sender: Sender<Event>
+    recycler: Recycler
 }
 
 impl Factory{
     pub async fn new(sender: Sender<Event>, size: usize, enemy_sender: Sender<Event>) -> Self{
+        let mut recycler = Recycler::new(enemy_sender.clone()).await;
+        let mut size_param = HashMap::new();
+        //Review: Enemy pool size is the same as the factories, because in the extreme case that the factory
+        //Review: spanws only one enemy type, the pool has to match the factories queue size.
+        
+        let hash_size = size;
+
+        size_param.insert(EnemyType::Circle, hash_size);
+        size_param.insert(EnemyType::Triangle, hash_size);
+        size_param.insert(EnemyType::Rect, hash_size);
+
+        recycler.pre_populate(size_param).await;
 
         return Factory {
             queue: VecDeque::with_capacity(size),
             sender: sender,
-            enemy_sender: enemy_sender
+            recycler: recycler
         }
     }
 
-    pub async fn queue_enemy<T: Enemy + 'static>(&mut self, pos: Vec2, size: f32, color: Color, player_pos: Vec2){
-        let mut id = COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-
-        if id > 2056{
-            id = COUNTER.swap(1025, std::sync::atomic::Ordering::SeqCst);
-        }
-
-        let enemy = Box::new(T::new(
-                id, 
-                pos, 
-                size, 
-                color, 
-                player_pos, 
-                self.enemy_sender.clone()
-            ));
-
+    pub async fn queue_enemy(&mut self, enemy_type: EnemyType, pos: Vec2, size: f32, color: Color, player_pos: Vec2){
+        let some_enemy = self.recycler.get_enemy(enemy_type, pos, size, color, player_pos).await;
         /* 
             The idea is that, every time the queue is full, shift to the left 1 place,
             then remove the last element and place new one, to mimic a cyclic list.
 
-            This way we continue to remove older enemies but still append newer ones.
+            This way we continue to recycle older enemies but still append newer ones.
         */
-        if self.queue.len() == self.queue.capacity() {
-            self.queue.rotate_left(1);
-            self.queue.pop_back();
-        }
 
-        self.queue.push_back(enemy);
+        if let Some(enemy) = some_enemy{
+            if self.queue.len() == self.queue.capacity() {
+                self.queue.rotate_left(1);
+
+                if let Some(removed) = self.queue.pop_back(){
+                    self.recycler.recycle(removed);
+                }
+            }
+
+            self.queue.push_back(enemy);
+        }
     }
 
     pub fn reserve_additional(&mut self, size: usize){
@@ -80,15 +79,15 @@ impl Factory{
                 match etype{
                     EnemyType::Circle => {
                         let size = thread_rng().gen_range(35..45) as f32;
-                        self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
+                        self.queue_enemy(EnemyType::Circle, pos, size, color, player_pos).await;
                     },
                     EnemyType::Triangle => {
                         let size = thread_rng().gen_range(40..50) as f32;
-                        self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
+                        self.queue_enemy(EnemyType::Triangle, pos, size, color, player_pos).await;
                     },
                     EnemyType::Rect => {
                         let size = thread_rng().gen_range(220..240) as f32;
-                        self.queue_enemy::<rect::Rect>(pos, size, color, player_pos).await;
+                        self.queue_enemy(EnemyType::Rect, pos, size, color, player_pos).await;
                     },
                     EnemyType::Hexagon => todo!(),
                 }
@@ -200,13 +199,13 @@ impl Subscriber for Factory{
                 for (enemy_type, pos, size, color, player_pos) in enemies{
                     match enemy_type{
                         EnemyType::Circle => {
-                            self.queue_enemy::<Circle>(pos, size, color, player_pos).await;
+                            self.queue_enemy(EnemyType::Circle, pos, size, color, player_pos).await;
                         },
                         EnemyType::Triangle => {
-                            self.queue_enemy::<Triangle>(pos, size, color, player_pos).await;
+                            self.queue_enemy(EnemyType::Triangle, pos, size, color, player_pos).await;
                         },
                         EnemyType::Rect => {
-                            self.queue_enemy::<rect::Rect>(pos, size, color, player_pos).await;
+                            self.queue_enemy(EnemyType::Rect, pos, size, color, player_pos).await;
                         },
                         EnemyType::Hexagon => todo!(),
                     }
@@ -266,6 +265,17 @@ impl Subscriber for Factory{
                 if let Ok(result) = event.data.lock(){
                     if let Some(data) = result.downcast_ref::<usize>(){
                         self.reserve_additional(*data);
+                    }
+                }
+            },
+            EventType::BatchRecycle => {
+                if let Ok(mut result) = event.data.lock(){
+                    if let Some(data) = result.downcast_mut::<Vec<Option<Box<dyn Enemy>>>>(){
+                        
+                        data.iter_mut().for_each(|entry| {
+                            let entity = entry.take().unwrap();
+                            self.recycler.recycle(entity);
+                        });
                     }
                 }
             },
