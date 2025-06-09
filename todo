@@ -19,15 +19,17 @@
 
 *CRITICAL*
 - Event system is leaking memory
-    - Recycling doesn't work 100% due to this. 
+    - Recycling doesn't work 100% due to this.
+        - Diagnostic tests to run: https://claude.ai/chat/99863b24-7db3-4c43-b23e-f2d62dbb1b33 
         1. Test by implementing direct handling from player -> Handler instead of events
         2. Test by dropping event after propagation.
             - *SUCCESS* Handler appears to free some memory
-        -Diagnostic tests to run: https://claude.ai/chat/99863b24-7db3-4c43-b23e-f2d62dbb1b33
-    - Implement centralized bullet handler for Triangle
-        - Create a centralized triangle handler that manages Triangles bullets
-        - Triangles request bullets from it
-        - When a Triangle uses all bullets, Triangle Hanlder requests more for it
+        3. Test factory recycling again.
+
+- Implement centralized bullet handler for Triangle
+    - Create a centralized triangle handler that manages Triangles bullets
+    - Triangles request bullets from it
+    - When a Triangle uses all bullets, Triangle Hanlder requests more for it
 
 - Change player 
     - When pressing left or right, add velocity
