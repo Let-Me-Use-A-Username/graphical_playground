@@ -1,9 +1,9 @@
 use std::{collections::{HashMap, HashSet}, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::{color::{Color, DARKGRAY}, math::{Rect, Vec2}};
+use macroquad::{color::{Color, DARKGRAY}, math::{Rect, Vec2}, time::get_time};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, renderer::artist::DrawCall};
+use crate::{event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, renderer::artist::DrawCall, utils::timer::SimpleTimer};
 
 type EntityId = u64;
 type CellPos = (i32, i32);
@@ -74,6 +74,8 @@ enum GridOperation{
 }
 
 
+const CLEANUP: f64 = 10.0;
+
 ///Grid that keeps track of entities by having entries in a hashmap and which cell they belong to.
 /// Each cell position has a cell that holds a vec of entities. Where entity is entity_type and id.
 pub struct Grid{
@@ -83,7 +85,8 @@ pub struct Grid{
     cell_size: i32,
     grid_size: i32,
     sender: Sender<Event>,
-    op_queue: Vec<GridOperation>
+    op_queue: Vec<GridOperation>,
+    cleanup_timer: SimpleTimer
 }
 
 impl Grid{
@@ -103,12 +106,15 @@ impl Grid{
             cell_size: cell_size,
             grid_size: grid_size,
             sender: sender,
-            op_queue: Vec::new()
+            op_queue: Vec::new(),
+            cleanup_timer: SimpleTimer::new(CLEANUP)
         }
     }
 
     #[inline(always)]
     pub fn update(&mut self) {
+        let now = get_time();
+
         let mut updates = Vec::new();
         let mut to_skip = Vec::new();
         let mut removals = Vec::new();
@@ -149,6 +155,13 @@ impl Grid{
         }
 
         drop(to_skip);
+
+        if self.cleanup_timer.expired(now){
+            self.cleanup();
+            self.cleanup_timer.set(now, CLEANUP);
+        }
+
+        self.debug();
     }
 
     /// Updates an entity by first checking if it present inside the grid.
@@ -183,7 +196,8 @@ impl Grid{
         self.entity_table.insert(id, center_cell);
         //Update history with center
         self.history.entry(id)
-            .and_modify(|entry| entry.push(center_cell));
+            .or_default()
+            .push(center_cell);
     }
     
     
@@ -343,6 +357,39 @@ impl Grid{
         }
 
         return draw_calls
+    }
+
+    #[inline(always)]
+    fn debug(&self){
+        let debug = std::env::var("DEBUG:GRID").unwrap_or("false".to_string());
+
+        if debug.eq("true"){
+            println!("SIZE| Entity table: {:?}, history: {:?}", self.entity_table.len(), self.history.len());
+            println!("CAPACITY| Entity table: {:?}, history: {:?}", self.entity_table.capacity(), self.history.capacity());
+        }
+
+        let debug_cells = std::env::var("DEBUG:GRID_CELL").unwrap_or("false".to_string());
+
+        if debug_cells.eq("true"){
+            self.cells.iter()
+                .for_each(|(pos, cell)| {
+                    if cell.entities.len() > 0{
+                        let message = format!("Cell: {:?}, len: {:?}, capacity: {:?}", pos, cell.entities.len(), cell.entities.capacity());
+                        println!("===\n {:?}", message);
+                    }
+                });
+        }
+    }
+
+    fn cleanup(&mut self){
+        self.entity_table.shrink_to_fit();
+        self.history.shrink_to_fit();
+
+        self.cells.iter_mut()
+            .map(|(_, cell)| cell)
+            .for_each(|cell| {
+                cell.entities.shrink_to(cell.capacity);
+            });
     }
 }
 

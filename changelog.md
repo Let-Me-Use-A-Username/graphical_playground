@@ -5,7 +5,11 @@
 - v.0.2.63 Minor changes to Spawner and Factory. *Level up not occuring* seems to be fixed.
 - v.0.2.63 Made grid smaller and Cell size bigger.
 - v.0.2.63 Disabled vsync. Improved performance.
-- v.0.2.63 Found cause of lagginess in game. *FPS isn't stable*.
+- v.0.2.63 Found cause of lagginess in game. *FPS isn't stable* due to multiple reasons...
+- v.0.2.63 *Modified Entity Handler*. Minor changes to memory handling and removed futures assisted in performance.
+- v.0.2.63 Implemented *Entity Handler, Grid and Cell cleanup*
+- v.0.2.63 Implement Batch Bullet recycling for BulletPool
+- v.0.2.63 Implement basic debug options
 
 
 ### 0.2.63 Changes 9/6/2025

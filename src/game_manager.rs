@@ -144,6 +144,7 @@ impl GameManager{
         //BulletPool events
         dispatcher.register_listener(EventType::RecycleBullet, bullet_pool.clone());
         dispatcher.register_listener(EventType::RequestBlankCollection, bullet_pool.clone());
+        dispatcher.register_listener(EventType::BatchBulletRecycle, bullet_pool.clone());
 
 
         return GameManager { 
@@ -379,7 +380,7 @@ impl GameManager{
             set_camera(&camera);
     
             self.dispatcher.dispatch().await;
-            println!("FPS: {:?}", get_fps());
+            
             // ======== RENDERING ========
             {
                 self.artist.queue_calls(draw_calls.clone());
@@ -397,6 +398,12 @@ impl GameManager{
             emitter_calls.clear();
             
             set_default_camera();
+            
+            let debug = std::env::var("DEBUG:FPS").unwrap_or("false".to_string());
+
+            if debug.eq("true"){
+                println!("FPS: {:?}", get_fps());
+            }
             
             next_frame().await
         }

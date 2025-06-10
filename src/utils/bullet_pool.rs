@@ -84,6 +84,17 @@ impl Publisher for BulletPool {
 impl Subscriber for BulletPool {
     async fn notify(&mut self, event: &Event){
         match &event.event_type{
+            EventType::BatchBulletRecycle => {
+                if let Ok(mut result) = event.data.lock(){
+                    if let Some(data) = result.downcast_mut::<Vec<Option<Box<Bullet>>>>(){
+                        for entry in data{
+                            if let Some(bullet) = entry.take(){
+                                self.return_bullet(*bullet);
+                            }
+                        }
+                    }
+                }
+            },
             EventType::RecycleBullet => {
                 if let Ok(mut result) = event.data.lock(){
                     if let Some(data) = result.downcast_mut::<Option<Box<Bullet>>>(){

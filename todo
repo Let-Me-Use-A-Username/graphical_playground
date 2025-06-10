@@ -17,15 +17,9 @@
 ==============================================
 ================== Critical ==================
 
-*CRITICAL*
-- Event system is leaking memory
-    - Recycling doesn't work 100% due to this.
-        - Diagnostic tests to run: https://claude.ai/chat/99863b24-7db3-4c43-b23e-f2d62dbb1b33 
-        1. Test by implementing direct handling from player -> Handler instead of events
-        2. Test by dropping event after propagation.
-            - *SUCCESS* Handler appears to free some memory
-        3. Test factory recycling again.
-            - Some reference, mostly likely wrong: https://claude.ai/chat/7f3a8b22-a0ef-49bb-8044-dc8f7d46debf
+- Performance has been slightly enhanced. Further ideas:
+    - Make an asynchronous and synchronous update loop
+
 
 - Implement centralized bullet handler for Triangle
     - Create a centralized triangle handler that manages Triangles bullets

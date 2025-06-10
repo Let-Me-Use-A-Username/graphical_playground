@@ -38,6 +38,11 @@ pub fn window_conf() -> Conf{
 #[macroquad::main(window_conf)]
 async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
+
+    env::set_var("DEBUG:FPS", "true");
+    env::set_var("DEBUG:GRID", "false");
+    env::set_var("DEBUG:GRID_CELL", "false");
+    env::set_var("DEBUG:ENTITY_HANDLER", "false");
     
     let mut game_manager = GameManager::new().await;
 

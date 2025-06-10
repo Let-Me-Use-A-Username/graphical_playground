@@ -8,8 +8,6 @@ use std::sync::{atomic::AtomicU64, mpsc::Sender};
 use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
-static BULLETCOUNTER: AtomicU64 = AtomicU64::new(2);
-
 pub struct Player{
     //Attributes
     id: u64,
@@ -37,7 +35,6 @@ pub struct Player{
     //Firing specifics
     left_fire: bool,
     attack_speed: SimpleTimer,
-    bullet_timer: SimpleTimer,
     bullets: Vec<Bullet>,
     //Emitter specifics
     emittion_configs: Vec<(StateType, ConfigType)>,
@@ -45,7 +42,6 @@ pub struct Player{
 
 impl Player{
     const ROTATION_SPEED: f32 = 1.0;
-    const POOL_REFILL: f64 = 7.5;
 
     pub async fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         let player = Player { 
@@ -75,7 +71,6 @@ impl Player{
 
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
-            bullet_timer: SimpleTimer::blank(),
             
             emittion_configs: vec![
                 (StateType::Drifting, ConfigType::PlayerDrifting),

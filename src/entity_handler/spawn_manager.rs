@@ -185,12 +185,12 @@ impl SpawnManager{
 
             self.publish(Event::new((template, player_pos, color), EventType::QueueTemplate)).await;
         }
+        //Review: The case of factory surplus doesn't need any handling since it will be used later on.
 
         if self.spawn_timer.expired(now){
             self.spawn_timer.set(now, self.config.spawn_interval);
 
             if spawn_enemies != 0{
-
                 self.publish(Event::new((spawn_enemies, viewport), EventType::ForwardEnemiesToHandler)).await;
             }
         }

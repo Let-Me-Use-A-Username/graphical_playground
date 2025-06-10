@@ -1,9 +1,9 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::math::{vec2, Rect, Vec2};
+use macroquad::{math::{vec2, Rect, Vec2}, time::get_time};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::machine::StateType};
+use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::{machine::StateType, timer::SimpleTimer}};
 
 use super::enemy_type::EnemyType;
 
@@ -18,12 +18,14 @@ impl OverideType{
     }
 }
 
+const CLEANUP: f64 = 10.0;
 
 pub struct Handler{
     enemies: HashMap<u64, Box<dyn Enemy>>,
     projectiles: HashMap<u64, Box<dyn Projectile>>,
     enemy_overides: HashMap<u64, OverideType>,
-    sender: Sender<Event>
+    sender: Sender<Event>,
+    cleanup_timer: SimpleTimer
 }
 
 impl Handler{
@@ -32,39 +34,34 @@ impl Handler{
             enemies: HashMap::new(),        //All active enemies
             projectiles: HashMap::new(),    //All active projectiles
             enemy_overides: HashMap::new(),
-            sender: sender
+            sender: sender,
+            cleanup_timer: SimpleTimer::new(CLEANUP)
         }
     }
 
     pub async fn update(&mut self, delta: f32, player_pos: Vec2){
+        let now = get_time();
+
         self.remove_expired_entities().await;
 
-        let mut all_futures = Vec::new();
-        all_futures.extend(
-            self.enemies.iter_mut()
-                .map(|(_, ent)| ent)
-                .map(|ent| {
-                    let entid = ent.get_id();
-                    let mut overide: Option<Vec2> = None;
-                    
-                    if self.enemy_overides.contains_key(&entid){
-                        match self.enemy_overides.remove(&entid){
-                            Some(val) => overide = Some(val.get_vec()),
-                            None => unreachable!("Removed `None` overide from queue, when entry existed."),
-                        }
+        for (id, enemy) in self.enemies.iter_mut() {
+            let overide = self.enemy_overides.remove(id).map(|o| o.get_vec());
+            
+            // Pass context directly instead of boxing
+            enemy.update(delta, vec![Box::new(player_pos), Box::new(overide)]).await;
+        }
 
-                    }
-                    ent.update(delta, vec![Box::new(player_pos), Box::new(overide)])
-                }));
-        
-    
-        all_futures.extend(
-            self.projectiles.iter_mut()
-                .map(|(_, ent)| ent)
-                .map(|ent| ent.update(delta, vec![Box::new(player_pos)]))
-        );
-    
-        futures::future::join_all(all_futures).await;
+        // Update projectiles
+        for (_, projectile) in self.projectiles.iter_mut() {
+            projectile.update(delta, vec![Box::new(player_pos)]).await;
+        }
+
+        if self.cleanup_timer.expired(now){
+            self.cleanup();
+            self.cleanup_timer.set(now, CLEANUP);
+        }
+
+        self.debug();
     }
 
     
@@ -82,7 +79,8 @@ impl Handler{
             .collect::<Vec<u64>>();
 
         
-        let mut to_recycle = Vec::new();
+        let mut enemies_to_recycle = Vec::new();
+        let mut bullets_to_recycle = Vec::new();
 
         //Drop enemies
         for id in enemies_remove{
@@ -90,7 +88,7 @@ impl Handler{
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
                 self.publish(Event::new((enemy.get_id(), StateType::Hit), EventType::UnregisterEmitterConf)).await;
                 
-                to_recycle.push(Some(enemy));
+                enemies_to_recycle.push(Some(enemy));
                 self.enemy_overides.remove(&id);
             }
         }
@@ -101,14 +99,25 @@ impl Handler{
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
 
                 let boxed_bullet = Some(Box::new(proj.as_bullet()));
-                self.publish(Event::new(boxed_bullet, EventType::RecycleBullet)).await;
+                bullets_to_recycle.push(boxed_bullet);
             }
         }
 
         //Recycle enemies
-        if !to_recycle.is_empty(){
-            self.publish(Event::new(to_recycle, EventType::BatchRecycle)).await;
+        if !enemies_to_recycle.is_empty(){
+            let recycling_batch = std::mem::take(&mut enemies_to_recycle);
+            self.publish(Event::new(recycling_batch, EventType::BatchRecycle)).await;
         }
+
+        drop(enemies_to_recycle);
+
+        //Recycle projectiles
+        if !bullets_to_recycle.is_empty(){
+            let recycling_batch = std::mem::take(&mut bullets_to_recycle);
+            self.publish(Event::new(recycling_batch, EventType::BatchBulletRecycle)).await;
+        }
+
+        drop(bullets_to_recycle);
     }
 
     #[inline(always)]
@@ -221,6 +230,23 @@ impl Handler{
                 enemy.is_alive()
             })
             .count()
+    }
+
+    #[inline(always)]
+    fn debug(&self){
+        let debug = std::env::var("DEBUG:ENTITY_HANDLER").unwrap_or("false".to_string());
+
+        if debug.eq("true"){
+            println!("SIZE| Enemies: {:?}, Projectiles: {:?}, overrides: {:?}", self.enemies.len(), self.projectiles.len(), self.enemy_overides.len());
+            println!("CAPACITY| Enemies: {:?}, Projectiles: {:?}, overrides: {:?}", self.enemies.capacity(), self.projectiles.capacity(), self.enemy_overides.capacity());
+
+        }
+    }
+
+    fn cleanup(&mut self){
+        self.enemies.shrink_to_fit();
+        self.projectiles.shrink_to_fit();
+        self.enemy_overides.shrink_to_fit();
     }
 }   
 

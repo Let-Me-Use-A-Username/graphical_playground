@@ -32,7 +32,7 @@ impl Global{
     }
 
     pub fn get_cell_capacity(&self) -> usize{
-        return 16
+        return 0
     }
 
 

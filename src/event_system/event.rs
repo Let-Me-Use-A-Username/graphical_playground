@@ -24,6 +24,7 @@ pub enum EventType{
     //Factory-Recycler
     BatchRecycle,
     //BulletPool
+    BatchBulletRecycle,
     RecycleBullet,
     RequestBlankCollection,
     //Grid
