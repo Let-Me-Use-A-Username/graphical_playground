@@ -1,5 +1,13 @@
 # Changelog
 
+
+### 0.2.63 Changes 10/6/2025
+- v.0.2.63 Minor changes to Spawner and Factory. *Level up not occuring* seems to be fixed.
+- v.0.2.63 Made grid smaller and Cell size bigger.
+- v.0.2.63 Disabled vsync. Improved performance.
+- v.0.2.63 Found cause of lagginess in game. *FPS isn't stable*.
+
+
 ### 0.2.63 Changes 9/6/2025
 - v.0.2.63 Changed back to enemy recycling. Caused more memory allocation, but provided better perfomance, visually at least.
 

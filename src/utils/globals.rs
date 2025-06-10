@@ -28,11 +28,11 @@ impl Global{
     }
 
     pub fn get_grid_size(&self) -> i32{
-        return 256
+        return 64
     }
 
     pub fn get_cell_capacity(&self) -> usize{
-        return 0
+        return 16
     }
 
 
@@ -51,7 +51,7 @@ impl Global{
     }
 
     pub fn get_spawn_interval(&self) -> f64{
-        return 1.0
+        return 3.0
     }
 }
 

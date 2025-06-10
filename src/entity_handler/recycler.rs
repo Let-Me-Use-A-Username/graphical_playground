@@ -13,13 +13,13 @@ pub struct Recycler{
 }
 
 impl Recycler{
-    pub async fn new(enemy_sender: Sender<Event>) -> Self {
+    pub async fn new(enemy_sender: Sender<Event>, size: usize) -> Self {
         let mut pools = HashMap::new();
         
-        pools.insert(EnemyType::Circle, VecDeque::new());
-        pools.insert(EnemyType::Triangle, VecDeque::new());
-        pools.insert(EnemyType::Rect, VecDeque::new());
-        pools.insert(EnemyType::Hexagon, VecDeque::new());
+        pools.insert(EnemyType::Circle, VecDeque::with_capacity(size));
+        pools.insert(EnemyType::Triangle, VecDeque::with_capacity(size));
+        pools.insert(EnemyType::Rect, VecDeque::with_capacity(size));
+        pools.insert(EnemyType::Hexagon, VecDeque::with_capacity(size));
         
         Recycler {
             pools,

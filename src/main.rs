@@ -14,19 +14,24 @@ use game_manager::GameManager;
 use mimalloc::MiMalloc;
 
 //Mimalloc is used because heap allocation is very frequent due to futures and Box-es
-// #[global_allocator]
-// static GLOBAL: MiMalloc = MiMalloc;
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 //NOTE: This should be configured in settings ideally...
 pub fn window_conf() -> Conf{
-    return Conf {
+    let mut conf = Conf {
         window_title: "Geometrical".to_owned(),
         //fullscreen: true,
         window_height: 1200,
         window_width: 1400,
         window_resizable: true,
         ..Default::default()
-    }
+    };
+
+    conf.platform.swap_interval = Some(0);
+    conf.platform.blocking_event_loop = false;
+
+    return conf
 }
 
 

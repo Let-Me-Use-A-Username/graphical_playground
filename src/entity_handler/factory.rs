@@ -23,7 +23,7 @@ pub struct Factory{
 
 impl Factory{
     pub async fn new(sender: Sender<Event>, size: usize, enemy_sender: Sender<Event>) -> Self{
-        let mut recycler = Recycler::new(enemy_sender.clone()).await;
+        let mut recycler = Recycler::new(enemy_sender.clone(), size).await;
         let mut size_param = HashMap::new();
         //Review: Enemy pool size is the same as the factories, because in the extreme case that the factory
         //Review: spanws only one enemy type, the pool has to match the factories queue size.
@@ -249,12 +249,11 @@ impl Subscriber for Factory{
                             }
                         };
 
-                        if self.queue.len() >= *data{
-                            queue = self.queue
+                        queue = self.queue
                             .drain(0..amount)
                             .map(|enemy| Some(enemy))
                             .collect();
-                        }
+                        
 
                         viewport = Some(rect.to_owned())
                     }

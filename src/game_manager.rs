@@ -379,7 +379,7 @@ impl GameManager{
             set_camera(&camera);
     
             self.dispatcher.dispatch().await;
-    
+            println!("FPS: {:?}", get_fps());
             // ======== RENDERING ========
             {
                 self.artist.queue_calls(draw_calls.clone());

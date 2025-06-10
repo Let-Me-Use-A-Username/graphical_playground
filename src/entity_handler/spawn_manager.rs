@@ -104,6 +104,7 @@ pub struct SpawnManager{
 impl SpawnManager{
     //FIXME: Was 160
     const ENEMY_MULTIPLIER: usize = 80;
+    const MIN_SPAWN_ENEMIES: usize = 5;
 
     pub fn new(sender: Sender<Event>, level_interval: f64, spawn_interval: f64) -> SpawnManager{
         return SpawnManager{
@@ -129,7 +130,11 @@ impl SpawnManager{
         If for any reason (Level up) the `enemy_count` surpasses the `factory_queue_capacity`, the factory
         reserved additional space equal to the difference.
     */
-    pub async fn update(&mut self, player_pos: Vec2, active_enemies: usize, viewport: Rect, factory_queue_size: usize, factory_queue_capacity: usize){
+    pub async fn update(&mut self, player_pos: Vec2, 
+                                    active_enemies: usize, 
+                                    viewport: Rect, 
+                                    factory_queue_size: usize, 
+                                    factory_queue_capacity: usize){
         let now = get_time();
 
         if self.level_timer.expired(now){
@@ -141,15 +146,24 @@ impl SpawnManager{
         //Number of enemies to send to handler
         let spawn_enemies = {
             if enemy_count > active_enemies {
-                enemy_count - active_enemies
+                let deficit = enemy_count - active_enemies;
+                std::cmp::max(deficit, Self::MIN_SPAWN_ENEMIES)
             }
             else{
                 0
             }
         };
 
+        //If enemy count exceeds factory limits, increase capacity, and set queue size to `active_enemies`.
+        if enemy_count > factory_queue_capacity{
+            let cap = enemy_count - factory_queue_capacity;
+            self.publish(Event::new(cap, EventType::FactoryResize)).await;
+            //hotfix for testing different enemy amounts
+            //factory_surplus = (false, std::cmp::max(active_enemies, 20));
+        }
+
         //Number of enemies to queue in factory
-        let mut factory_surplus = {
+        let factory_surplus = {
             //Factory surplus is equivalant to (queue - `active_enemies`)
             if factory_queue_size > active_enemies{
                 (true, factory_queue_size - active_enemies)
@@ -162,28 +176,21 @@ impl SpawnManager{
             }
         };
 
-        //If enemy count exceeds factory limits, increase capacity, and set queue size to `active_enemies`.
-        if enemy_count > factory_queue_capacity{
-            self.publish(Event::new(enemy_count - factory_queue_capacity, EventType::FactoryResize)).await;
-            //hotfix for testing different enemy amounts
-            factory_surplus = (false, std::cmp::max(active_enemies, 20));
-        }
-
 
         //If Factory is lacking enemies, queue the difference
         if !factory_surplus.0 && factory_surplus.1 > 0{
             let amount = factory_surplus.1;
             let template = self.get_spawn_template(amount);
             let color = self.config.complexity.get_color();
-            
+
             self.publish(Event::new((template, player_pos, color), EventType::QueueTemplate)).await;
         }
-        //Review: Factory Surplus??
 
         if self.spawn_timer.expired(now){
             self.spawn_timer.set(now, self.config.spawn_interval);
 
             if spawn_enemies != 0{
+
                 self.publish(Event::new((spawn_enemies, viewport), EventType::ForwardEnemiesToHandler)).await;
             }
         }
