@@ -29,6 +29,7 @@ impl BulletPool{
         }
     }
 
+    ///Retrieved single bullet.
     #[inline(always)]
     pub fn get(&mut self) ->Option<Bullet>{
         if let Some(mut bullet) =  self.available.pop_front(){
@@ -38,6 +39,7 @@ impl BulletPool{
         return None
     }
 
+    ///Returns `amount` blankd Bullets that have been reseted and assigned a new id.
     #[inline(always)]
     pub fn get_blanks(&mut self, amount: usize) -> Option<Vec<Bullet>>{
         if self.available.len() > amount{
@@ -50,6 +52,7 @@ impl BulletPool{
         return None
     }
 
+    ///Return Bullet to pool.
     #[inline(always)]
     pub fn return_bullet(&mut self, bullet: Bullet){
         if self.available.len() < self.size{
@@ -60,6 +63,7 @@ impl BulletPool{
         }
     }
     
+    ///Assign id.
     #[inline(always)]
     fn get_id(&mut self) -> u64{
         let mut id = BULLETCOUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);

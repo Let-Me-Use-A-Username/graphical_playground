@@ -3,7 +3,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use std::sync::{atomic::AtomicU64, mpsc::Sender};
+use std::sync::mpsc::Sender;
 
 use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
@@ -48,7 +48,7 @@ impl Player{
             id: 0,
             pos: Vec2::new(x, y),
             direction: Vec2::new(0.0, 0.0),
-            speed: 1000.0,
+            speed: 700.0,
             velocity: vec2(0.0, 0.0),
             acceleration: 1.0,
             max_acceleration: 3000.0,

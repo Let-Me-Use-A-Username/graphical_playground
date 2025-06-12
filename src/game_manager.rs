@@ -11,15 +11,16 @@ use crate::collision_system::collision_detector::CollisionDetector;
 use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
 use crate::entity_handler::spawn_manager::SpawnManager;
+use crate::entity_handler::triangle_assistant::TriangleAssistant;
+use crate::entity_handler::bullet_pool::BulletPool;
 use crate::event_system::event::Event;
 use crate::event_system::interface::{Drawable, Enemy, GameEntity, Object, Playable, Projectile, Updatable};
-use crate::grid_system::grid::{EntityType, Grid};
 use crate::actors::player::Player;
 use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
+use crate::grid_system::grid::{EntityType, Grid};
 use crate::objects::bullet::ProjectileType;
 use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
-use crate::utils::bullet_pool::BulletPool;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
 use crate::utils::timer::Timer;
@@ -110,6 +111,12 @@ impl GameManager{
             1024, 
             dispatcher.create_sender()
         )));
+
+        let assistant = Arc::new(Mutex::new(TriangleAssistant::new(
+            dispatcher.create_sender(), 
+            global.get_triangle_assistant_pool_size(), 
+            global.get_triangle_bullet_amount()
+        )));
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -145,6 +152,11 @@ impl GameManager{
         dispatcher.register_listener(EventType::RecycleBullet, bullet_pool.clone());
         dispatcher.register_listener(EventType::RequestBlankCollection, bullet_pool.clone());
         dispatcher.register_listener(EventType::BatchBulletRecycle, bullet_pool.clone());
+
+        //Triangle Assistant
+        dispatcher.register_listener(EventType::TriangleBulletRequest, assistant.clone());
+        dispatcher.register_listener(EventType::ForwardCollectionToEntity, assistant.clone());
+        dispatcher.register_listener(EventType::RemoveTriangle, assistant.clone());
 
 
         return GameManager { 

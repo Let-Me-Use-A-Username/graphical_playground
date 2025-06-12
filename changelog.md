@@ -1,6 +1,13 @@
 # Changelog
 
 
+### 0.2.63 Changes 12/6/2025
+- v.0.2.63 Implemented Triangle Assistant. Manages Triangle enemy bullet and acts as middleware to pool.
+- v.0.2.63 Implemented TAssistant event listening, as well as Triangle requests.
+- v.0.2.63 Moved Pool entities into `entity_handler` space.
+- v.0.2.63 Increased *Displacement volume* in Handler. Fixed Rect colliders sticking together.
+
+
 ### 0.2.63 Changes 10/6/2025
 - v.0.2.63 Minor changes to Spawner and Factory. *Level up not occuring* seems to be fixed.
 - v.0.2.63 Made grid smaller and Cell size bigger.

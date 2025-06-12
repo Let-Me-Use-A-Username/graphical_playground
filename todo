@@ -5,6 +5,7 @@
 - Implement different kinds of enemies.
     - Hexagon
         - Emit signal on death, to spawn entity on it ?
+        - Boss?
 
 - Implement Boss
 
@@ -17,16 +18,6 @@
 ==============================================
 ================== Critical ==================
 
-- Performance has been slightly enhanced. Further ideas:
-    - Make an asynchronous and synchronous update loop
-
-
-- Implement centralized bullet handler for Triangle
-    - Create a centralized triangle handler that manages Triangles bullets
-    - Triangles request bullets from it
-    - When a Triangle uses all bullets, Triangle Hanlder requests more for it
-
-
 - Change player 
     - When pressing left or right, add velocity
         - Because if no gas is given but we have velocity, the car should turn 
@@ -34,6 +25,8 @@
     - Make shield change color or shade based on charges left 
         -(Blue - Yellow - Orange - Red)
         -(Blue - Lighter Blue till almost white)
+
+
 
 ==============================================
 ================== General todo ==============
@@ -99,12 +92,8 @@
     - Draw Shield charges
     - Draw Boost charges
 
-- Consider changing state machine to be an enum type
-    - Enemy Machine
-    - Object machine
-    - Player machine etc
-
-- Implement collision layers like in unity
+- Performance enhancing ideas
+    - Make an asynchronous and synchronous update loop
 
 ==============================================
 ================== Notes =====================
@@ -117,9 +106,6 @@
 
 - Colliders:
     - Projectile colliders extend past the sprite, only forward.
-
-- Spawner:
-    - Level up not trigger could be a fault of factory surplus
 
 ==============================================
 ================== Study =====================

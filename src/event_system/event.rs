@@ -37,6 +37,9 @@ pub enum EventType{
     //Actors
     ForwardCollectionToPlayer,
     ForwardCollectionToEntity,
+    //Triangle Assistant
+    TriangleBulletRequest,
+    RemoveTriangle
 }
 
 #[derive(Clone, Debug)]

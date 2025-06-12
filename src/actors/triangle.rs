@@ -6,11 +6,7 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use ::rand::{thread_rng, Rng};
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, 
-            entity_handler::enemy_type::EnemyType, 
-            event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, 
-            grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, 
-            utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+use crate::{collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
 /* 
     The triangle in comparison to the circle is more complex.
@@ -51,13 +47,11 @@ pub struct Triangle{
 impl Triangle{
     /* 
         Calculates an intermediate position between triangle and player.
-        The triangle is more aggressive now - it frequently evaluates whether to fire,
-        and immediately repositions after firing.
     */
     fn determine_next_position(&mut self) -> Vec2 {
         let mut rng = thread_rng();
         
-        // If we just fired, always reposition away from player
+        // If just fired, always reposition away from player
         if self.has_fired{
             self.has_fired = false;
             return self.generate_evasive_position();
@@ -98,7 +92,7 @@ impl Triangle{
     /* 
         Generates an evasive position that faces away from the player and 
         is *almost* perpendicular due to some (-60, 60) randomness. The 
-        distance is our size * (10..15)
+        distance is: size * (10..15)
     */
     fn generate_evasive_position(&self) -> Vec2 {
         let mut rng = thread_rng();
@@ -174,16 +168,16 @@ impl Triangle{
         let direction_to_player = (self.target - self.pos).normalize();
         let spawn_pos = self.pos;
 
-        //FIXME: FIX BULLET POOL IMPLEMENTATION
-        // self.publish(Event::new((
-        //     spawn_pos,
-        //     350.0, // Increased bullet speed from 300.0
-        //     direction_to_player,
-        //     10.0,
-        //     22.0,
-        //     ProjectileType::Enemy), 
-        //     EventType::RequestBullet)
-        // ).await;
+        self.publish(Event::new((
+            self.id,
+            spawn_pos,
+            350.0 as f32, // Increased bullet speed from 300.0
+            direction_to_player,
+            10.0,
+            22.0 as f32,
+            ProjectileType::Enemy), 
+            EventType::TriangleBulletRequest)
+        ).await;
     }
 }
 
@@ -399,9 +393,10 @@ impl Enemy for Triangle{
     }
 
     fn get_all_draw_calls(&self) -> Vec<DrawCall>{
+        let col_cal = self.collider.get_draw_call();
         let selfcal = self.get_draw_call();
 
-        return vec![selfcal]
+        return vec![selfcal, col_cal]
     }
 
     fn get_type(&self) -> EnemyType{

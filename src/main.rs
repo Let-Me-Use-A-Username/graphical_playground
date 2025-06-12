@@ -39,10 +39,14 @@ pub fn window_conf() -> Conf{
 async fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    env::set_var("DEBUG:FPS", "true");
+    env::set_var("DEBUG:FPS", "false");
+
     env::set_var("DEBUG:GRID", "false");
     env::set_var("DEBUG:GRID_CELL", "false");
+
     env::set_var("DEBUG:ENTITY_HANDLER", "false");
+    
+    env::set_var("DEBUG:TRIANGLE_ASSISTANT", "false");
     
     let mut game_manager = GameManager::new().await;
 

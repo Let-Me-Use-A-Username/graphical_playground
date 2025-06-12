@@ -86,6 +86,10 @@ impl Handler{
         for id in enemies_remove{
             if let Some(enemy) = self.enemies.remove(&id){
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
+                
+                if enemy.get_type().eq(&EnemyType::Triangle){
+                    self.publish(Event::new(enemy.get_id(), EventType::RemoveTriangle)).await;
+                }
                 self.publish(Event::new((enemy.get_id(), StateType::Hit), EventType::UnregisterEmitterConf)).await;
                 
                 enemies_to_recycle.push(Some(enemy));
@@ -130,7 +134,11 @@ impl Handler{
                 viewport.contains(enemy.get_pos()) && enemy.is_alive()
             })
             .for_each(|enemy|{
-                draw_calls.push((4, enemy.get_draw_call()));
+                //draw_calls.push((4, enemy.get_draw_call()));
+                
+                for call in enemy.get_all_draw_calls(){
+                    draw_calls.push((4, call));
+                }
             });
     
         self.projectiles.iter_mut()
@@ -325,18 +333,29 @@ impl Subscriber for Handler{
                             let idx = enemyx.get_id();
                             let posx = enemyx.get_pos();
                             let sizex = enemyx.get_size();
+                            let extype = enemyx.get_type();
 
                             if let Some(enemyy) = self.enemies.get_mut(&data.1){
                                 let idy = enemyy.get_id();
                                 let posy = enemyy.get_pos();
                                 let sizey = enemyy.get_size();
+                                let eytype = enemyy.get_type();
 
                                 let direction = Vec2::new(posy.x - posx.x, posy.y - posx.y);
                                 let distance = direction.length();
                                 let com_radius = sizex + sizey;
 
+                                let volume: f32 = {
+                                    if extype.eq(&EnemyType::Rect) || eytype.eq(&EnemyType::Rect){
+                                        50.0
+                                    }
+                                    else{
+                                        10.0
+                                    }
+                                };
+
                                 let normalized_dir = direction.normalize();
-                                let overlap = (com_radius - distance) / 2.0 + 1.0;
+                                let overlap = (com_radius - distance) / 2.0 + volume;
 
                                 let pos_x_corrected = posx - (normalized_dir * overlap);
                                 let pos_y_corrected = posy + (normalized_dir * overlap);

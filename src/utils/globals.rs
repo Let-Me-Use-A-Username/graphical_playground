@@ -53,5 +53,17 @@ impl Global{
     pub fn get_spawn_interval(&self) -> f64{
         return 3.0
     }
+
+
+    /* 
+        Triangle Assistant
+    */
+    pub fn get_triangle_assistant_pool_size(&self) -> usize{
+        return 128
+    }
+
+    pub fn get_triangle_bullet_amount(&self) -> usize{
+        return 10
+    }
 }
 

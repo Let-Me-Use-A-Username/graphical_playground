@@ -194,9 +194,10 @@ impl Enemy for Circle{
     }
 
     fn get_all_draw_calls(&self) -> Vec<DrawCall>{
+        let col_cal = self.collider.get_draw_call();
         let selfcal = self.get_draw_call();
 
-        return vec![selfcal]
+        return vec![selfcal, col_cal]
     }
 
     fn get_type(&self) -> EnemyType{

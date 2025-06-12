@@ -72,6 +72,18 @@ impl Collider for CircleCollider{
         return false    }
 }
 
+impl CircleCollider{
+    //Visual debugging method.
+    pub fn get_draw_call(&self) -> DrawCall{
+        return DrawCall::Circle(
+            self.x, 
+            self.y, 
+            self.radius, 
+            PINK
+        );
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct RectCollider{
     x: f32, 
@@ -132,7 +144,7 @@ impl RectCollider{
             DrawRectangleParams{
                 rotation: self.rotation,
                 color: PINK,
-                offset: Vec2::new(0.5, 0.5)
+                ..Default::default()
             })
     }
 

@@ -97,13 +97,17 @@ impl Artist{
         clear_background(color);
     }
 
+    /* 
+        Draws entities by order of:
+            1) Draw type, which is a shape. This optimized GPU sequence.
+            2) Layer. In order to provide depth.
+            3) Sequence in which the request was made. First to last.
+    */
     #[inline(always)]
-    ///Draws all entities inside each queue.
     pub fn draw(&mut self){
         let mut layers: Vec<i32> = self.queue.keys().cloned().collect();
         layers.sort_by(|a, b| a.cmp(b));
         
-        //Review: Correct layer order?
         //For draw type
         for draw_type in [DrawType::Rect, DrawType::Circle, DrawType::Line, DrawType::RotRect, DrawType::Triangle] {
             //For layer
@@ -371,6 +375,9 @@ impl MetalArtist{
         }
     }
 
+    /* 
+        In contrast to Artist, Metal Artist draws the requests in order.
+    */
     pub fn draw(&mut self) {
         let mut have_drawn = HashSet::new();
         
@@ -454,7 +461,7 @@ impl Subscriber for MetalArtist{
                     }
                 }
             },
-            //Review: This is now only needed to remove permanent Emitters.
+            //Note: This is now only needed to remove permanent Emitters.
             EventType::UnregisterEmitterConf => {
                 if let Ok(data) = event.data.try_lock(){
                     if let Some(id) = data.downcast_ref::<(u64, StateType)>(){
@@ -462,7 +469,7 @@ impl Subscriber for MetalArtist{
                     }
                 }
             },
-            //Review: Not used anymore, all calls for emission are received via functions inside `game_manager`
+            //Note: Not used anymore, all calls for emission are received in main loop, in `game_manager`.
             EventType::DrawEmitter => {
                 if let Ok(data) = event.data.try_lock(){
                     if let Some((id, state, pos)) = data.downcast_ref::<(u64, StateType, Vec2)>(){
