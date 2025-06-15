@@ -17,6 +17,7 @@ pub trait Publisher: Send + Sync{
 }
 
 //======= General traits ==========
+#[allow(dead_code)]
 pub trait Object: Send + Sync{
     fn get_pos(&self) -> Vec2;
     fn as_any(&self) -> &dyn Any;
@@ -50,7 +51,7 @@ pub trait Playable: GameEntity{
     fn get_state(&self) ->Option<StateType>;
     fn drift_to(&mut self, delta: f32) -> (f32, f32);     
 }
-
+#[allow(dead_code)]
 #[async_trait]
 pub trait Enemy: GameEntity{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender: Sender<Event>) -> Self where Self: Sized;
@@ -74,6 +75,7 @@ pub trait Enemy: GameEntity{
     fn reset(&mut self, id: u64, pos: Vec2, color: Color, size: f32, target: Vec2, is_alive: bool);
 }
 
+#[allow(dead_code)]
 #[async_trait]
 pub trait Projectile: GameEntity{
     fn get_ptype(&self) -> ProjectileType;

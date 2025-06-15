@@ -1,6 +1,11 @@
 # Changelog
 
 
+### 0.2.64 Changes 15/6/2025
+- v.0.2.64 Implemented dynamic Player shield color, based on remaining charges.
+- v.0.2.64 Changed players Hit state color to Gray. More visible now.
+
+
 ### 0.2.63 Changes 12/6/2025
 - v.0.2.63 Implemented Triangle Assistant. Manages Triangle enemy bullet and acts as middleware to pool.
 - v.0.2.63 Implemented TAssistant event listening, as well as Triangle requests.

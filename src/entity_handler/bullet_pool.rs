@@ -30,6 +30,7 @@ impl BulletPool{
     }
 
     ///Retrieved single bullet.
+    #[allow(dead_code)]
     #[inline(always)]
     pub fn get(&mut self) ->Option<Bullet>{
         if let Some(mut bullet) =  self.available.pop_front(){

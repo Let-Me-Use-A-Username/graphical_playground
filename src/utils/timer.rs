@@ -22,6 +22,7 @@ impl Timer{
         self.last_set = Some(start);
     }
 
+    #[allow(dead_code)]
     pub fn is_set(&self) -> bool{
         return self.set
     }

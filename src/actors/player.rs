@@ -8,6 +8,7 @@ use std::sync::mpsc::Sender;
 use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
+
 pub struct Player{
     //Attributes
     id: u64,
@@ -42,6 +43,7 @@ pub struct Player{
 
 impl Player{
     const ROTATION_SPEED: f32 = 1.0;
+    
 
     pub async fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         let player = Player { 
@@ -60,7 +62,7 @@ impl Player{
             machine: StateMachine::new(),
             collider: RectCollider::new(x, y, size, size * 2.0),
             
-            shield: Shield::new(Vec2::new(x, y), (size * 3.0) as usize),
+            shield: Shield::new(Vec2::new(x, y), (size * 3.0) as usize, BLUE),
             shield_counter: RechargebleCounter::new(10, 1, true, Some(3.0)),
             boost_counter: RechargebleCounter::new(5, 1, true, Some(2.0)),
             boost_timer: SimpleTimer::blank(),
@@ -203,14 +205,37 @@ impl Player{
 impl Updatable for Player{
     async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {        
         let now = get_time();
+        
+        let shield_color = {
+            if let Some(counter) = self.shield_counter.get_remaining_charges(){
+                
+                match counter{
+                    1..=3 => {
+                        RED
+                    },
+                    4..=6 => {
+                        ORANGE
+                    },
+                    7..=8 => {
+                        YELLOW
+                    },
+                    _ => {
+                        BLUE
+                    }
+                }
+            }
+            else{
+                BLUE
+            }
+        };
 
         //Update collider with slight offset, in respect to the drawn rect
         self.collider.update(self.pos);
         self.collider.set_rotation(self.rotation);
-
-        self.shield.update(delta, vec!(Box::new(self.get_pos()))).await;
+    
         self.shield_counter.update();
         self.boost_counter.update();
+        self.shield.update(delta, vec!(Box::new(self.get_pos()), Box::new(shield_color))).await;
 
         let current_state = self.machine.get_state().lock().unwrap().clone();
 
@@ -411,7 +436,7 @@ impl Drawable for Player{
             match self.immune_timer.on_cooldown(get_time()) {
                 //If timer's cooldown hasn't ended, draw as white to signify invurnerability
                 Some(false) => {
-                    WHITE
+                    GRAY
                 },
                 //Else color black as usual
                 Some(true) | None => {

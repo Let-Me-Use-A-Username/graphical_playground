@@ -1,6 +1,6 @@
 [package]
 name = "graphical_playground"
-version = "0.2.63"
+version = "0.2.64"
 edition = "2021"
 rust-version = "1.84"   #Required versioning to avoid compatibility issues 
 

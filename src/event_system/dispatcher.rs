@@ -11,6 +11,7 @@ pub struct Dispatcher{
     receiver: Receiver<Event>
 }
 
+
 impl Dispatcher{
     pub fn new() -> Self{
         let (sender, receiver) = channel();
@@ -45,6 +46,7 @@ impl Dispatcher{
         }
     }
 
+    #[allow(dead_code)]
     pub async fn dispatch_event(&self, event: Event){
         if let Some(subscriber_list) = self.subscribers.get(&event.event_type) {
             for subscriber in subscriber_list {

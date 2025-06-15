@@ -20,11 +20,7 @@
 
 - Change player 
     - When pressing left or right, add velocity
-        - Because if no gas is given but we have velocity, the car should turn 
-    - When vurnerable, don't make him white
-    - Make shield change color or shade based on charges left 
-        -(Blue - Yellow - Orange - Red)
-        -(Blue - Lighter Blue till almost white)
+        - Because if no gas is given but we have velocity, the car should turn
 
 
 

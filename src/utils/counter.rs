@@ -32,13 +32,14 @@ impl RechargebleCounter{
         return RechargebleCounter{
             usages: usages,
             counter_interval: interval,
-            remaining: Some((usages - interval) as i32),
+            remaining: Some(usages as i32),
             timer: timer,
             timer_duration: timer_duration
         }
     }
 
     ///Reset remaining usages.
+    #[allow(dead_code)]
     pub fn reset(&mut self){
         self.remaining = Some((self.usages - self.counter_interval) as i32);
     }
@@ -92,6 +93,15 @@ impl RechargebleCounter{
                 }
             }
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn get_total_charges(&self) -> u32{
+        return self.usages
+    }
+
+    pub fn get_remaining_charges(&self) -> Option<i32>{
+        return self.remaining
     }
 }
 
