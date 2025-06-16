@@ -42,8 +42,6 @@ pub struct Player{
 }
 
 impl Player{
-    const ROTATION_SPEED: f32 = 1.0;
-    
 
     pub async fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         let player = Player { 
@@ -125,10 +123,10 @@ impl Player{
 
             bullet.set(
                 pos,
-                3000.0,
+                2500.0,
                 front_vector,
                 2.0,
-                11.0,
+                19.0,
                 ProjectileType::Player
             );
 
@@ -197,6 +195,136 @@ impl Player{
         }
 
         return calls
+    }
+
+    #[inline(always)]
+    fn select_movement(&mut self, is_drifting: bool, delta: f32) -> (f32, f32) {
+        let min_steering_effectiveness: f32;        //Rotation Parameter
+        let max_steering_effectiveness: f32;        //Rotation Parameter
+        let rotation_speed_multiplier: f32;         //Rotation Parameters: Scale the ammount of steering, dependant on the speed ratio. Responsive.
+        let steering_force_multiplier: f32;         //Multipler on the velocity. Determines how much the steering affects velocity. 
+        let acceleration_multiplier: f32;           //Acceleration buildup multipler.
+        let velocity_zero_threshold: f32;           //Threshold at which velocity is set to ZERO.
+        let friction: (f32, f32);                   //Front and lateral friction. Provides "grip"
+        
+        match is_drifting {
+            true => {
+                // Drift mode: more responsive steering, less friction for sliding
+                min_steering_effectiveness = 0.3;
+                max_steering_effectiveness = 1.2;
+                rotation_speed_multiplier = 3.0;
+                steering_force_multiplier = 0.5;
+                acceleration_multiplier = 0.5;      
+                velocity_zero_threshold = 115.0;    
+                friction = (0.2, 0.4);              
+            },
+            false => {
+                // Normal mode: realistic car physics
+                min_steering_effectiveness = 0.1;
+                max_steering_effectiveness = 1.0;
+                rotation_speed_multiplier = 1.35;
+                steering_force_multiplier = 0.3;
+                acceleration_multiplier = 0.8;
+                velocity_zero_threshold = 25.0;
+                friction = (0.3, 1.2);
+            },
+        }
+        
+        let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
+        let current_speed = self.velocity.length();
+        
+        // Check if player is applying throttle (forward or reverse)
+        let is_throttling = is_key_down(KeyCode::W) || is_key_down(KeyCode::S);
+        
+        // Calculate steering effectiveness based on speed
+        let speed_ratio = (current_speed / self.speed).min(1.0);
+        let steering_effectiveness = min_steering_effectiveness + 
+            (max_steering_effectiveness - min_steering_effectiveness) * speed_ratio;
+        
+        let final_rotation_speed = rotation_speed_multiplier * steering_effectiveness;
+        
+        if current_speed > 5.0 {
+            if is_key_down(KeyCode::D) {
+                self.rotation += final_rotation_speed * delta;
+                
+                // In drift mode, only apply lateral forces when throttling
+                if is_drifting && is_throttling {
+                    let steering_force = current_speed * steering_force_multiplier * delta;
+                    let right_vector = Vec2::new(self.rotation.cos(), self.rotation.sin()).normalize();
+                    self.velocity += right_vector * steering_force;
+                }
+            }
+            
+            if is_key_down(KeyCode::A) {
+                self.rotation -= final_rotation_speed * delta;
+                
+                // In drift mode, only apply lateral forces when throttling
+                if is_drifting && is_throttling {
+                    let steering_force = current_speed * steering_force_multiplier * delta;
+                    let left_vector = Vec2::new(-self.rotation.cos(), -self.rotation.sin()).normalize();
+                    self.velocity += left_vector * steering_force;
+                }
+            }
+        }
+        
+        // Handle throttle input
+        self.direction = Vec2::ZERO;
+        
+        if is_key_down(KeyCode::W) {
+            self.direction += forward;
+        }
+        
+        if is_key_down(KeyCode::S) {
+            self.direction -= forward;
+        }
+        
+        if self.direction.length() > 0.0 {
+            self.direction = self.direction.normalize();
+            
+            if self.acceleration < self.max_acceleration {
+                self.acceleration += acceleration_multiplier;
+            }
+            
+            self.velocity += self.direction * self.acceleration * delta;
+            
+            if self.velocity.length() > self.speed {
+                self.velocity = self.velocity.normalize() * self.speed;
+            }
+        } 
+        else {
+            if self.acceleration > 1.0 {
+                self.acceleration *= 0.85;
+            }
+            
+            if self.velocity.length() < velocity_zero_threshold {
+                self.velocity = Vec2::ZERO;
+            }
+        }
+        
+        // Apply physics with component separation
+        let forward_speed = self.velocity.dot(forward);
+        let mut forward_component = forward * forward_speed;
+        let lateral_component = self.velocity - forward_component;
+        
+        // In drift mode without throttle, increase friction to naturally straighten out
+        let actual_friction = if is_drifting && !is_throttling {
+            (friction.0 * 1.5, friction.1 * 12.0) // Increased friction when coasting in drift
+        } else {
+            friction
+        };
+        
+        // Apply friction differently to forward vs lateral movement
+        forward_component *= 1.0 - (actual_friction.0 * delta);
+        let lateral_component = lateral_component * (1.0 - (actual_friction.1 * delta));
+        
+        self.velocity = forward_component + lateral_component;
+        self.pos += self.velocity * delta;
+        
+        if self.velocity.length() < 0.1 {
+            self.velocity = Vec2::ZERO;
+        }
+        
+        (self.pos.x, self.pos.y)
     }
 }
 
@@ -271,7 +399,7 @@ impl Updatable for Player{
 
                 if is_firing{
                     self.fire().await;
-                } 
+                }
             }
             StateType::Moving => {
                 let _ = self.move_to(delta, None);
@@ -352,77 +480,7 @@ impl Object for Player{
 impl Moveable for Player {
     #[inline(always)]
     fn move_to(&mut self, delta: f32, _override: Option<Vec2>) -> (f32, f32) {
-        // This version now handles only non-drifting logic.
-        let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
-        
-        // Handle rotation with normal multiplier.
-        let rotation_speed = Self::ROTATION_SPEED * 1.35;
-
-        if self.velocity.length() > 5.0 {
-
-            if is_key_down(KeyCode::D) {
-                self.rotation += rotation_speed * delta;
-            }
-
-            if is_key_down(KeyCode::A) {
-                self.rotation -= rotation_speed * delta;
-            }
-        }
-        
-        // Reset and update direction.
-        self.direction = Vec2::ZERO;
-
-        if is_key_down(KeyCode::W) {
-            self.direction += forward;
-        }
-
-        if is_key_down(KeyCode::S) {
-            self.direction -= forward;
-        }
-        
-        if self.direction.length() > 0.0 {
-            self.direction = self.direction.normalize();
-
-            if self.acceleration < self.max_acceleration {
-                self.acceleration += 0.8;
-            }
-
-            self.velocity += self.direction * self.acceleration * delta;
-            
-            if self.velocity.length() > self.speed {
-                self.velocity = self.velocity.normalize() * self.speed;
-            }
-
-        } else {
-            
-            if self.acceleration > 1.0 {
-                self.acceleration *= 0.85;
-            }
-            
-            if self.velocity.length() < 25.0 {
-                self.velocity = Vec2::ZERO;
-            }
-
-            self.velocity += self.acceleration * delta;
-        }
-        
-        // Apply physics for normal movement.
-        let forward_speed = self.velocity.dot(forward);
-        let mut forward_component = forward * forward_speed;
-        let lateral_component = self.velocity - forward_component;
-
-        // Use standard friction values for not-drifting.
-        forward_component *= 1.0 - (0.8 * delta);
-        let lateral_component = lateral_component * (1.0 - (0.9 * delta));
-        
-        self.velocity = forward_component + lateral_component;
-        self.pos += self.velocity * delta;
-
-        if self.velocity.length() < 0.1 {
-            self.velocity = Vec2::ZERO;
-        }
-        
-        (self.pos.x, self.pos.y)
+        return self.select_movement(false, delta)
     }
 }
 
@@ -514,78 +572,7 @@ impl Playable for Player{
     // New function for drifting behavior.
     #[inline(always)]
     fn drift_to(&mut self, delta: f32) -> (f32, f32) {
-        let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
-        
-        // Optionally adjust rotation multiplier for drifting.
-        let rotation_speed = Self::ROTATION_SPEED * 3.0;
-
-        if self.velocity.length() > 5.0 {
-
-            if is_key_down(KeyCode::D) {
-                self.rotation += rotation_speed * delta;
-            }
-
-            if is_key_down(KeyCode::A) {
-                self.rotation -= rotation_speed * delta;
-            }
-        }
-        
-        // Reset and update direction.
-        self.direction = Vec2::ZERO;
-
-        if is_key_down(KeyCode::W) {
-            self.direction += forward;
-        }
-
-        if is_key_down(KeyCode::S) {
-            self.direction -= forward;
-        }
-        
-        if self.direction.length() > 0.0 {
-
-            self.direction = self.direction.normalize();
-
-            if self.acceleration < self.max_acceleration {
-                self.acceleration += 1.0;
-            }
-
-            self.velocity += self.direction * self.acceleration * delta;
-
-            if self.velocity.length() > self.speed {
-                self.velocity = self.velocity.normalize() * self.speed;
-            }
-
-        } else {
-
-            if self.acceleration > 1.0 {
-                self.acceleration *= 0.85;
-            }
-
-            if self.velocity.length() < 200.0 {
-                self.velocity = Vec2::ZERO;
-            }
-
-            self.velocity += self.direction * self.acceleration * delta;
-        }
-        
-        // Apply drifting physics with custom friction values.
-        let forward_speed = self.velocity.dot(forward);
-        let mut forward_component = forward * forward_speed;
-        let lateral_component = self.velocity - forward_component;
-        
-        // Use drifting friction values
-        forward_component *= 1.0 - (0.3 * delta); // 0.02
-        let lateral_component = lateral_component * (1.0 - (0.9 * delta)); //0.08
-        
-        self.velocity = forward_component + lateral_component;
-
-        self.pos += self.velocity * delta;
-        
-        if self.velocity.length() < 0.1 {
-            self.velocity = Vec2::ZERO;
-        }
-        
-        (self.pos.x, self.pos.y)
+        return self.select_movement(true, delta)
     }
 }
 

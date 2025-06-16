@@ -1,6 +1,6 @@
 use std::{collections::{HashMap, VecDeque}, sync::{atomic::{AtomicU64, Ordering}, mpsc::Sender}};
 use macroquad::{color::{Color, WHITE}, math::Vec2};
-use crate::{actors::{circle::Circle, rect, triangle::Triangle}, event_system::{event::Event, interface::Enemy}, utils::machine::StateType};
+use crate::{actors::{circle::Circle, hexagon::Hexagon, rect, triangle::Triangle}, event_system::{event::Event, interface::Enemy}, utils::machine::StateType};
 
 use super::enemy_type::EnemyType;
 
@@ -117,7 +117,7 @@ impl Recycler{
                 ))
             },
             EnemyType::Hexagon => {
-                Box::new(Circle::new(
+                Box::new(Hexagon::new(
                     0, 
                     pos, 
                     size, 

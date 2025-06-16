@@ -1,13 +1,7 @@
 ==============================================
 ================== Final Roadmap =============
-- Implement critical problems
-
-- Implement different kinds of enemies.
-    - Hexagon
-        - Emit signal on death, to spawn entity on it ?
-        - Boss?
-
 - Implement Boss
+    - use shape outlines to highlight them.
 
 - Implement music and sound effects
 
@@ -18,24 +12,12 @@
 ==============================================
 ================== Critical ==================
 
-- Change player 
-    - When pressing left or right, add velocity
-        - Because if no gas is given but we have velocity, the car should turn
-
-
 
 ==============================================
 ================== General todo ==============
-- Idea for re-implementing player movement:
-    - Player Moving/Drifting
-        - Consider the following:
-            - Change players Moving (rotating) anchor point (offset in Rect) to be top middle
-                - In drift, change it to be the middle
-            - Change back tires to provide moving force
 
-- Implement ErrorHandler
-    -Change component function to return Results 
-        -Log these results if error occurs
+- In release version, player movement feels different. Test it
+
     
 ==============================================
 ================== Gameplay ==================
@@ -45,6 +27,8 @@
 
 ==============================================
 ================== Testing ===================
+- Implementing editor that hot reloads variables?
+
 - Player Test
     -Test handbrake mechanic(Check forward and lateral friction)
         -Faster or slower? (if faster revert to old frictions, else increase them)
@@ -90,6 +74,11 @@
 
 - Performance enhancing ideas
     - Make an asynchronous and synchronous update loop
+
+
+- Implement ErrorHandler
+    -Change component function to return Results 
+        -Log these results if error occurs
 
 ==============================================
 ================== Notes =====================

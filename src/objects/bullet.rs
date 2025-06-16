@@ -150,13 +150,19 @@ impl Updatable for Bullet{
                 StateType::Idle => self.machine.transition(StateType::Moving),
                 StateType::Moving => {
                     // Update collider position and rotation
-                    let new_pos = self.pos + self.direction * (self.size * 0.5);
+                    let new_pos: Vec2 = 
+                        {
+                            let dir = self.direction;
+                            let size_mod = self.size * 0.25;
+                            let right = Vec2::new(dir.y, -dir.x) * size_mod;
+                            let base_right = self.pos - dir * size_mod + right;
+                            base_right
+                        };
                     
                     self.move_to(delta, None);
                     self.collider.update(new_pos);
                     self.collider.set_rotation(self.direction.y.atan2(self.direction.x));
                 },
-                //drop bullet
                 StateType::Hit => self.is_active = false,
                 _ => (), //Unreachable
             }
@@ -239,6 +245,12 @@ impl Projectile for Bullet{
     
     fn as_bullet(self: Box<Self>) -> Bullet {
         *self
+    }
+
+    fn revert(&mut self, ptype: ProjectileType){
+        self.origin = ptype;
+        self.speed = self.speed / 2.0;
+        self.direction = -self.direction;
     }
 }
 

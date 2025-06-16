@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::{math::{vec2, Rect, Vec2}, time::get_time};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, renderer::artist::DrawCall, utils::{machine::StateType, timer::SimpleTimer}};
+use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::{machine::StateType, timer::SimpleTimer}};
 
 use super::enemy_type::EnemyType;
 
@@ -53,7 +53,7 @@ impl Handler{
 
         // Update projectiles
         for (_, projectile) in self.projectiles.iter_mut() {
-            projectile.update(delta, vec![Box::new(player_pos)]).await;
+            projectile.update(delta, vec![]).await;
         }
 
         if self.cleanup_timer.expired(now){
@@ -134,11 +134,11 @@ impl Handler{
                 viewport.contains(enemy.get_pos()) && enemy.is_alive()
             })
             .for_each(|enemy|{
-                //draw_calls.push((4, enemy.get_draw_call()));
+                draw_calls.push((4, enemy.get_draw_call()));
                 
-                for call in enemy.get_all_draw_calls(){
-                    draw_calls.push((4, call));
-                }
+                // for call in enemy.get_all_draw_calls(){
+                //     draw_calls.push((4, call));
+                // }
             });
     
         self.projectiles.iter_mut()
@@ -148,6 +148,10 @@ impl Handler{
             })
             .for_each(|projectile|{
                 draw_calls.push((9, projectile.get_draw_call()));
+                
+                // for call in projectile.get_all_draw_calls(){
+                //     draw_calls.push((9, call));
+                // }
             });
         
         return draw_calls
@@ -367,6 +371,31 @@ impl Subscriber for Handler{
                         }
                     }
                 } 
+            },
+            EventType::DeflectBulletAndSwitch => {
+                let mut reverted = false;
+                let mut pid: Option<u64> = None;
+                
+                if let Ok(entry) = event.data.lock(){
+                    if let Some(data) = entry.downcast_ref::<(u64, ProjectileType)>(){
+                        let id = data.0.to_owned();
+                        let origin = data.1.to_owned();
+
+                        if let Some(proj) = self.projectiles.get_mut(&id){
+
+                            if proj.is_active(){
+                                proj.revert(origin);
+                                reverted = true;
+                                pid = Some(id);
+                            }
+                        }
+                    }
+                }
+
+                if reverted{
+                    let id = pid.unwrap_or(0);
+                    self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
+                }
             }
             _ => unreachable!()
         }

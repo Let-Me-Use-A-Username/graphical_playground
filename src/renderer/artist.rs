@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use async_trait::async_trait;
-use macroquad::{color::Color, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
+use macroquad::{color::Color, math::{vec2, Vec2}, shapes::{draw_circle, draw_line, draw_poly, draw_rectangle, draw_rectangle_ex, draw_triangle, DrawRectangleParams}, window::clear_background};
 use macroquad_particles::{AtlasConfig, BlendMode, ColorCurve, Curve, EmissionShape, Emitter, EmitterConfig, EmittersCache, ParticleShape};
 
 use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::machine::StateType};
@@ -14,7 +14,8 @@ pub enum DrawType{
     Circle,
     Rect,
     RotRect,
-    Triangle
+    Triangle,
+    Polygon
 }
 
 #[derive(Clone)]
@@ -28,7 +29,9 @@ pub enum DrawCall{
     //Pos.x, Pos.y, Width, Height, Color, conf
     RotatedRectangle(f32, f32, f32, f32, DrawRectangleParams),
     //V1, V2, V3, color
-    Triangle(Vec2, Vec2, Vec2, Color)
+    Triangle(Vec2, Vec2, Vec2, Color),
+    //Pos.x, Pos.y , Sides, Radius, Rotation, Color
+    Polygon(f32, f32, u8, f32, f32, Color)
 }
 impl DrawCall{
     #[inline]
@@ -49,6 +52,9 @@ impl DrawCall{
             DrawCall::Triangle(v1, v2, v3, color) => {
                 draw_triangle(*v1, *v2, *v3, *color);
             }
+            DrawCall::Polygon(x, y, sides, radius, rotation, color) => {
+                draw_poly(*x, *y, *sides, *radius, *rotation, *color);
+            },
         }
     }
 
@@ -60,6 +66,7 @@ impl DrawCall{
             DrawCall::Rectangle(_, _, _, _, _) => return DrawType::Rect,
             DrawCall::RotatedRectangle(_, _, _, _, _) => return DrawType::RotRect,
             DrawCall::Triangle(_, _, _, _) => return DrawType::Triangle,
+            DrawCall::Polygon(_, _, _, _, _, _) => return DrawType::Polygon,
         }
     }
 }
@@ -109,7 +116,7 @@ impl Artist{
         layers.sort_by(|a, b| a.cmp(b));
         
         //For draw type
-        for draw_type in [DrawType::Rect, DrawType::Circle, DrawType::Line, DrawType::RotRect, DrawType::Triangle] {
+        for draw_type in [DrawType::Rect, DrawType::Circle, DrawType::Line, DrawType::RotRect, DrawType::Triangle, DrawType::Polygon] {
             //For layer
             for &layer in &layers {
                 //Draw

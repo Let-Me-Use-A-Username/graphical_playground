@@ -33,6 +33,7 @@ impl Factory{
         size_param.insert(EnemyType::Circle, hash_size);
         size_param.insert(EnemyType::Triangle, hash_size);
         size_param.insert(EnemyType::Rect, hash_size);
+        size_param.insert(EnemyType::Hexagon, hash_size);
 
         recycler.pre_populate(size_param).await;
 
@@ -89,7 +90,10 @@ impl Factory{
                         let size = thread_rng().gen_range(220..240) as f32;
                         self.queue_enemy(EnemyType::Rect, pos, size, color, player_pos).await;
                     },
-                    EnemyType::Hexagon => todo!(),
+                    EnemyType::Hexagon => {
+                        let size = thread_rng().gen_range(100..150) as f32;
+                        self.queue_enemy(EnemyType::Hexagon, pos, size, color, player_pos).await;
+                    },
                 }
             }
         }
@@ -207,7 +211,9 @@ impl Subscriber for Factory{
                         EnemyType::Rect => {
                             self.queue_enemy(EnemyType::Rect, pos, size, color, player_pos).await;
                         },
-                        EnemyType::Hexagon => todo!(),
+                        EnemyType::Hexagon => {
+                            self.queue_enemy(EnemyType::Hexagon, pos, size, color, player_pos).await;
+                        },
                     }
                 }
             },

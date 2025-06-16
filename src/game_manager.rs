@@ -135,6 +135,7 @@ impl GameManager{
         dispatcher.register_listener(EventType::EnemyBulletSpawn, handler.clone());
         dispatcher.register_listener(EventType::EnemyBulletHit, handler.clone());
         dispatcher.register_listener(EventType::CollidingEnemies, handler.clone());
+        dispatcher.register_listener(EventType::DeflectBulletAndSwitch, handler.clone());
 
         //Factory events
         dispatcher.register_listener(EventType::QueueEnemy, factory.clone());

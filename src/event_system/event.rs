@@ -13,6 +13,7 @@ pub enum EventType{
     PlayerBulletSpawn,
     PlayerBulletHit,
     CollidingEnemies,
+    DeflectBulletAndSwitch,
     //Enemies
     EnemyBulletSpawn,
     EnemyBulletHit,

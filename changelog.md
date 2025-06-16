@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.64 Changes 16/6/2025
+- v.0.2.64 Implemented centralized method for players `move_to` and `drift_to` functions.
+- v.0.2.64 Implemented slightly different logic for players movement.
+- v.0.2.64 Fixed a bug when visualizing the Bullets collider.
+- v.0.2.64 Increased players bullet size, decreased speed.
+- v.0.2.64 Implemented template Hexagon enemy.
+- v.0.2.64 Implemented deflecting ability on Hexagon.
+
 
 ### 0.2.64 Changes 15/6/2025
 - v.0.2.64 Implemented dynamic Player shield color, based on remaining charges.

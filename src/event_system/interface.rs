@@ -79,16 +79,16 @@ pub trait Enemy: GameEntity{
 #[async_trait]
 pub trait Projectile: GameEntity{
     fn get_ptype(&self) -> ProjectileType;
+    fn revert(&mut self, ptype: ProjectileType);
     
     fn is_active(&self) -> bool;
     fn set_active(&mut self, alive: bool);
+    fn reset(&mut self, id: u64);
 
     fn force_state(&mut self, state: StateType);
     fn get_state(&self) -> Option<StateType>;
     
     fn get_all_draw_calls(&self) -> Vec<DrawCall>;  //REVIEW: Currently only serves debugging purposes.
-
-    fn reset(&mut self, id: u64);
 
     fn as_bullet(self: Box<Self>) -> Bullet;
 }

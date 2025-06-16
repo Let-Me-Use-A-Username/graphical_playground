@@ -36,7 +36,7 @@ impl EnemyComplexity {
 
         let pool: Vec<EnemyType> = match self {
             EnemyComplexity::Simple => {
-                vec![EnemyType::Circle].into()
+                vec![EnemyType::Hexagon].into()
             },
             EnemyComplexity::Average => {
                 vec![EnemyType::Circle, EnemyType::Triangle].into()

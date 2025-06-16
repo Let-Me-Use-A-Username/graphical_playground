@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use async_trait::async_trait;
 use macroquad::time::get_time;
 
-use crate::event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher}};
+use crate::{entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher}}, objects::bullet::ProjectileType};
 
 use super::{collider::Collider, collision_tracker::CollisionTracker};
 
@@ -64,8 +64,13 @@ impl CollisionDetector{
                 if enemy.collides(collider){
                     if self.tracker.register_projectile_collision(player_projectile_id, enemy_id){
                         
-                        self.publish(Event::new(enemy_id, EventType::EnemyHit)).await;
-                        self.publish(Event::new(player_projectile_id, EventType::PlayerBulletHit)).await;
+                        if enemy.get_type().eq(&EnemyType::Hexagon){
+                            self.publish(Event::new((player_projectile_id, ProjectileType::Enemy), EventType::DeflectBulletAndSwitch)).await;
+                        }
+                        else{
+                            self.publish(Event::new(enemy_id, EventType::EnemyHit)).await;
+                            self.publish(Event::new(player_projectile_id, EventType::PlayerBulletHit)).await;
+                        }
                     }
                 }
             }
