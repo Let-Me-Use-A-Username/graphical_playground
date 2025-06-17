@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::math::Vec2;
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Projectile, Publisher, Subscriber}}, objects::bullet::{Bullet, ProjectileType}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, event_system::{event::{Event, EventType}, interface::{Projectile, Publisher, Subscriber}}, objects::bullet::{Bullet, ProjectileType}};
 
 
 
@@ -57,6 +57,10 @@ impl TriangleAssistant{
                     
                     let proj = Box::new(bullet) as Box<dyn Projectile>;
                     self.publish(Event::new(Some(proj), EventType::EnemyBulletSpawn)).await;
+                    
+                    // Emit sound request
+                    let srequest = SoundRequest::new(true, false, 0.05);
+                    self.publish(Event::new((SoundType::TriangleFiring, srequest), EventType::PlaySound)).await;
                 }
                 else{
                     self.publish(Event::new((self.pool_size, ProjectileType::Enemy), EventType::RequestBlankCollection)).await;

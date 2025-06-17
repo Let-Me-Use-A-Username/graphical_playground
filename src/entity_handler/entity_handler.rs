@@ -396,6 +396,10 @@ impl Subscriber for Handler{
                 if reverted{
                     let id = pid.unwrap_or(0);
                     self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
+
+                    // Emit sound request
+                    let srequest = SoundRequest::new(true, false, 0.1);
+                    self.publish(Event::new((SoundType::HexDeflect, srequest), EventType::PlaySound)).await;
                 }
             }
             _ => unreachable!()

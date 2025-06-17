@@ -55,6 +55,7 @@ impl Updatable for Circle{
                     },
                     StateType::Hit => {
                         self.set_alive(false);
+                        play_sound = true;
                     },
                     _ => (), //Unreachable
                 }
@@ -62,6 +63,12 @@ impl Updatable for Circle{
 
             self.collider.update(self.pos);
             self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await;
+        
+            if play_sound{
+                // Emit sound request
+                let srequest = SoundRequest::new(true, false, 0.07);
+                self.publish(Event::new((SoundType::EnemyDeath, srequest), EventType::PlaySound)).await;
+            }
         }
     }
 }

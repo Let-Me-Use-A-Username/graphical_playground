@@ -6,7 +6,7 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use ::rand::{thread_rng, Rng};
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
 /* 
     The triangle in comparison to the circle is more complex.
@@ -186,10 +186,8 @@ impl Triangle{
 impl Updatable for Triangle{
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
-            //Publish all bullets
-            //self.publish_bullets().await;
-            
             let mut override_pos = None;
+            let mut play_sound = false;
             
             while let Some(param_item) = params.pop(){
                 if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
@@ -214,13 +212,20 @@ impl Updatable for Triangle{
                     },
                     StateType::Hit => {
                         self.set_alive(false);
+                        play_sound = true;
                     },
                     _ => (), //Unreachable
                 }
             }
 
             self.collider.update(self.pos);
-            self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await
+            self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await;
+        
+            if play_sound{
+                // Emit sound request
+                let srequest = SoundRequest::new(true, false, 0.1);
+                self.publish(Event::new((SoundType::EnemyDeath, srequest), EventType::PlaySound)).await;
+            }
         }
     }
 }

@@ -142,8 +142,8 @@ impl Player{
             let proj = Box::new(bullet) as Box<dyn Projectile>;
             self.publish(Event::new(Some(proj), EventType::PlayerBulletSpawn)).await;
 
-            
-            let sound_request = SoundRequest::new(false, false, 0.1);
+            // Emit Sound
+            let sound_request = SoundRequest::new(true, false, 0.1);
             self.publish(Event::new((SoundType::PlayerFiring ,sound_request), EventType::PlaySound)).await;
         }
         else if self.bullets.is_empty(){
@@ -151,26 +151,31 @@ impl Player{
         }
     }
 
-    fn boost(&mut self, _delta: f32){
-        const BOOST_MULT: f32 = 3600.0;
+    fn boost(&mut self, _delta: f32) -> bool{
+        const THRESHOLD: f32 = 4800.0;
         let now = get_time();
+
+        if self.boost_timer.expired(now){
+
+            let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
+            let boost_force = forward * 800.0;
+            
+            self.velocity += boost_force;
+            self.boost_counter.discharge();
+
+            //cap
+            if self.velocity.length() > THRESHOLD {
+                self.velocity = self.velocity.normalize() * THRESHOLD;
+            }
+            
+            return true
+        }
 
         if !self.boost_timer.is_set(){
             self.boost_timer.set(now, 1.0);
         }
 
-        self.boost_counter.discharge();
-        
-        let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
-
-        //let boost_force = forward * (6000.0 * delta);
-        let boost_force = forward * 800.0;
-        self.velocity += boost_force;
-        
-        // Cap velocity at boost max
-        if self.velocity.length() > BOOST_MULT {
-            self.velocity = self.velocity.normalize() * BOOST_MULT;
-        }
+        return false
     }
 
     fn activate_boost(&mut self) -> bool{
@@ -226,8 +231,8 @@ impl Player{
                 max_steering_effectiveness = 1.2;
                 rotation_speed_multiplier = 3.0;
                 steering_force_multiplier = 0.5;
-                acceleration_multiplier = 0.5;      
-                velocity_zero_threshold = 115.0;    
+                acceleration_multiplier = 0.2;      
+                velocity_zero_threshold = 150.0;    
                 friction = (0.2, 0.4);              
             },
             false => {
@@ -236,8 +241,8 @@ impl Player{
                 max_steering_effectiveness = 1.0;
                 rotation_speed_multiplier = 1.35;
                 steering_force_multiplier = 0.3;
-                acceleration_multiplier = 0.8;
-                velocity_zero_threshold = 25.0;
+                acceleration_multiplier = 0.4;
+                velocity_zero_threshold = 100.0;
                 friction = (0.3, 1.2);
             },
         }
@@ -256,7 +261,7 @@ impl Player{
         let final_rotation_speed = rotation_speed_multiplier * steering_effectiveness;
         
         if current_speed > 5.0 {
-            if is_key_down(KeyCode::D) {
+            if is_key_down(KeyCode::D) || is_key_pressed(KeyCode::D){
                 self.rotation += final_rotation_speed * delta;
                 
                 // In drift mode, only apply lateral forces when throttling
@@ -267,7 +272,7 @@ impl Player{
                 }
             }
             
-            if is_key_down(KeyCode::A) {
+            if is_key_down(KeyCode::A) || is_key_pressed(KeyCode::A){
                 self.rotation -= final_rotation_speed * delta;
                 
                 // In drift mode, only apply lateral forces when throttling
@@ -279,14 +284,13 @@ impl Player{
             }
         }
         
-        // Handle throttle input
         self.direction = Vec2::ZERO;
         
-        if is_key_down(KeyCode::W) {
+        if is_key_down(KeyCode::W) || is_key_pressed(KeyCode::W){
             self.direction += forward;
         }
         
-        if is_key_down(KeyCode::S) {
+        if is_key_down(KeyCode::S) || is_key_pressed(KeyCode::S){
             self.direction -= forward;
         }
         
@@ -305,7 +309,7 @@ impl Player{
         } 
         else {
             if self.acceleration > 1.0 {
-                self.acceleration *= 0.85;
+                self.acceleration -= acceleration_multiplier * 10.0;
             }
             
             if self.velocity.length() < velocity_zero_threshold {
@@ -393,11 +397,12 @@ impl Updatable for Player{
         };
 
         //State transitions
-        let is_drifting = is_key_down(KeyCode::Space);
+        let is_turning = is_key_down(KeyCode::A) || is_key_down(KeyCode::D);
+        let is_drifting = is_key_down(KeyCode::Space) && is_turning;
         
         //Sub-state transitions
         let is_firing = is_mouse_button_down(MouseButton::Left) & can_attack;
-        let is_boosting = self.activate_boost() && self.boost_timer.expired(now);
+        let is_boosting = self.activate_boost();
 
         let is_shielding = self.activate_shield();
         self.shield.set_active(is_shielding);
@@ -430,7 +435,14 @@ impl Updatable for Player{
                 }
 
                 if is_boosting{
-                    self.boost(delta);
+                    let res = self.boost(delta); 
+                    
+                    if res{
+                        let sound_request = SoundRequest::new(true, false, 0.08);
+                        self.publish(Event::new((SoundType::PlayerBoosting, sound_request), EventType::PlaySound)).await;
+                    }
+
+                    
                 }
             },
             StateType::Hit => {
@@ -469,6 +481,14 @@ impl Updatable for Player{
                 if !is_key_down(KeyCode::Space) && self.velocity.length() > 10.0{
                     self.machine.transition(StateType::Moving);
                 }
+
+                if !is_turning{
+                    self.machine.transition(StateType::Moving);
+                }
+
+                if self.velocity.eq(&Vec2::ZERO){
+                    self.machine.transition(StateType::Idle);
+                }
             }
         };
         
@@ -480,7 +500,27 @@ impl Updatable for Player{
             sound.unwrap().to_owned()
         };
 
-        let sound_request = SoundRequest::new(true, true, 0.1);
+        let volume: f32 = match sound{
+            SoundType::PlayerMoving => {
+                let base = 0.0125;
+                let min = 0.0;
+                let max = 7.0;
+                let velocity = self.velocity.length();
+
+                let clamped_velocity = (velocity / 130.0).clamp(min, max);
+                
+                let volume = (base * clamped_velocity).clamp(0.03, 0.09);
+
+                volume
+            },
+            SoundType::PlayerIdle => {
+                0.03
+            },
+            _ => {
+                0.05
+            }
+        };
+        let sound_request = SoundRequest::new(false, true, volume);
         self.publish(Event::new((sound ,sound_request), EventType::PlaySound)).await;
     }
 }
@@ -603,6 +643,8 @@ impl Playable for Player{
 #[async_trait]
 impl Subscriber for Player {
     async fn notify(&mut self, event: &Event){
+        let mut shield_hit = false;
+        
         match &event.event_type{
             EventType::PlayerHit => {
                 let mut current_time = get_time();
@@ -619,6 +661,7 @@ impl Subscriber for Player {
                     }
                     //If shield active dont register, but remove counter
                     else{
+                        shield_hit = true;
                         self.shield_counter.discharge();
                     }
                 }
@@ -657,6 +700,12 @@ impl Subscriber for Player {
                 }
             }
             _ => {}
+        }
+    
+        if shield_hit{
+            // Emit Sound
+            let sound_request = SoundRequest::new(true, false, 0.1);
+            self.publish(Event::new((SoundType::ShieldHit ,sound_request), EventType::PlaySound)).await;
         }
     }
 }

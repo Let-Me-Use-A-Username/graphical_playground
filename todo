@@ -9,12 +9,16 @@
 
 ==============================================
 ================== Critical ==================
-- Implement music and sound effects
-    - Drifting while firing produces weird sound
-    - Find rest of effects
-    - ShieldHit (?)
-    - Music
+- Rework PLayer boost
+    - At max speed the boost is jaggedy
+    - Keep it a short distance, low velocity boost to encourage low pacing kiting
+    - *ERROR*: When changing the audio emission the dash sometimes is huge
 
+==============================================
+================== Current ===================
+
+- Implement music and sound effects
+    - Music
 
 ==============================================
 ================== General todo ==============

@@ -3,6 +3,10 @@
 ### 0.2.65 Changes 17/6/2025
 - v.0.2.65 Implemented *Sound Manager called Accoustic*. Requests are event based.
 - v.0.2.65 Implemented Player Fire sound effect to test handler. Works
+- v.0.2.65 Changed `players drifting` to only work if the player is *actively turning*.
+- v.0.2.65 Modified player to provide variable *volume* while moving, based on velocity.
+- v.0.2.65 Implemented couple more sound effects.
+- v.0.2.65 Altered the gain and loss of acceleration inside player.
 
 
 ### 0.2.64 Changes 16/6/2025
