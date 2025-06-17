@@ -1,14 +1,14 @@
 [package]
 name = "graphical_playground"
-version = "0.2.64"
+version = "0.2.65"
 edition = "2021"
 rust-version = "1.84"   #Required versioning to avoid compatibility issues 
 
 [dependencies]
-# macroquad = { git = "https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git", branch = "master" }
+# macroquad = { git = "https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git", branch = "master"}
 # macroquad-particles = { git = "https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git", branch = "master", package = "macroquad-particles" }
 
-macroquad = { path = "../unsafe_macroquad" }
+macroquad = { path = "../unsafe_macroquad", features=["audio"] }
 macroquad-particles = { path = "../unsafe_macroquad/particles", package = "macroquad-particles" }
 rand = "0.8.5"
 async-trait = "0.1.88"

@@ -3,14 +3,17 @@
 - Implement Boss
     - use shape outlines to highlight them.
 
-- Implement music and sound effects
-
 - Implement basic menu UI
 
 - Implement score?
 
 ==============================================
 ================== Critical ==================
+- Implement music and sound effects
+    - Drifting while firing produces weird sound
+    - Find rest of effects
+    - ShieldHit (?)
+    - Music
 
 
 ==============================================

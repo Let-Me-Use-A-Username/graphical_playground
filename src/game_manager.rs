@@ -7,6 +7,7 @@ use std::any::Any;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
+use crate::audio_system::audio_handler::Accoustic;
 use crate::collision_system::collision_detector::CollisionDetector;
 use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
@@ -117,6 +118,8 @@ impl GameManager{
             global.get_triangle_assistant_pool_size(), 
             global.get_triangle_bullet_amount()
         )));
+
+        let accoustic = Arc::new(Mutex::new(Accoustic::new().await));
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -159,6 +162,8 @@ impl GameManager{
         dispatcher.register_listener(EventType::ForwardCollectionToEntity, assistant.clone());
         dispatcher.register_listener(EventType::RemoveTriangle, assistant.clone());
 
+        //Accoustic
+        dispatcher.register_listener(EventType::PlaySound, accoustic.clone());
 
         return GameManager { 
             state: GameState::Playing,

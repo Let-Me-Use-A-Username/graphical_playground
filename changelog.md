@@ -1,5 +1,10 @@
 # Changelog
 
+### 0.2.65 Changes 17/6/2025
+- v.0.2.65 Implemented *Sound Manager called Accoustic*. Requests are event based.
+- v.0.2.65 Implemented Player Fire sound effect to test handler. Works
+
+
 ### 0.2.64 Changes 16/6/2025
 - v.0.2.64 Implemented centralized method for players `move_to` and `drift_to` functions.
 - v.0.2.64 Implemented slightly different logic for players movement.

@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::mpsc::Sender;
 
-use crate::{collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 
@@ -39,6 +39,8 @@ pub struct Player{
     bullets: Vec<Bullet>,
     //Emitter specifics
     emittion_configs: Vec<(StateType, ConfigType)>,
+    //Sound specifics
+    sound_config: Vec<(StateType, SoundType)>
 }
 
 impl Player{
@@ -76,7 +78,14 @@ impl Player{
                 (StateType::Drifting, ConfigType::PlayerDrifting),
                 (StateType::Moving, ConfigType::PlayerMove),
                 (StateType::Hit, ConfigType::PlayerHit)
-            ]
+            ],
+
+            sound_config: vec![
+                (StateType::Idle, SoundType::PlayerIdle),
+                (StateType::Drifting, SoundType::PlayerDrifting),
+                (StateType::Moving, SoundType::PlayerMoving),
+                (StateType::Hit, SoundType::PlayerHit)
+            ],
         };
 
         player.publish(Event::new((player.get_id(), player.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
@@ -131,8 +140,11 @@ impl Player{
             );
 
             let proj = Box::new(bullet) as Box<dyn Projectile>;
-            
             self.publish(Event::new(Some(proj), EventType::PlayerBulletSpawn)).await;
+
+            
+            let sound_request = SoundRequest::new(false, false, 0.1);
+            self.publish(Event::new((SoundType::PlayerFiring ,sound_request), EventType::PlaySound)).await;
         }
         else if self.bullets.is_empty(){
             self.publish(Event::new((128 as usize, ProjectileType::Player), EventType::RequestBlankCollection)).await;
@@ -447,18 +459,29 @@ impl Updatable for Player{
                     self.pos += self.velocity * delta;
                 }
             },
-        StateType::Drifting => {
-            self.drift_to(delta);
+            StateType::Drifting => {
+                self.drift_to(delta);
 
-            if is_firing{
-                self.fire().await;
-            }
+                if is_firing{
+                    self.fire().await;
+                }
 
-            if !is_key_down(KeyCode::Space) && self.velocity.length() > 10.0{
-                self.machine.transition(StateType::Moving);
+                if !is_key_down(KeyCode::Space) && self.velocity.length() > 10.0{
+                    self.machine.transition(StateType::Moving);
+                }
             }
-        }
         };
+        
+        let sound: SoundType = {
+            let sound = self.sound_config.iter()
+                    .find(|(state, _)| state == &current_state)
+                    .map(|(_, stype)| stype);
+
+            sound.unwrap().to_owned()
+        };
+
+        let sound_request = SoundRequest::new(true, true, 0.1);
+        self.publish(Event::new((sound ,sound_request), EventType::PlaySound)).await;
     }
 }
 

@@ -1,4 +1,5 @@
 mod actors;
+mod audio_system;
 mod event_system;
 mod grid_system;
 mod utils;

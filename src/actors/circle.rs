@@ -5,7 +5,7 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::artist::{ConfigType, DrawCall}, utils::machine::{StateMachine, StateType}};   
 
 pub struct Circle{
     //Attributes
@@ -32,6 +32,8 @@ impl Updatable for Circle{
         if self.is_alive{
             //Update target position
             let mut overide = None;
+            let mut play_sound = false;
+
 
             while let Some(param_item) = params.pop(){
                 if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
@@ -59,7 +61,7 @@ impl Updatable for Circle{
             }
 
             self.collider.update(self.pos);
-            self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await
+            self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await;
         }
     }
 }

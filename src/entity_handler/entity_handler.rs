@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 use async_trait::async_trait;
 use macroquad::{math::{vec2, Rect, Vec2}, time::get_time};
 
-use crate::{event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::{machine::StateType, timer::SimpleTimer}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, event_system::{event::{Event, EventType}, interface::{Enemy, Projectile, Publisher, Subscriber}}, objects::bullet::ProjectileType, renderer::artist::DrawCall, utils::{machine::StateType, timer::SimpleTimer}};
 
 use super::enemy_type::EnemyType;
 
@@ -294,6 +294,7 @@ impl Subscriber for Handler{
                         }
                     }
                 }
+                
             }
             EventType::BatchEnemySpawn => {
                 if let Ok(mut entry) = event.data.lock(){

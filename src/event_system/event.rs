@@ -40,7 +40,9 @@ pub enum EventType{
     ForwardCollectionToEntity,
     //Triangle Assistant
     TriangleBulletRequest,
-    RemoveTriangle
+    RemoveTriangle,
+    //Accoustic
+    PlaySound
 }
 
 #[derive(Clone, Debug)]

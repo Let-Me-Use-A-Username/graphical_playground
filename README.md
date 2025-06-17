@@ -6,13 +6,14 @@ the rest figure out on your own!
 
 # Mechanics
 The game is only playable by using keyboard and mouse, and at the moment, controls can't be configured with.
+
 ## Keyboard
 - <strong>W/S</strong>:  Forwards/Backwards movement
 - <strong>A/D</strong>:  Left/Right rotation
 - <strong>Space</strong>:  Handbrake.
 - <strong>Left Shift</strong>:  Movement boost. Works better when velocity is small.
-<br>
-<br>
+
+
 ## Mouse
 - <strong>Left Mouse button</strong>: Fire guns interchangebly.
 - <strong>Right Mouse button</strong>: Shield yourself. 
