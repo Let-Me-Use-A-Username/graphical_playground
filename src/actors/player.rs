@@ -152,27 +152,17 @@ impl Player{
     }
 
     fn boost(&mut self, _delta: f32) -> bool{
-        const THRESHOLD: f32 = 4800.0;
         let now = get_time();
 
-        if self.boost_timer.expired(now){
-
+        if self.boost_timer.expired(now) && self.velocity.length() < 350.0{
             let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
             let boost_force = forward * 800.0;
             
             self.velocity += boost_force;
             self.boost_counter.discharge();
-
-            //cap
-            if self.velocity.length() > THRESHOLD {
-                self.velocity = self.velocity.normalize() * THRESHOLD;
-            }
-            
-            return true
-        }
-
-        if !self.boost_timer.is_set(){
             self.boost_timer.set(now, 1.0);
+
+            return true
         }
 
         return false

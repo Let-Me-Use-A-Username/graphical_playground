@@ -106,7 +106,7 @@ impl Accoustic{
     pub async fn new() -> Accoustic{
         set_pc_assets_folder("assets");
 
-        let player_boosting = audio::load_sound(&"audio/sounds/player_boosting.wav").await.unwrap();
+        let player_boosting = audio::load_sound(&"audio/sounds/player_boosting_2.wav").await.unwrap();
         let player_idle = audio::load_sound(&"audio/sounds/player_idle.wav").await.unwrap();
         let player_hit = audio::load_sound(&"audio/sounds/player_hit.wav").await.unwrap();
         let player_moving = audio::load_sound(&"audio/sounds/player_moving.wav").await.unwrap();

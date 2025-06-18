@@ -1,5 +1,7 @@
 ==============================================
 ================== Final Roadmap =============
+- Implement music 
+
 - Implement Boss
     - use shape outlines to highlight them.
 
@@ -9,22 +11,30 @@
 
 ==============================================
 ================== Critical ==================
-- Rework PLayer boost
-    - At max speed the boost is jaggedy
-    - Keep it a short distance, low velocity boost to encourage low pacing kiting
-    - *ERROR*: When changing the audio emission the dash sometimes is huge
+- Player 
+    - Boost
+        - At max speed the boost shifts the player slightly left or right
+            - Happends due to normalization
+                - *Fixed by capping velocity at which the player can boost*
+        - When changing the audio emission the dash sometimes is huge
+            - Is affected from boost timer + asynchronous behavior
+                - *POSSIBLY fixed by setting timer inside condition*
+        - Boosts extra when no forwards / backwards input
+    - Movement
+        - Change when and how the velocity caps while Moving / drifting
+
+- Rework players boost
+    - Decide whether it should be used at all times (velocity wise)
+        - When Drifting?
+    - Decide how much of a boost it should apply (magnitude)
+    - Idea: Boost increases past the limit. Moving state bring it down to threshold quickly
 
 ==============================================
 ================== Current ===================
 
-- Implement music and sound effects
-    - Music
 
 ==============================================
 ================== General todo ==============
-
-- In release version, player movement feels different. Test it
-
     
 ==============================================
 ================== Gameplay ==================
@@ -34,21 +44,19 @@
 
 ==============================================
 ================== Testing ===================
-- Implementing editor that hot reloads variables?
 
-- Player Test
-    -Test handbrake mechanic(Check forward and lateral friction)
-        -Faster or slower? (if faster revert to old frictions, else increase them)
-        -Turns too much or too little?
-    -Test Players base turn rate (rotation when not drifting)
-    -Not inputting movement losses velocity too fast
-    -Player no longer has drag when running enemies over and is immune
-    -Players boost is quite weak, and only useful when velocity is lows
-        - Perhaps adopt this lower speed philoshophy
+- Test in Player Drift:
+    - When drifting, letting go off forwards / backwards,  turning, and 
+        then applying Forwards/backwards input, increaes velocity
+            - *UNSURE whether I want to keep this*
+            - *Player Test ???*
+    - When drifting, and altering from forward to backwards momentum, 
+        the velocity in maintained instead of going to zero and then negative
+            - *UNSURE whether I want to keep this*
+            - *Player Test ???*
 
-    - Playetest results: 
-        -trch: 
-            - Θα ηθελα πιο μεγαλο rotation speed, μεγαλυτερα projectiles, λιγοτερο firepower για να χρειαστει να κανω kyte και να μην παιζω turret mode
+- In release version, player movement feels different. Test it
+
 
 - Enemies
     -Triangle
@@ -64,19 +72,19 @@
 
 ==============================================
 ================== Gameplay Design and Ideas==
-- Implement firing angle modifier based on mouse scroll. Instead of literally zooming.
 
 
  
 ==============================================
 ================== Implementation ideas ======
+- Implementing editor that hot reloads variables?
+
 - Implement better UI
     - Implement fullscreen with  macroquad::prelude::Conf
         - Function macroquad::window::set_fullscreen ?
             - When settings are changed, restart game to run them (hot reload)
     - Implement Tinkering menu for different player-based aspects, variables, skins, sounds etc
     - Draw bullet ammunition UI
-    - Draw Shield charges
     - Draw Boost charges
 
 - Performance enhancing ideas
