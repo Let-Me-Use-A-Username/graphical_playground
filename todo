@@ -1,36 +1,27 @@
 ==============================================
 ================== Final Roadmap =============
-- Implement music 
+
+- Implement UI
+    - Menu
+    - In game
+        - UIController
+    - Settings
+        - Alter Effects/Music volume
+        - Alter Movement/Drifting variables
+    - Hot reloading?
+
 
 - Implement Boss
     - use shape outlines to highlight them.
 
-- Implement basic menu UI
-
-- Implement score?
-
 ==============================================
 ================== Critical ==================
-- Player 
-    - Boost
-        - At max speed the boost shifts the player slightly left or right
-            - Happends due to normalization
-                - *Fixed by capping velocity at which the player can boost*
-        - When changing the audio emission the dash sometimes is huge
-            - Is affected from boost timer + asynchronous behavior
-                - *POSSIBLY fixed by setting timer inside condition*
-        - Boosts extra when no forwards / backwards input
-    - Movement
-        - Change when and how the velocity caps while Moving / drifting
 
-- Rework players boost
-    - Decide whether it should be used at all times (velocity wise)
-        - When Drifting?
-    - Decide how much of a boost it should apply (magnitude)
-    - Idea: Boost increases past the limit. Moving state bring it down to threshold quickly
+
 
 ==============================================
 ================== Current ===================
+- Implement score
 
 
 ==============================================
@@ -44,31 +35,19 @@
 
 ==============================================
 ================== Testing ===================
-
 - Test in Player Drift:
     - When drifting, letting go off forwards / backwards,  turning, and 
         then applying Forwards/backwards input, increaes velocity
             - *UNSURE whether I want to keep this*
             - *Player Test ???*
-    - When drifting, and altering from forward to backwards momentum, 
-        the velocity in maintained instead of going to zero and then negative
+
+- Test in Player movement
+    - Forwards and backwards directions maintain acceleration. Switching from W/D provides no deceleration
             - *UNSURE whether I want to keep this*
             - *Player Test ???*
 
+
 - In release version, player movement feels different. Test it
-
-
-- Enemies
-    -Triangle
-        - Firing distance 
-        - Firing cooldown (timer cooldown)
-        - Movement speed
-
-- Component Test
-    - MetalArtist:
-        - Monitor memory usage (especially freed memory)
-    - Collision Detector/Tracker and Collider 
-        - Check responsiveness of Collision system in general
 
 ==============================================
 ================== Gameplay Design and Ideas==

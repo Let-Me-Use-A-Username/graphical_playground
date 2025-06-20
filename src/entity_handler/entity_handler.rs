@@ -83,19 +83,26 @@ impl Handler{
         let mut bullets_to_recycle = Vec::new();
 
         //Drop enemies
+        let mut enemies = Vec::new();
+        
         for id in enemies_remove{
             if let Some(enemy) = self.enemies.remove(&id){
+
+                let etype = enemy.get_type();
                 self.publish(Event::new(id, EventType::RemoveEntityFromGrid)).await;
                 
-                if enemy.get_type().eq(&EnemyType::Triangle){
+                if etype.eq(&EnemyType::Triangle){
                     self.publish(Event::new(enemy.get_id(), EventType::RemoveTriangle)).await;
                 }
                 self.publish(Event::new((enemy.get_id(), StateType::Hit), EventType::UnregisterEmitterConf)).await;
                 
                 enemies_to_recycle.push(Some(enemy));
                 self.enemy_overides.remove(&id);
+                
+                enemies.push(etype);
             }
         }
+        self.publish(Event::new((enemies.len() as u64, enemies), EventType::AddScorePoints)).await;
 
         //Drop projectiles
         for id in projecitles_remove{

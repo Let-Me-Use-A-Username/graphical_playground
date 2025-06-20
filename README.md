@@ -11,7 +11,7 @@ The game is only playable by using keyboard and mouse, and at the moment, contro
 - <strong>W/S</strong>:  Forwards/Backwards movement
 - <strong>A/D</strong>:  Left/Right rotation
 - <strong>Space</strong>:  Handbrake.
-- <strong>Left Shift</strong>:  Movement boost. Works better when velocity is small.
+- <strong>Left Shift</strong>:  Nitro. Forward movement boost.
 
 
 ## Mouse

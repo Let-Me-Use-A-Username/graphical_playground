@@ -11,11 +11,11 @@ impl Global{
     /* 
             General
     */
-    pub fn get_screen_width(&self) -> f32{
+    pub fn get_screen_width() -> f32{
         return screen_width();
     }
     
-    pub fn get_screen_height(&self) -> f32{
+    pub fn get_screen_height() -> f32{
         return screen_height();
     }
 
@@ -64,6 +64,21 @@ impl Global{
 
     pub fn get_triangle_bullet_amount(&self) -> usize{
         return 10
+    }
+
+    
+    /* 
+        Scorer
+    */
+    pub fn get_enemy_points() -> Vec<f64> {
+        let circle = 5.0;
+        let triangle = 8.0;
+        let rect = 15.0;
+        let hexagon = 50.0;
+
+        let boss = 200.0;
+
+        return vec![circle, triangle, rect, hexagon, boss]
     }
 }
 

@@ -1,5 +1,14 @@
 # Changelog
 
+### 0.2.65 Changes 20/6/2025
+- v.0.2.65 Fixed players boost mechanic.
+- v.0.2.65 Changed `select_movement` variables in player.
+- v.0.2.65 Implemented player velocity normalization when speed is greater than maximum.
+- v.0.2.65 *Removed boost velocity threshold*, now the boost occurs at any velocity.
+- v.0.2.65 Added main theme track at start of *update loop*. 
+- v.0.2.65 Implemented UIController template to handle in game ui.
+
+
 ### 0.2.65 Changes 17/6/2025
 - v.0.2.65 Implemented *Sound Manager called Accoustic*. Requests are event based.
 - v.0.2.65 Implemented Player Fire sound effect to test handler. Works

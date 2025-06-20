@@ -8,6 +8,7 @@ mod entity_handler;
 mod collision_system;
 mod objects;
 mod renderer;
+mod ui;
 
 use std::env;
 use macroquad::prelude::*;
@@ -38,17 +39,20 @@ pub fn window_conf() -> Conf{
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    //General
     env::set_var("RUST_BACKTRACE", "1");
-
     env::set_var("DEBUG:FPS", "false");
-
+    //Grid
     env::set_var("DEBUG:GRID", "false");
     env::set_var("DEBUG:GRID_CELL", "false");
-
+    //Entity handler
     env::set_var("DEBUG:ENTITY_HANDLER", "false");
-    
+    //Triangle assistant
     env::set_var("DEBUG:TRIANGLE_ASSISTANT", "false");
-    
+    //Accoustic
+    env::set_var("DEBUG:ENABLE_SOUND_EFFECTS", "true");
+    env::set_var("DEBUG:ENABLE_MUSIC", "false");
+
     let mut game_manager = GameManager::new().await;
 
     loop {

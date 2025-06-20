@@ -154,7 +154,7 @@ impl Player{
     fn boost(&mut self, _delta: f32) -> bool{
         let now = get_time();
 
-        if self.boost_timer.expired(now) && self.velocity.length() < 350.0{
+        if self.boost_timer.expired(now){
             let forward = Vec2::new(self.rotation.sin(), -self.rotation.cos()).normalize();
             let boost_force = forward * 800.0;
             
@@ -221,9 +221,9 @@ impl Player{
                 max_steering_effectiveness = 1.2;
                 rotation_speed_multiplier = 3.0;
                 steering_force_multiplier = 0.5;
-                acceleration_multiplier = 0.2;      
+                acceleration_multiplier = 0.01;      
                 velocity_zero_threshold = 150.0;    
-                friction = (0.2, 0.4);              
+                friction = (0.2, 1.8);
             },
             false => {
                 // Normal mode: realistic car physics
@@ -233,7 +233,7 @@ impl Player{
                 steering_force_multiplier = 0.3;
                 acceleration_multiplier = 0.4;
                 velocity_zero_threshold = 100.0;
-                friction = (0.3, 1.2);
+                friction = (0.7, 1.0);
             },
         }
         
@@ -255,7 +255,7 @@ impl Player{
                 self.rotation += final_rotation_speed * delta;
                 
                 // In drift mode, only apply lateral forces when throttling
-                if is_drifting && is_throttling {
+                if is_throttling {
                     let steering_force = current_speed * steering_force_multiplier * delta;
                     let right_vector = Vec2::new(self.rotation.cos(), self.rotation.sin()).normalize();
                     self.velocity += right_vector * steering_force;
@@ -266,7 +266,7 @@ impl Player{
                 self.rotation -= final_rotation_speed * delta;
                 
                 // In drift mode, only apply lateral forces when throttling
-                if is_drifting && is_throttling {
+                if is_throttling {
                     let steering_force = current_speed * steering_force_multiplier * delta;
                     let left_vector = Vec2::new(-self.rotation.cos(), -self.rotation.sin()).normalize();
                     self.velocity += left_vector * steering_force;
@@ -276,6 +276,7 @@ impl Player{
         
         self.direction = Vec2::ZERO;
         
+        //Forward / backwards direction
         if is_key_down(KeyCode::W) || is_key_pressed(KeyCode::W){
             self.direction += forward;
         }
@@ -284,18 +285,15 @@ impl Player{
             self.direction -= forward;
         }
         
+        //Amplifying velocity based on acceleration
         if self.direction.length() > 0.0 {
             self.direction = self.direction.normalize();
             
-            if self.acceleration < self.max_acceleration {
+            if self.acceleration < self.max_acceleration{
                 self.acceleration += acceleration_multiplier;
             }
             
             self.velocity += self.direction * self.acceleration * delta;
-            
-            if self.velocity.length() > self.speed {
-                self.velocity = self.velocity.normalize() * self.speed;
-            }
         } 
         else {
             if self.acceleration > 1.0 {
@@ -307,6 +305,11 @@ impl Player{
             }
         }
         
+        //Note: Velocity threshold. Returns player to *SPEED*
+        if self.velocity.length() > self.speed {
+            self.velocity -= self.direction * self.acceleration * delta;
+        }
+        
         // Apply physics with component separation
         let forward_speed = self.velocity.dot(forward);
         let mut forward_component = forward * forward_speed;
@@ -314,7 +317,7 @@ impl Player{
         
         // In drift mode without throttle, increase friction to naturally straighten out
         let actual_friction = if is_drifting && !is_throttling {
-            (friction.0 * 1.5, friction.1 * 12.0) // Increased friction when coasting in drift
+            (friction.0, friction.1 * 2.0)
         } else {
             friction
         };

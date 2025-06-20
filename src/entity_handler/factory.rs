@@ -94,6 +94,7 @@ impl Factory{
                         let size = thread_rng().gen_range(100..150) as f32;
                         self.queue_enemy(EnemyType::Hexagon, pos, size, color, player_pos).await;
                     },
+                    EnemyType::Boss => {}
                 }
             }
         }
@@ -214,6 +215,7 @@ impl Subscriber for Factory{
                         EnemyType::Hexagon => {
                             self.queue_enemy(EnemyType::Hexagon, pos, size, color, player_pos).await;
                         },
+                        EnemyType::Boss => {}
                     }
                 }
             },

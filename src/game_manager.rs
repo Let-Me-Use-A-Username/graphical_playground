@@ -7,7 +7,7 @@ use std::any::Any;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
-use crate::audio_system::audio_handler::Accoustic;
+use crate::audio_system::audio_handler::{Accoustic, SoundRequest, SoundType};
 use crate::collision_system::collision_detector::CollisionDetector;
 use crate::entity_handler::entity_handler::Handler;
 use crate::entity_handler::factory::Factory;
@@ -22,6 +22,7 @@ use crate::grid_system::wall::Wall;
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::objects::bullet::ProjectileType;
 use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
+use crate::ui::uicontroller::UIController;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
 use crate::utils::timer::Timer;
@@ -58,6 +59,7 @@ pub struct GameManager{
     dispatcher: Dispatcher,
     artist: Artist,
     metal: Arc<Mutex<MetalArtist>>,
+    uicontroller: Arc<Mutex<UIController>>,
 
     handler: Arc<Mutex<Handler>>,
     spawner: Arc<Mutex<SpawnManager>>,
@@ -121,6 +123,8 @@ impl GameManager{
 
         let accoustic = Arc::new(Mutex::new(Accoustic::new().await));
         
+        let uicontroller = Arc::new(Mutex::new(UIController::new(dispatcher.create_sender())));
+        
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
         dispatcher.register_listener(EventType::ForwardCollectionToPlayer, player.clone());
@@ -165,6 +169,9 @@ impl GameManager{
         //Accoustic
         dispatcher.register_listener(EventType::PlaySound, accoustic.clone());
 
+        //UIController
+        dispatcher.register_listener(EventType::AddScorePoints, uicontroller.clone());
+
         return GameManager { 
             state: GameState::Playing,
             channel: (sender, receiver),
@@ -177,6 +184,7 @@ impl GameManager{
             dispatcher: dispatcher,
             artist: Artist::new(),
             metal: metal,
+            uicontroller: uicontroller,
 
             handler: handler,
             spawner: spawner,
@@ -185,7 +193,7 @@ impl GameManager{
             grid: grid,
             detector: detector,
             
-            player: player
+            player: player,
         }
     }
 
@@ -226,6 +234,9 @@ impl GameManager{
 
         let mut draw_calls: Vec<(i32, DrawCall)> = Vec::with_capacity(1024);
         let mut emitter_calls: Vec<(u64, StateType, Vec2)> = Vec::with_capacity(1024);
+
+        let main_theme_request = SoundRequest::new(false, true, 0.4);
+        let _ = self.component_sender.send(Event::new((SoundType::MainTheme, main_theme_request), EventType::PlaySound));
 
         loop {
             // Mouse wheel
@@ -411,6 +422,11 @@ impl GameManager{
                     emitter.draw();
                 }
             }
+            {   
+                if let Ok(controller) = self.uicontroller.lock(){
+                    controller.draw().await;
+                }
+            }
 
             draw_calls.clear();
             emitter_calls.clear();
@@ -437,8 +453,8 @@ impl GameManager{
         let mut state = &self.state;
         let mut quit = false;
 
-        let width = self.global.get_screen_width();
-        let height = self.global.get_screen_height();
+        let width = Global::get_screen_width();
+        let height = Global::get_screen_height();
 
         loop{
             widgets::Window::new(

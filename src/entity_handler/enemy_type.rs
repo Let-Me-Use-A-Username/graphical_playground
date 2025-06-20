@@ -5,5 +5,6 @@ pub enum EnemyType{
     Circle,
     Triangle,
     Rect,
-    Hexagon
+    Hexagon,
+    Boss
 }

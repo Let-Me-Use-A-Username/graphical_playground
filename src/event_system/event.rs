@@ -42,7 +42,11 @@ pub enum EventType{
     TriangleBulletRequest,
     RemoveTriangle,
     //Accoustic
-    PlaySound
+    PlaySound,
+    //Scorer
+    AddScorePoints,
+    //UIController
+    ForwardNewPlayerScore
 }
 
 #[derive(Clone, Debug)]

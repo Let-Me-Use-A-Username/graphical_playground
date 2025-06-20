@@ -22,7 +22,9 @@ pub enum SoundType{
 
     TriangleFiring,     //ok. Fires from TriangleAssistant.
     RectHit,            //ok. Fires from Rect.
-    HexDeflect          //ok. Fires from Entity_Handler
+    HexDeflect,         //ok. Fires from Entity_Handler
+
+    MainTheme
 }
 impl SoundType{
     fn from_player(self) -> bool{
@@ -100,7 +102,9 @@ impl SoundRequest{
 }
 
 pub struct Accoustic{
-    sounds: HashMap<SoundType, SoundRecord>
+    sounds: HashMap<SoundType, SoundRecord>,
+    enable_effects: bool,
+    enable_music: bool
 }
 impl Accoustic{
     pub async fn new() -> Accoustic{
@@ -121,6 +125,8 @@ impl Accoustic{
         let rect_hit = audio::load_sound(&"audio/sounds/rect_hit.wav").await.unwrap();
         let hex_deflect = audio::load_sound(&"audio/sounds/hex_deflect.wav").await.unwrap();
 
+        let main_theme = audio::load_sound(&"audio/theme_song/MCL.wav").await.unwrap();
+
 
         let mut sounds = HashMap::new();
         
@@ -138,8 +144,33 @@ impl Accoustic{
         sounds.insert(SoundType::RectHit, SoundRecord { sound: rect_hit, is_playing: false, looped: false, volume: 100.0 });
         sounds.insert(SoundType::HexDeflect, SoundRecord { sound: hex_deflect, is_playing: false, looped: false, volume: 100.0 });
 
+        sounds.insert(SoundType::MainTheme, SoundRecord { sound: main_theme, is_playing: false, looped: false, volume: 100.0 });
+
+
+        let enable_sounds = match std::env::var("DEBUG:ENABLE_SOUND_EFFECTS").unwrap().as_str() {
+            "true" => {
+                true
+            },
+            "false" => {
+                false
+            },
+            _ => false
+        };
+
+        let enable_music = match std::env::var("DEBUG:ENABLE_MUSIC").unwrap().as_str() {
+            "true" => {
+                true
+            },
+            "false" => {
+                false
+            },
+            _ => false
+        };
+
         return Accoustic{
-            sounds: sounds
+            sounds: sounds,
+            enable_effects: enable_sounds,
+            enable_music: enable_music
         }
     }
 
@@ -157,8 +188,8 @@ impl Accoustic{
             if !record.is_playing{
                 let sound = record.sound.to_owned();
 
-                record.looped = true;
                 record.is_playing = true;
+                record.looped = options.looped;
                 record.volume = options.volume;
 
                 if stype.clone().from_player(){
@@ -214,6 +245,7 @@ impl Subscriber for Accoustic {
                         let srequest = data.1.clone();
                         let volume = srequest.volume;
 
+                        //Special clause for effects that have mutable volume
                         if let Some(entry) = self.sounds.get_mut(&stype){
                             let volume_change = if volume > (entry.volume + 0.01){
                                 true
@@ -254,8 +286,26 @@ impl Subscriber for Accoustic {
                                 else{
                                     true
                                 };
+                            
+                            let is_music = if state.eq(&SoundType::MainTheme) {
+                                true
+                            } else{
+                                false
+                            };
 
-                            if play{
+                            let should_debug = {
+                                if is_music && self.enable_music{
+                                    true
+                                }
+                                else if !is_music && self.enable_effects{
+                                    true
+                                }
+                                else{
+                                    false
+                                }
+                            };
+
+                            if play && should_debug{
                                 match req.once{
                                     true => {
                                         self.play_once(state, req.volume);
