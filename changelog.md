@@ -6,6 +6,9 @@
 - v.0.2.65 Implemented scoreboard and kill-tracking UI.
 - v.0.2.65 Implemented template boost charges and ammo UI.
 - v.0.2.65 Implemented player *reloading*
+- v.0.2.65 Changes Dash timer and Shield recharge time.
+- v.0.2.65 Implemented basic *game menu*.
+- v.0.2.65 Implemented *pause menu*.
 
 
 ### 0.2.65 Changes 20/6/2025
@@ -14,7 +17,7 @@
 - v.0.2.65 Implemented player velocity normalization when speed is greater than maximum.
 - v.0.2.65 *Removed boost velocity threshold*, now the boost occurs at any velocity.
 - v.0.2.65 Added main theme track at start of *update loop*. 
-- v.0.2.65 Implemented UIController template to handle in game ui.
+- v.0.2.65 Implemented UIController template to handle *in-game ui*.
 
 
 ### 0.2.65 Changes 17/6/2025

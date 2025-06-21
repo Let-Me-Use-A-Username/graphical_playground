@@ -1,10 +1,10 @@
 /*Top level entity that handles the games update loop.*/
 
 use macroquad::prelude::*;
+use macroquad::ui::Skin;
 use macroquad::ui::{hash, root_ui, widgets};
 
-use std::any::Any;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 use crate::audio_system::audio_handler::{Accoustic, SoundRequest, SoundType};
@@ -25,7 +25,6 @@ use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
 use crate::ui::uicontroller::UIController;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
-use crate::utils::timer::Timer;
 
 #[derive(Debug, Clone)]
 pub enum GameState{
@@ -36,27 +35,12 @@ pub enum GameState{
 }
 
 
-pub enum GameEventType{
-    SpawnEnemies
-}
-
-
-pub struct GameEvent{
-    data: Box<dyn Any>,
-    etype: GameEventType,
-}
-
-
 pub struct GameManager{
     state: GameState,
-    channel: (Sender<GameEvent>, Receiver<GameEvent>),
-    timer: Timer,
-    component_sender: Sender<Event>,
-    
-    global: Global,
-    wall: Wall,
 
+    component_sender: Sender<Event>,
     dispatcher: Dispatcher,
+
     artist: Artist,
     metal: Arc<Mutex<MetalArtist>>,
     uicontroller: Arc<Mutex<UIController>>,
@@ -66,15 +50,35 @@ pub struct GameManager{
     factory: Arc<Mutex<Factory>>,
     
     grid: Arc<Mutex<Grid>>,
+    wall: Wall,
+
     detector: CollisionDetector,
 
     player: Arc<Mutex<Player>>,
+
+    last_draw_call: Option<Vec<(i32, DrawCall)>>,
+    is_paused: bool
 }
 
 impl GameManager{
 
     pub async fn new() -> Self{
-        let (sender, receiver) = channel::<GameEvent>();
+        let button_style = root_ui().style_builder()
+            .font_size(64)                    // Larger text
+            .text_color(BLACK)
+            .color(Color::from_rgba(200, 200, 200, 255))         // Normal color
+            .color_hovered(Color::from_rgba(220, 220, 220, 255)) // Hover color
+            .color_clicked(Color::from_rgba(180, 180, 180, 255)) // Click color
+            .margin(RectOffset::new(20.0, 20.0, 10.0, 10.0))    // Internal padding
+            .build();
+
+        let skin = Skin {
+            button_style,
+            ..root_ui().default_skin()
+        };
+
+        root_ui().push_skin(&skin);
+
 
         let global = Global::new();
         let map_bounds = (global.get_cell_size() * global.get_grid_size()) as f32;
@@ -175,15 +179,10 @@ impl GameManager{
         dispatcher.register_listener(EventType::AlterAmmo, uicontroller.clone());
 
         return GameManager { 
-            state: GameState::Playing,
-            channel: (sender, receiver),
-            timer: Timer::new(),
+            state: GameState::Menu,
+
             component_sender: dispatcher.create_sender(),
 
-            global: global,
-            wall: Wall::new(map_bounds, dispatcher.create_sender()),
-
-            dispatcher: dispatcher,
             artist: Artist::new(),
             metal: metal,
             uicontroller: uicontroller,
@@ -193,9 +192,16 @@ impl GameManager{
             factory: factory,
 
             grid: grid,
+            wall: Wall::new(map_bounds, dispatcher.create_sender()),
+            
             detector: detector,
             
             player: player,
+
+            dispatcher: dispatcher,
+
+            last_draw_call: None,
+            is_paused: false
         }
     }
 
@@ -207,7 +213,7 @@ impl GameManager{
             },
             //Paused -> Menu, GameOver
             GameState::Paused => {
-                self.update_paused_game();
+                self.update_paused_game().await;
             },
             //Menu -> Playing, Exit
             GameState::Menu => {
@@ -241,6 +247,11 @@ impl GameManager{
         let _ = self.component_sender.send(Event::new((SoundType::MainTheme, main_theme_request), EventType::PlaySound));
 
         loop {
+            if is_key_down(KeyCode::Escape){
+                self.is_paused = true;
+                self.state = GameState::Paused;
+            }
+
             // Mouse wheel
             if mouse_wheel().1 != 0.0 {
                 zoom_level = (zoom_level - mouse_wheel().1 * zoom_speed).clamp(min_zoom, max_zoom);
@@ -414,6 +425,8 @@ impl GameManager{
             
             // ======== RENDERING ========
             {
+                self.last_draw_call = Some(draw_calls.clone());
+
                 self.artist.queue_calls(draw_calls.clone());
                 self.artist.draw_background(LIGHTGRAY);
                 self.artist.draw();
@@ -429,6 +442,11 @@ impl GameManager{
             //         controller.draw_root_ui().await;
             //     }
             // }
+
+            if self.is_paused {
+                next_frame().await;
+                break;
+            }
             
 
             draw_calls.clear();
@@ -452,49 +470,92 @@ impl GameManager{
         }
     }
 
-    pub fn update_paused_game(&mut self){
-        todo!("Update background etc and add menu");
+    async fn update_paused_game(&mut self){
+        
+        if let Some(calls) = self.last_draw_call.take(){
+            self.artist.queue_calls(calls);
+        }
+
+        self.artist.draw_background(LIGHTGRAY);
+        self.artist.draw();
+
+        let width = screen_width();
+        let height = screen_height();
+        let hwidth = width / 2.0;
+        let hheight = height / 2.0;
+
+        widgets::Window::new(
+            hash!(),
+            vec2(0.0, 0.0),
+            vec2(width, height)
+            )
+                .label("Game Paused")
+                .titlebar(true)
+                .ui(&mut *root_ui(), |ui| {
+                    ui.separator();
+                    
+                    if ui.button(vec2(hwidth - 100.0, hheight - 150.0), "Resume") {
+                        self.is_paused = false;
+                        self.state = GameState::Playing;
+                    }
+                    
+                    ui.separator();
+                    
+                    if ui.button(vec2(hwidth - 140.0, hheight - 300.0), "Main Menu") {
+                        self.is_paused = false;
+                        self.state = GameState::Menu;
+                    }
+                    
+                    ui.separator();
+                    
+                    if ui.button(vec2(hwidth - 75.0, hheight), "Quit") {
+                        std::process::exit(0);
+                    }
+                });
+
+        next_frame().await
     }
 
     async fn update_menu(&mut self){
         clear_background(WHITE);
-        
-        let mut state = &self.state;
-        let mut quit = false;
 
         let width = Global::get_screen_width();
         let height = Global::get_screen_height();
-
-        loop{
-            widgets::Window::new(
-                hash!(),
-                vec2(0.0, 0.0),
-                vec2(width, height)
-            )
-                .label("Main Menu")
-                .titlebar(true)
-                .ui(&mut *root_ui(), |ui|{
-                    if ui.button(None, "Start Game") {
-                        state = &GameState::Playing;
-                        quit = true
-                    }
-
-                    if ui.button(None, "Exit") {
-                        println!("Exiting...");
-                    } 
-                }
-            );
         
-        if quit{
-            self.state = state.clone();
-            break;
+        let mut should_start_game = false;
+
+        let hwidth = width / 2.0;
+        let hheight = height / 2.0;
+        
+        widgets::Window::new(
+            hash!(),
+            vec2(0.0, 0.0),
+            vec2(width, height)
+        )
+            .label("Main Menu")
+            .titlebar(true)
+            .ui(&mut *root_ui(), |ui| {
+                ui.separator();
+
+                if ui.button(vec2(hwidth - 150.0, hheight - 150.0),  "Start Game") {
+                    should_start_game = true;
+                }
+
+                ui.separator();
+
+                if ui.button(vec2(hwidth - 75.0, hheight), "Exit") {
+                    self.state = GameState::GameOver
+                }
+            });
+        
+        if should_start_game {
+            self.state = GameState::Playing;
         }
 
         next_frame().await;
-        }
     }
 
     pub fn exit_game(&mut self){
-        todo!("Exit Game");
+        std::process::exit(0);
     }
 }

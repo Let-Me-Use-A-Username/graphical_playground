@@ -81,6 +81,11 @@ impl Global{
         return 2.0
     }
 
+    pub fn get_boost_timer() -> f64{
+        return 1.0
+    }
+
+
     
     /* 
         UIController 

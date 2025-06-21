@@ -198,7 +198,6 @@ impl SpawnManager{
  
     #[inline(always)]
     fn advance_level(&mut self, now: f64){
-        println!("Level up");
         self.level += 1;
         self.level_timer.set(now, self.level_interval);
         

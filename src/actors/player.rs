@@ -68,7 +68,7 @@ impl Player{
                 10, 
                 1, 
                 true, 
-                Some(3.0)),
+                Some(2.0)),
             boost_counter: RechargebleCounter::new(
                 Global::get_boost_charges(), 
                 1, 
@@ -175,7 +175,7 @@ impl Player{
             
             self.velocity += boost_force;
             self.boost_counter.discharge();
-            self.boost_timer.set(now, 2.0);
+            self.boost_timer.set(now, Global::get_boost_timer());
 
             return true
         }
