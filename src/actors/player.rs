@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::mpsc::Sender;
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 
@@ -37,6 +37,7 @@ pub struct Player{
     left_fire: bool,
     attack_speed: SimpleTimer,
     bullets: Vec<Bullet>,
+    reload: SimpleTimer,
     //Emitter specifics
     emittion_configs: Vec<(StateType, ConfigType)>,
     //Sound specifics
@@ -63,16 +64,25 @@ impl Player{
             collider: RectCollider::new(x, y, size, size * 2.0),
             
             shield: Shield::new(Vec2::new(x, y), (size * 3.0) as usize, BLUE),
-            shield_counter: RechargebleCounter::new(10, 1, true, Some(3.0)),
-            boost_counter: RechargebleCounter::new(5, 1, true, Some(2.0)),
+            shield_counter: RechargebleCounter::new(
+                10, 
+                1, 
+                true, 
+                Some(3.0)),
+            boost_counter: RechargebleCounter::new(
+                Global::get_boost_charges(), 
+                1, 
+                true, 
+                Some(3.0)),
             boost_timer: SimpleTimer::blank(),
-            bullets: vec![],
-
+            
             immune_timer: Timer::new(),
             bounce: false,
 
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
+            bullets: vec![],
+            reload: SimpleTimer::blank(),
             
             emittion_configs: vec![
                 (StateType::Drifting, ConfigType::PlayerDrifting),
@@ -89,6 +99,7 @@ impl Player{
         };
 
         player.publish(Event::new((player.get_id(), player.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
+        player.publish(Event::new((Global::get_bullet_ammo_size(), ProjectileType::Player), EventType::RequestBlankCollection)).await;
 
         return player
     }
@@ -145,9 +156,13 @@ impl Player{
             // Emit Sound
             let sound_request = SoundRequest::new(true, false, 0.1);
             self.publish(Event::new((SoundType::PlayerFiring ,sound_request), EventType::PlaySound)).await;
+            //Update UI
+            self.publish(Event::new(-1, EventType::AlterAmmo)).await;
         }
         else if self.bullets.is_empty(){
-            self.publish(Event::new((128 as usize, ProjectileType::Player), EventType::RequestBlankCollection)).await;
+            //When acquiring bullets, player is reloading
+            self.publish(Event::new((Global::get_bullet_ammo_size(), ProjectileType::Player), EventType::RequestBlankCollection)).await;
+            self.reload.set(get_time(), Global::get_reload_timer());
         }
     }
 
@@ -160,7 +175,7 @@ impl Player{
             
             self.velocity += boost_force;
             self.boost_counter.discharge();
-            self.boost_timer.set(now, 1.0);
+            self.boost_timer.set(now, 2.0);
 
             return true
         }
@@ -297,8 +312,15 @@ impl Player{
         } 
         else {
             if self.acceleration > 1.0 {
-                self.acceleration -= acceleration_multiplier * 10.0;
+                if is_drifting{
+                    self.acceleration -= acceleration_multiplier * 100.0;
+                }
+                else{
+                    self.acceleration -= acceleration_multiplier * 10.0;
+                }
             }
+            
+
             
             if self.velocity.length() < velocity_zero_threshold {
                 self.velocity = Vec2::ZERO;
@@ -370,18 +392,33 @@ impl Updatable for Player{
         self.collider.update(self.pos);
         self.collider.set_rotation(self.rotation);
     
-        self.shield_counter.update();
-        self.boost_counter.update();
+        let _ = self.shield_counter.update();
+        let boost_recharges = self.boost_counter.update();
+
+        //Update UI
+        if boost_recharges{
+            self.publish(Event::new(1, EventType::AlterBoostCharges)).await
+        }
         self.shield.update(delta, vec!(Box::new(self.get_pos()), Box::new(shield_color))).await;
 
         let current_state = self.machine.get_state().lock().unwrap().clone();
+
+        let is_not_reloading = {
+            if self.reload.expired(now){
+                self.publish(Event::new(self.bullets.len() as i32, EventType::AlterAmmo)).await;
+                true
+            }
+            else{
+                false
+            }
+        };
 
         let can_attack: bool = {
             if !self.attack_speed.is_set(){
                 self.attack_speed.set(now, 0.05); // Lower time is more attacks
             }
 
-            if self.attack_speed.expired(now){
+            if self.attack_speed.expired(now) && is_not_reloading{
                 true
             }
             else{
@@ -433,9 +470,9 @@ impl Updatable for Player{
                     if res{
                         let sound_request = SoundRequest::new(true, false, 0.08);
                         self.publish(Event::new((SoundType::PlayerBoosting, sound_request), EventType::PlaySound)).await;
+                        //UI update
+                        self.publish(Event::new(-1, EventType::AlterBoostCharges)).await
                     }
-
-                    
                 }
             },
             StateType::Hit => {

@@ -43,10 +43,10 @@ pub enum EventType{
     RemoveTriangle,
     //Accoustic
     PlaySound,
-    //Scorer
-    AddScorePoints,
     //UIController
-    ForwardNewPlayerScore
+    AddScorePoints,
+    AlterBoostCharges,
+    AlterAmmo 
 }
 
 #[derive(Clone, Debug)]

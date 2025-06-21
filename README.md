@@ -1,8 +1,7 @@
 
 # About
 Geometrical is a small and simple shoot-em-up game, where you handle a character with car like mechanics. Attached to you
-are two guns, a shield and a movement boost that works well only when moving slowly. Additionally you have the ability to drift, 
-the rest figure out on your own!
+are two guns, a shield and a movement boost. Additionally you have the ability to drift, the rest figure out on your own!
 
 # Mechanics
 The game is only playable by using keyboard and mouse, and at the moment, controls can't be configured with.

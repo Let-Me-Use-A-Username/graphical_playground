@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.65 Changes 21/6/2025
+- v.0.2.65 Made *Grid smaller: 32 * 32*.
+- v.0.2.65 Implemented *Boost Charges UI*.
+- v.0.2.65 Implemented scoreboard and kill-tracking UI.
+- v.0.2.65 Implemented template boost charges and ammo UI.
+- v.0.2.65 Implemented player *reloading*
+
+
 ### 0.2.65 Changes 20/6/2025
 - v.0.2.65 Fixed players boost mechanic.
 - v.0.2.65 Changed `select_movement` variables in player.

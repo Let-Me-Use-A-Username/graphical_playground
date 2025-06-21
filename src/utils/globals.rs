@@ -28,7 +28,7 @@ impl Global{
     }
 
     pub fn get_grid_size(&self) -> i32{
-        return 64
+        return 32
     }
 
     pub fn get_cell_capacity(&self) -> usize{
@@ -66,9 +66,24 @@ impl Global{
         return 10
     }
 
+    /* 
+        Player
+    */
+    pub fn get_boost_charges() -> u32{
+        return 5
+    }
+
+    pub fn get_bullet_ammo_size() ->  usize{
+        return 128
+    }
+
+    pub fn get_reload_timer() -> f64{
+        return 2.0
+    }
+
     
     /* 
-        Scorer
+        UIController 
     */
     pub fn get_enemy_points() -> Vec<f64> {
         let circle = 5.0;

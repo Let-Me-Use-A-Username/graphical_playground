@@ -81,18 +81,26 @@ impl RechargebleCounter{
     }
 
     ///Essentially, adds charges based on the intertal timer.
-    pub fn update(&mut self){
+    pub fn update(&mut self) -> bool{
         let now = get_time();
 
-        if let Some(ref mut timer) = self.timer {
-            if timer.expired(now) {
-                // Reset the timer if it's expired
-                if let Some(duration) = self.timer_duration {
-                    timer.set(now, duration);
-                    self.charge();
+        let remaining = self.remaining.unwrap_or(0);
+
+        if remaining as u32 <= self.usages && remaining >= 0{
+            if let Some(ref mut timer) = self.timer {
+                if timer.expired(now) {
+                    // Reset the timer if it's expired
+                    if let Some(duration) = self.timer_duration {
+                        timer.set(now, duration);
+                        self.charge();
+
+                        return true
+                    }
                 }
             }
         }
+        
+        return false
     }
 
     #[allow(dead_code)]

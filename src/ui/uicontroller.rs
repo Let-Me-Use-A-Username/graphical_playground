@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{color::YELLOW, math::Vec2, text::{draw_text_ex, load_ttf_font, Font, TextParams}, ui::root_ui};
+use macroquad::{color::BLACK, math::Vec2, text::{draw_text_ex, load_ttf_font, Font, TextParams}, ui::root_ui};
 
 use crate::{entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, utils::globals::Global};
 
@@ -10,6 +10,8 @@ use crate::{entity_handler::enemy_type::EnemyType, event_system::{event::{Event,
 pub struct UIController{
     killed: u64,
     score: f64,
+    boost_charges: i32,
+    ammo: usize,
     sender: Sender<Event>
 }
 impl UIController{
@@ -17,6 +19,8 @@ impl UIController{
         return UIController{
             killed: 0,
             score: 0.0,
+            boost_charges: Global::get_boost_charges() as i32,
+            ammo: Global::get_bullet_ammo_size(),
             sender: sender
         }
     }
@@ -48,38 +52,127 @@ impl UIController{
         return points
     }
 
-    pub async fn draw(&self){
+    
+    //Note: `root_ui` can be drawn before `set_default_camera`. 
+    pub async fn draw_root_ui(&self){
         {
             //Scoreboard
             let height = Global::get_screen_height();
             let width = Global::get_screen_width();
-            let top = Vec2::new(width, height);
+            let padding = 30.0;
 
-            let custom_font = load_ttf_font("assets/font.ttf").await.unwrap_or_else(|_| {
-                // Fallback to default font if loading fails
-                Font::default()
-            });
+            let label_pos = Vec2::new(width /2.0 - padding, 0.0);            
 
-            // root_ui()
-            //     .label(None, &format!("Score: {}", self.score));
-
-            //FIXME: Doesn't work. Artist is a likely culprit. Implement with root_ui ?
-            let text_params = TextParams {
-                font: Some(&custom_font),
-                font_size: 24,
-                font_scale: 1.0,
-                font_scale_aspect: 1.0,
-                rotation: 0.0,
-                color: YELLOW,
-            };
-
-            draw_text_ex(
-                "Custom Font Text",
-                0.0,
-                0.0,
-                text_params,
-            );
+            root_ui()
+                .label(label_pos, &format!("Score: {}", self.score));
         }
+    }
+
+    //Note: `draw_text` and `draw_text_ex` HAS to be after `set_default_camera`
+    pub async fn draw(&self){
+        let height = Global::get_screen_height();
+        let width = Global::get_screen_width();
+        let padding = 30.0;
+
+        let scoreboard_label_pos = Vec2::new(width /2.0 - padding * 2.0, 0.0 + padding);
+        let boost_charges_pos = Vec2::new(width - padding * 12.0, height - padding * 3.0);
+        let ammo_pos = Vec2::new(width - padding * 12.0, height - padding * 6.0);
+
+        self.draw_scoreboard(scoreboard_label_pos, padding).await;
+        self.draw_boost_charges(boost_charges_pos).await;
+        self.draw_ammo(ammo_pos).await;
+    }
+
+    async fn draw_ammo(&self, ammo_pos: Vec2){
+        let custom_font = load_ttf_font("assets/font.ttf").await.unwrap_or_else(|_| {
+            // Fallback to default font if loading fails
+            Font::default()
+        });
+
+        let message = if self.ammo == 0{
+            "Reloading...".to_string()
+        }
+        else{
+            self.ammo.to_string()
+        };
+
+        let charges_params = TextParams {
+            font: Some(&custom_font),
+            font_size: 48,
+            font_scale: 1.0,
+            font_scale_aspect: 1.0,
+            rotation: 0.0,
+            color: BLACK,
+        };
+
+        draw_text_ex(
+            &format!("Ammo: {}", message),
+            ammo_pos.x,
+            ammo_pos.y,
+            charges_params,
+        );
+    }
+
+    async fn draw_boost_charges(&self, boost_charges_pos: Vec2){
+        let custom_font = load_ttf_font("assets/font.ttf").await.unwrap_or_else(|_| {
+            // Fallback to default font if loading fails
+            Font::default()
+        });
+
+        let charges_params = TextParams {
+            font: Some(&custom_font),
+            font_size: 48,
+            font_scale: 1.0,
+            font_scale_aspect: 1.0,
+            rotation: 0.0,
+            color: BLACK,
+        };
+
+        draw_text_ex(
+            &format!("Charges: {}", self.boost_charges),
+            boost_charges_pos.x,
+            boost_charges_pos.y,
+            charges_params,
+        );
+    }
+
+    async fn draw_scoreboard(&self, scoreboard_label_pos: Vec2, padding: f32){
+        let custom_font = load_ttf_font("assets/font.ttf").await.unwrap_or_else(|_| {
+            // Fallback to default font if loading fails
+            Font::default()
+        });
+
+        let scoreboard_params = TextParams {
+            font: Some(&custom_font),
+            font_size: 48,
+            font_scale: 1.0,
+            font_scale_aspect: 1.0,
+            rotation: 0.0,
+            color: BLACK,
+        };
+
+        let kill_params = TextParams {
+            font: Some(&custom_font),
+            font_size: 24,
+            font_scale: 1.0,
+            font_scale_aspect: 1.0,
+            rotation: 0.0,
+            color: BLACK,
+        };
+
+        draw_text_ex(
+            &format!("Score: {}", self.score),
+            scoreboard_label_pos.x,
+            scoreboard_label_pos.y,
+            scoreboard_params,
+        );
+
+        draw_text_ex(
+            &format!("Kills: {}", self.killed),
+            scoreboard_label_pos.x + padding,
+            scoreboard_label_pos.y + padding,
+            kill_params,
+        );
     }
 }
 
@@ -100,6 +193,41 @@ impl Subscriber for UIController {
                     }
                 }
             },
+            EventType::AlterBoostCharges => {
+                if let Ok(request) = event.data.lock(){
+                    if let Some(data) = request.downcast_ref::<i32>(){
+                        let new_data = data.to_owned();
+
+                        let new_counter = self.boost_charges + new_data;
+
+                        if new_counter <= Global::get_boost_charges() as i32{
+                            self.boost_charges = new_counter;
+                        }
+                    }
+                }  
+            },
+            EventType::AlterAmmo => {
+                if let Ok(request) = event.data.lock(){
+                    if let Some(data) = request.downcast_ref::<i32>(){
+                        let new_data = data.to_owned();
+
+                        let new_ammo = {
+                            //Ammo reduction
+                            if new_data < 0 {
+                                self.ammo as i32 + new_data
+                            }
+                            //Ammo refill
+                            else{
+                                new_data
+                            }  
+                        };
+
+                        if new_ammo <= Global::get_bullet_ammo_size() as i32{
+                            self.ammo = new_ammo as usize;
+                        }
+                    }
+                } 
+            }
             _ => {}
         }
     }

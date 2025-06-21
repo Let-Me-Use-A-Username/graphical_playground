@@ -3,8 +3,6 @@
 
 - Implement UI
     - Menu
-    - In game
-        - UIController
     - Settings
         - Alter Effects/Music volume
         - Alter Movement/Drifting variables
@@ -21,12 +19,12 @@
 
 ==============================================
 ================== Current ===================
-- Implement score
 
 
 ==============================================
 ================== General todo ==============
-    
+
+
 ==============================================
 ================== Gameplay ==================
 - Implement a `hold velocity` mechanic, that slows down the player but after released, provides a burst of movement
@@ -40,6 +38,7 @@
         then applying Forwards/backwards input, increaes velocity
             - *UNSURE whether I want to keep this*
             - *Player Test ???*
+            - Fixed by applying stronger deceleration in drifting when not throttling 
 
 - Test in Player movement
     - Forwards and backwards directions maintain acceleration. Switching from W/D provides no deceleration
@@ -48,6 +47,8 @@
 
 
 - In release version, player movement feels different. Test it
+
+- Grid map edge requests
 
 ==============================================
 ================== Gameplay Design and Ideas==

@@ -171,6 +171,8 @@ impl GameManager{
 
         //UIController
         dispatcher.register_listener(EventType::AddScorePoints, uicontroller.clone());
+        dispatcher.register_listener(EventType::AlterBoostCharges, uicontroller.clone());
+        dispatcher.register_listener(EventType::AlterAmmo, uicontroller.clone());
 
         return GameManager { 
             state: GameState::Playing,
@@ -422,16 +424,23 @@ impl GameManager{
                     emitter.draw();
                 }
             }
-            {   
-                if let Ok(controller) = self.uicontroller.lock(){
-                    controller.draw().await;
-                }
-            }
+            // {   
+            //     if let Ok(controller) = self.uicontroller.lock(){
+            //         controller.draw_root_ui().await;
+            //     }
+            // }
+            
 
             draw_calls.clear();
             emitter_calls.clear();
             
             set_default_camera();
+
+            {   
+                if let Ok(controller) = self.uicontroller.lock(){
+                    controller.draw().await;
+                }
+            }
             
             let debug = std::env::var("DEBUG:FPS").unwrap_or("false".to_string());
 
