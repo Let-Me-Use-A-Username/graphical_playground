@@ -4,6 +4,9 @@ use macroquad::prelude::*;
 use macroquad::ui::Skin;
 use macroquad::ui::{hash, root_ui, widgets};
 
+use std::default;
+use std::fs::{File, OpenOptions};
+use std::io::Write;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
@@ -25,15 +28,17 @@ use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
 use crate::ui::uicontroller::UIController;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
+use crate::StatusCode;
 
 #[derive(Debug, Clone)]
 pub enum GameState{
+    NewGame,
     Playing,
     Paused,
-    Menu,
-    GameOver
+    MainMenu,
+    GameOver,
+    Quit
 }
-
 
 pub struct GameManager{
     state: GameState,
@@ -57,7 +62,8 @@ pub struct GameManager{
     player: Arc<Mutex<Player>>,
 
     last_draw_call: Option<Vec<(i32, DrawCall)>>,
-    is_paused: bool
+    is_paused: bool,
+    player_name: String
 }
 
 impl GameManager{
@@ -172,14 +178,16 @@ impl GameManager{
 
         //Accoustic
         dispatcher.register_listener(EventType::PlaySound, accoustic.clone());
+        dispatcher.register_listener(EventType::StopExcept, accoustic.clone());
 
         //UIController
         dispatcher.register_listener(EventType::AddScorePoints, uicontroller.clone());
         dispatcher.register_listener(EventType::AlterBoostCharges, uicontroller.clone());
         dispatcher.register_listener(EventType::AlterAmmo, uicontroller.clone());
+        dispatcher.register_listener(EventType::GameOver, uicontroller.clone());
 
         return GameManager { 
-            state: GameState::Menu,
+            state: GameState::MainMenu,
 
             component_sender: dispatcher.create_sender(),
 
@@ -201,27 +209,50 @@ impl GameManager{
             dispatcher: dispatcher,
 
             last_draw_call: None,
-            is_paused: false
+            is_paused: false,
+            player_name: "DEFAULT".to_string()
         }
     }
 
-    pub async fn update(&mut self){
+    pub async fn update(&mut self) -> StatusCode{
         match self.state{
-            //Playing -> Paused
-            GameState::Playing => {
-                self.update_game().await;
+            GameState::NewGame => {
+                self.new_game().await;
+
+                return StatusCode::NewGame
             },
-            //Paused -> Menu, GameOver
+            //Playing -> Paused, GameOver
+            GameState::Playing => {
+                self.is_paused = false;
+                self.update_game().await;
+
+                return StatusCode::Playing
+            },
+            //Paused -> Menu, Quit
             GameState::Paused => {
                 self.update_paused_game().await;
+
+                return StatusCode::Paused
             },
-            //Menu -> Playing, Exit
-            GameState::Menu => {
+            //Menu -> Playing, Quit
+            GameState::MainMenu => {
                 self.update_menu().await;
+
+                return StatusCode::MainMenu
             },
-            //GameOver -> ()
             GameState::GameOver => {
-                self.exit_game();
+                let name: String = self.player_name.clone();
+                let points = self.uicontroller.lock().unwrap().get_points();
+                
+                if name != "DEFAULT".to_string() && points > 100.0{
+                    self.write_file(name, points).await;
+                }
+
+                return StatusCode::Reset
+            },
+            //Quit -> ()
+            GameState::Quit => {
+                return StatusCode::Exit
             }
         }
     }
@@ -247,9 +278,11 @@ impl GameManager{
         let _ = self.component_sender.send(Event::new((SoundType::MainTheme, main_theme_request), EventType::PlaySound));
 
         loop {
+            
             if is_key_down(KeyCode::Escape){
                 self.is_paused = true;
                 self.state = GameState::Paused;
+                let _ = self.component_sender.send(Event::new(Some(SoundType::MainTheme), EventType::StopExcept));
             }
 
             // Mouse wheel
@@ -457,6 +490,12 @@ impl GameManager{
             {   
                 if let Ok(controller) = self.uicontroller.lock(){
                     controller.draw().await;
+                    
+                    if controller.game_over(){
+                        self.is_paused = true;
+                        self.state = GameState::GameOver;
+                        let _ = self.component_sender.send(Event::new(Some(SoundType::MainTheme), EventType::StopExcept));
+                    }
                 }
             }
             
@@ -471,14 +510,6 @@ impl GameManager{
     }
 
     async fn update_paused_game(&mut self){
-        
-        if let Some(calls) = self.last_draw_call.take(){
-            self.artist.queue_calls(calls);
-        }
-
-        self.artist.draw_background(LIGHTGRAY);
-        self.artist.draw();
-
         let width = screen_width();
         let height = screen_height();
         let hwidth = width / 2.0;
@@ -503,13 +534,13 @@ impl GameManager{
                     
                     if ui.button(vec2(hwidth - 140.0, hheight - 300.0), "Main Menu") {
                         self.is_paused = false;
-                        self.state = GameState::Menu;
+                        self.state = GameState::GameOver;
                     }
                     
                     ui.separator();
                     
                     if ui.button(vec2(hwidth - 75.0, hheight), "Quit") {
-                        std::process::exit(0);
+                        self.state = GameState::Quit
                     }
                 });
 
@@ -521,8 +552,6 @@ impl GameManager{
 
         let width = Global::get_screen_width();
         let height = Global::get_screen_height();
-        
-        let mut should_start_game = false;
 
         let hwidth = width / 2.0;
         let hheight = height / 2.0;
@@ -538,24 +567,131 @@ impl GameManager{
                 ui.separator();
 
                 if ui.button(vec2(hwidth - 150.0, hheight - 150.0),  "Start Game") {
-                    should_start_game = true;
+                    self.state = GameState::NewGame;
                 }
 
                 ui.separator();
 
                 if ui.button(vec2(hwidth - 75.0, hheight), "Exit") {
-                    self.state = GameState::GameOver
+                    self.state = GameState::Quit
                 }
             });
-        
-        if should_start_game {
-            self.state = GameState::Playing;
-        }
 
         next_frame().await;
     }
 
-    pub fn exit_game(&mut self){
-        std::process::exit(0);
+    async fn write_file(&mut self, name: String, score: f64){
+        self.artist.draw_background(LIGHTGRAY);
+
+        let score_path = "assets\\scoreboard.txt";
+
+        let fileopt = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(score_path);
+
+        if let Ok(mut file) = fileopt{
+            if let Ok(res) = file.write(format!("\n{}, {}", name, score.to_string()).as_bytes()){
+                eprintln!("Writted data: {}", res);
+            }
+            else{
+                println!("Error during writting data");
+            }
+        }
+        else{
+            eprintln!("Failed opening file.")
+        }
+    }
+
+    async fn new_game(&mut self){
+        let mut input = String::new();
+
+        loop {
+            clear_background(BLACK);
+
+            let width = Global::get_screen_width();
+            let height = Global::get_screen_height();
+
+            let hwidth = width / 2.0;
+            let hheight = height / 2.0;
+
+            // Read keyboard input and append to input string
+            if let Some(key) = get_last_key_pressed() {
+                match key {
+                    // Handle Backspace
+                    KeyCode::Backspace => {
+                        input.pop();
+                    },
+                    KeyCode::Enter => {
+                        self.player_name = input;
+                        self.state = GameState::Playing;
+
+                        return;
+                    },
+                    // Limit to character keys
+                    _ => {
+                        // Convert KeyCode to char manually if it's a letter or number
+                        if let Some(c) = self.keycode_to_char(key)  {
+                            input.push(c);
+                        }
+                    }
+                }
+            }
+
+            let pos = vec2(hwidth - 150.0, hheight - 150.0);
+
+            // Display the typed string
+            draw_text("Name:", pos.x, pos.y, 30.0, WHITE);
+            draw_text_ex(&input, pos.x + 100.0, pos.y, TextParams{
+                font_size: 30.0 as u16,
+                color: RED,
+                ..Default::default()
+            });
+
+            next_frame().await;
+        }
+    }
+
+    fn keycode_to_char(&self, key: KeyCode) -> Option<char> {
+        match key {
+            KeyCode::A => Some('A'),
+            KeyCode::B => Some('B'),
+            KeyCode::C => Some('C'),
+            KeyCode::D => Some('D'),
+            KeyCode::E => Some('E'),
+            KeyCode::F => Some('F'),
+            KeyCode::G => Some('G'),
+            KeyCode::H => Some('H'),
+            KeyCode::I => Some('I'),
+            KeyCode::J => Some('J'),
+            KeyCode::K => Some('K'),
+            KeyCode::L => Some('L'),
+            KeyCode::M => Some('M'),
+            KeyCode::N => Some('N'),
+            KeyCode::O => Some('O'),
+            KeyCode::P => Some('P'),
+            KeyCode::Q => Some('Q'),
+            KeyCode::R => Some('R'),
+            KeyCode::S => Some('S'),
+            KeyCode::T => Some('T'),
+            KeyCode::U => Some('U'),
+            KeyCode::V => Some('V'),
+            KeyCode::W => Some('W'),
+            KeyCode::X => Some('X'),
+            KeyCode::Y => Some('Y'),
+            KeyCode::Z => Some('Z'),
+            KeyCode::Key0 => Some('0'),
+            KeyCode::Key1 => Some('1'),
+            KeyCode::Key2 => Some('2'),
+            KeyCode::Key3 => Some('3'),
+            KeyCode::Key4 => Some('4'),
+            KeyCode::Key5 => Some('5'),
+            KeyCode::Key6 => Some('6'),
+            KeyCode::Key7 => Some('7'),
+            KeyCode::Key8 => Some('8'),
+            KeyCode::Key9 => Some('9'),
+            KeyCode::Space => Some(' '),
+            _ => None,
+        }
     }
 }

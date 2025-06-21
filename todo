@@ -2,7 +2,7 @@
 ================== Final Roadmap =============
 
 - Implement UI
-    - Settings
+    - Optional Settings
         - Alter Effects/Music volume
         - Alter Movement/Drifting variables
 
@@ -12,14 +12,15 @@
 
 ==============================================
 ================== Critical ==================
-
+- Fix audio not pausing
+- Open game -> Pause -> Main Menu -> New Game  transisiton doesn't show menu.
+- Open game -> GameOver -> Main Menu -> New Game  transition doesnt show menu.
 
 
 ==============================================
 ================== Current ===================
-- Implement pause menu
-    - Stop all sounds when pausing (moving + music)
-    
+
+
 
 ==============================================
 ================== General todo ==============
@@ -31,7 +32,6 @@
 
 - Implement small buffer between Menu - Playing
 
-- Implement saving score when winning / losing
 
 ==============================================
 ================== Gameplay ==================
@@ -46,7 +46,7 @@
         then applying Forwards/backwards input, increaes velocity
             - *UNSURE whether I want to keep this*
             - *Player Test ???*
-            - Fixed by applying stronger deceleration in drifting when not throttling 
+            - Partially fixed by applying stronger deceleration in drifting when not throttling 
 
 - Test in Player movement
     - Forwards and backwards directions maintain acceleration. Switching from W/D provides no deceleration

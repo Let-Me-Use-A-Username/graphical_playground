@@ -10,7 +10,7 @@ use crate::event_system::{event::{Event, EventType}, interface::Subscriber};
 ///Unique Identifier for Sounds.
 pub enum SoundType{
     PlayerIdle,         //ok. Fires from player.
-    PlayerBoosting,
+    PlayerBoosting,     //ok. Fires from player.
     PlayerHit,          //ok. Fires from player.
     PlayerMoving,       //ok. Fires from player.
     PlayerDrifting,     //ok. Fires from player.
@@ -24,7 +24,7 @@ pub enum SoundType{
     RectHit,            //ok. Fires from Rect.
     HexDeflect,         //ok. Fires from Entity_Handler
 
-    MainTheme
+    MainTheme           //ok. Fires from Game Manager.
 }
 impl SoundType{
     fn from_player(self) -> bool{
@@ -227,6 +227,20 @@ impl Accoustic{
             }
         }
     }
+
+    fn stop_all(&mut self, exception: Option<SoundType>){
+        let to_stop: Vec<SoundType> = self.sounds
+        .iter()
+        .filter(|(sound, _)| {
+            exception.clone().is_some_and(|exc| sound != &&exc)
+        })
+        .map(|(sound, _)| sound.clone())
+        .collect();
+
+        for sound in to_stop {
+            self.stop_sound(sound);
+        }
+    }
 }
 
 
@@ -321,6 +335,15 @@ impl Subscriber for Accoustic {
                     }
                 }
             },
+            EventType::StopExcept => {
+                if let Ok(result) = event.data.lock(){
+                    if let Some(data) = result.downcast_ref::<Option<SoundType>>(){
+                        let exception = data.to_owned();
+                        self.stop_all(exception);
+                    }   
+                }
+
+            }
             _ => {}
         }
     }

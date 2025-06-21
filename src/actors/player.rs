@@ -12,6 +12,7 @@ use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Dr
 pub struct Player{
     //Attributes
     id: u64,
+    health: i32,
     pos: Vec2,
     direction: Vec2,
     speed: f32,
@@ -49,6 +50,7 @@ impl Player{
     pub async fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
         let player = Player { 
             id: 0,
+            health: Global::get_player_health(),
             pos: Vec2::new(x, y),
             direction: Vec2::new(0.0, 0.0),
             speed: 700.0,
@@ -476,6 +478,8 @@ impl Updatable for Player{
                 }
             },
             StateType::Hit => {
+                let mut died = false;
+                
                 //Reset timer for Hit state
                 if let Some(exp) = self.immune_timer.has_expired(get_time()){
                     match exp{
@@ -487,6 +491,11 @@ impl Updatable for Player{
                         false => {
                             //Reverse velocity vector
                             if self.bounce{
+                                self.health -= 1;
+
+                                if self.health <= 0{
+                                    died = true;
+                                }
                                 self.velocity = -self.velocity * 0.9;
                                 self.bounce = false;
                             }
@@ -499,6 +508,10 @@ impl Updatable for Player{
 
                     self.direction = self.velocity.normalize();
                     self.pos += self.velocity * delta;
+                
+                    if died{
+                        self.publish(Event::new(1 as i32, EventType::GameOver)).await;
+                    }
                 }
             },
             StateType::Drifting => {

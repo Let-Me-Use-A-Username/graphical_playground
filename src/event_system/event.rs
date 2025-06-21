@@ -4,6 +4,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum EventType{
+    //General
+    GameOver,
     //Player
     PlayerHit,
     //Handler
@@ -43,6 +45,7 @@ pub enum EventType{
     RemoveTriangle,
     //Accoustic
     PlaySound,
+    StopExcept,
     //UIController
     AddScorePoints,
     AlterBoostCharges,

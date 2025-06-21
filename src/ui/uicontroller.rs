@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use async_trait::async_trait;
-use macroquad::{color::BLACK, math::Vec2, text::{draw_text_ex, load_ttf_font, Font, TextParams}, ui::root_ui};
+use macroquad::{color::BLACK, math::Vec2, text::{draw_text_ex, load_ttf_font, Font, TextParams}};
 
 use crate::{entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, utils::globals::Global};
 
@@ -12,7 +12,8 @@ pub struct UIController{
     score: f64,
     boost_charges: i32,
     ammo: usize,
-    sender: Sender<Event>
+    sender: Sender<Event>,
+    game_over: bool
 }
 impl UIController{
     pub fn new(sender: Sender<Event>) -> UIController{
@@ -21,7 +22,8 @@ impl UIController{
             score: 0.0,
             boost_charges: Global::get_boost_charges() as i32,
             ammo: Global::get_bullet_ammo_size(),
-            sender: sender
+            sender: sender,
+            game_over: false
         }
     }
 
@@ -50,22 +52,6 @@ impl UIController{
         self.score += points;
         
         return points
-    }
-
-    
-    //Note: `root_ui` can be drawn before `set_default_camera`. 
-    pub async fn draw_root_ui(&self){
-        {
-            //Scoreboard
-            let height = Global::get_screen_height();
-            let width = Global::get_screen_width();
-            let padding = 30.0;
-
-            let label_pos = Vec2::new(width /2.0 - padding, 0.0);            
-
-            root_ui()
-                .label(label_pos, &format!("Score: {}", self.score));
-        }
     }
 
     //Note: `draw_text` and `draw_text_ex` HAS to be after `set_default_camera`
@@ -174,6 +160,14 @@ impl UIController{
             kill_params,
         );
     }
+
+    pub fn game_over(&self) -> bool{
+        return self.game_over
+    }
+
+    pub fn get_points(&self) -> f64{
+        return self.score
+    }
 }
 
 #[async_trait]
@@ -225,6 +219,13 @@ impl Subscriber for UIController {
                         if new_ammo <= Global::get_bullet_ammo_size() as i32{
                             self.ammo = new_ammo as usize;
                         }
+                    }
+                } 
+            },
+            EventType::GameOver => {
+                if let Ok(request) = event.data.lock(){
+                    if let Some(_) = request.downcast_ref::<i32>(){
+                        self.game_over = true;
                     }
                 } 
             }

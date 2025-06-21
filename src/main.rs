@@ -56,6 +56,25 @@ async fn main() {
     let mut game_manager = GameManager::new().await;
 
     loop {
-        game_manager.update().await;
+        let stat = game_manager.update().await;
+
+        match stat{
+            StatusCode::Exit => {
+                std::process::exit(0);
+            },
+            StatusCode::Reset => {
+                game_manager = GameManager::new().await;
+            },
+            _ => {}
+        }
     }
+}
+
+enum StatusCode{
+    Exit,
+    Reset,
+    MainMenu, 
+    Paused, 
+    Playing,
+    NewGame
 }

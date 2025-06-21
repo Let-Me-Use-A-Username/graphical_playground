@@ -7,8 +7,9 @@
 - v.0.2.65 Implemented template boost charges and ammo UI.
 - v.0.2.65 Implemented player *reloading*
 - v.0.2.65 Changes Dash timer and Shield recharge time.
-- v.0.2.65 Implemented basic *game menu*.
+- v.0.2.65 Implemented *game menu*.
 - v.0.2.65 Implemented *pause menu*.
+- v.0.2.65 Implemented game over transition, keeps record of previous scores.
 
 
 ### 0.2.65 Changes 20/6/2025
