@@ -104,7 +104,8 @@ impl SoundRequest{
 pub struct Accoustic{
     sounds: HashMap<SoundType, SoundRecord>,
     enable_effects: bool,
-    enable_music: bool
+    enable_music: bool,
+    emit: bool
 }
 impl Accoustic{
     pub async fn new() -> Accoustic{
@@ -170,7 +171,8 @@ impl Accoustic{
         return Accoustic{
             sounds: sounds,
             enable_effects: enable_sounds,
-            enable_music: enable_music
+            enable_music: enable_music,
+            emit: true
         }
     }
 
@@ -228,18 +230,20 @@ impl Accoustic{
         }
     }
 
-    fn stop_all(&mut self, exception: Option<SoundType>){
+    pub fn stop_all(&mut self){
         let to_stop: Vec<SoundType> = self.sounds
         .iter()
-        .filter(|(sound, _)| {
-            exception.clone().is_some_and(|exc| sound != &&exc)
-        })
         .map(|(sound, _)| sound.clone())
         .collect();
 
         for sound in to_stop {
             self.stop_sound(sound);
         }
+        self.emit = false;
+    }
+
+    pub fn allow(&mut self){
+        self.emit = true;
     }
 }
 
@@ -319,7 +323,7 @@ impl Subscriber for Accoustic {
                                 }
                             };
 
-                            if play && should_debug{
+                            if play && should_debug && self.emit{
                                 match req.once{
                                     true => {
                                         self.play_once(state, req.volume);
@@ -335,15 +339,6 @@ impl Subscriber for Accoustic {
                     }
                 }
             },
-            EventType::StopExcept => {
-                if let Ok(result) = event.data.lock(){
-                    if let Some(data) = result.downcast_ref::<Option<SoundType>>(){
-                        let exception = data.to_owned();
-                        self.stop_all(exception);
-                    }   
-                }
-
-            }
             _ => {}
         }
     }

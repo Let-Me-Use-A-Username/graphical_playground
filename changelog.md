@@ -10,6 +10,8 @@
 - v.0.2.65 Implemented *game menu*.
 - v.0.2.65 Implemented *pause menu*.
 - v.0.2.65 Implemented game over transition, keeps record of previous scores.
+- v.0.2.65 Fixed `New Game` screen not appearing issue.
+- v.0.2.65 Fixed audio not stopping in pause menu.
 
 
 ### 0.2.65 Changes 20/6/2025

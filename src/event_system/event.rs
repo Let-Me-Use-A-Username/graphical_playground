@@ -45,7 +45,6 @@ pub enum EventType{
     RemoveTriangle,
     //Accoustic
     PlaySound,
-    StopExcept,
     //UIController
     AddScorePoints,
     AlterBoostCharges,

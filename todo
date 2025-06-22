@@ -5,6 +5,7 @@
     - Optional Settings
         - Alter Effects/Music volume
         - Alter Movement/Drifting variables
+        - Create a file to read variables from. Load them into a global struct.
 
 
 - Implement Boss
@@ -12,9 +13,6 @@
 
 ==============================================
 ================== Critical ==================
-- Fix audio not pausing
-- Open game -> Pause -> Main Menu -> New Game  transisiton doesn't show menu.
-- Open game -> GameOver -> Main Menu -> New Game  transition doesnt show menu.
 
 
 ==============================================
@@ -74,11 +72,6 @@
 
 - Performance enhancing ideas
     - Make an asynchronous and synchronous update loop
-
-
-- Implement ErrorHandler
-    -Change component function to return Results 
-        -Log these results if error occurs
 
 ==============================================
 ================== Notes =====================

@@ -4,8 +4,7 @@ use macroquad::prelude::*;
 use macroquad::ui::Skin;
 use macroquad::ui::{hash, root_ui, widgets};
 
-use std::default;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
@@ -50,6 +49,8 @@ pub struct GameManager{
     metal: Arc<Mutex<MetalArtist>>,
     uicontroller: Arc<Mutex<UIController>>,
 
+    accoustic: Arc<Mutex<Accoustic>>,
+
     handler: Arc<Mutex<Handler>>,
     spawner: Arc<Mutex<SpawnManager>>,
     factory: Arc<Mutex<Factory>>,
@@ -77,9 +78,15 @@ impl GameManager{
             .color_clicked(Color::from_rgba(180, 180, 180, 255)) // Click color
             .margin(RectOffset::new(20.0, 20.0, 10.0, 10.0))    // Internal padding
             .build();
+        
+        let label_style = root_ui().style_builder()
+            .font_size(64)
+            .text_color(BLACK)
+            .build();
 
         let skin = Skin {
             button_style,
+            label_style,
             ..root_ui().default_skin()
         };
 
@@ -178,7 +185,6 @@ impl GameManager{
 
         //Accoustic
         dispatcher.register_listener(EventType::PlaySound, accoustic.clone());
-        dispatcher.register_listener(EventType::StopExcept, accoustic.clone());
 
         //UIController
         dispatcher.register_listener(EventType::AddScorePoints, uicontroller.clone());
@@ -194,6 +200,8 @@ impl GameManager{
             artist: Artist::new(),
             metal: metal,
             uicontroller: uicontroller,
+
+            accoustic: accoustic,
 
             handler: handler,
             spawner: spawner,
@@ -223,6 +231,9 @@ impl GameManager{
             },
             //Playing -> Paused, GameOver
             GameState::Playing => {
+                if let Ok(mut acc) = self.accoustic.lock(){
+                    acc.allow();
+                }
                 self.is_paused = false;
                 self.update_game().await;
 
@@ -230,6 +241,10 @@ impl GameManager{
             },
             //Paused -> Menu, Quit
             GameState::Paused => {
+                
+                if let Ok(mut acc) = self.accoustic.lock(){
+                    acc.stop_all();
+                }
                 self.update_paused_game().await;
 
                 return StatusCode::Paused
@@ -241,6 +256,10 @@ impl GameManager{
                 return StatusCode::MainMenu
             },
             GameState::GameOver => {
+                if let Ok(mut acc) = self.accoustic.lock(){
+                    acc.stop_all();
+                }
+
                 let name: String = self.player_name.clone();
                 let points = self.uicontroller.lock().unwrap().get_points();
                 
@@ -282,7 +301,6 @@ impl GameManager{
             if is_key_down(KeyCode::Escape){
                 self.is_paused = true;
                 self.state = GameState::Paused;
-                let _ = self.component_sender.send(Event::new(Some(SoundType::MainTheme), EventType::StopExcept));
             }
 
             // Mouse wheel
@@ -494,7 +512,6 @@ impl GameManager{
                     if controller.game_over(){
                         self.is_paused = true;
                         self.state = GameState::GameOver;
-                        let _ = self.component_sender.send(Event::new(Some(SoundType::MainTheme), EventType::StopExcept));
                     }
                 }
             }
@@ -632,6 +649,10 @@ impl GameManager{
                     _ => {
                         // Convert KeyCode to char manually if it's a letter or number
                         if let Some(c) = self.keycode_to_char(key)  {
+
+                            if input.len() > 9 {
+                                input.pop();
+                            }
                             input.push(c);
                         }
                     }
@@ -647,6 +668,26 @@ impl GameManager{
                 color: RED,
                 ..Default::default()
             });
+
+            widgets::Window::new(
+            hash!(),
+            vec2(0.0, 0.0),
+            vec2(width, height)
+            )
+                .label("New Game")
+                
+                .titlebar(true)
+                .ui(&mut *root_ui(), |ui| {
+                    ui.separator();
+
+                    ui.label(vec2(hwidth - 300.0, hheight - 150.0),  format!("Enter name: {:?}", &input).as_str());
+                    
+                    if is_key_down(KeyCode::Enter){
+                        self.player_name = input.clone();
+                        self.state = GameState::Playing
+                    }
+                });
+
 
             next_frame().await;
         }
