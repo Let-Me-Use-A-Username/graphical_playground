@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use macroquad::{audio::{self, PlaySoundParams, Sound}, file::set_pc_assets_folder};
 
-use crate::event_system::{event::{Event, EventType}, interface::Subscriber};
+use crate::{event_system::{event::{Event, EventType}, interface::Subscriber}, utils::tinkerer::AudioSettings};
 
 
 #[derive(Eq, Hash, PartialEq, Clone, Debug)]
@@ -103,12 +103,16 @@ impl SoundRequest{
 
 pub struct Accoustic{
     sounds: HashMap<SoundType, SoundRecord>,
+    pub (crate) master_volume: f32,
+    pub (crate) music_volume: f32, 
+    pub (crate) effect_volume: f32,
+
     enable_effects: bool,
     enable_music: bool,
     emit: bool
 }
 impl Accoustic{
-    pub async fn new() -> Accoustic{
+    pub async fn new(volume_setting: AudioSettings) -> Accoustic{
         set_pc_assets_folder("assets");
 
         let player_boosting = audio::load_sound(&"audio/sounds/player_boosting_2.wav").await.unwrap();
@@ -170,6 +174,10 @@ impl Accoustic{
 
         return Accoustic{
             sounds: sounds,
+            master_volume: volume_setting.get_master_volume(),
+            music_volume: volume_setting.get_music_volume(), 
+            effect_volume: volume_setting.get_effects_volume(),
+
             enable_effects: enable_sounds,
             enable_music: enable_music,
             emit: true
@@ -322,14 +330,30 @@ impl Subscriber for Accoustic {
                                     false
                                 }
                             };
+                            
+                            let volume = {
+                                let mut master = self.master_volume;
+
+                                if is_music{
+                                    master *= self.music_volume
+                                }
+                                else{
+                                    master *= self.effect_volume
+                                }
+
+                                master
+                            };
 
                             if play && should_debug && self.emit{
                                 match req.once{
                                     true => {
-                                        self.play_once(state, req.volume);
+                                        self.play_once(state, volume * req.volume);
                                     },
                                     false => {
-                                        self.play_sound(state, Some(req.get_params()));
+                                        let mut req_clone = req.get_params();
+                                        req_clone.volume *= volume;
+
+                                        self.play_sound(state, Some(req_clone));
                                     },
                                 }
                             }

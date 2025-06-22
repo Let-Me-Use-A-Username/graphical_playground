@@ -76,5 +76,6 @@ enum StatusCode{
     MainMenu, 
     Paused, 
     Playing,
-    NewGame
+    NewGame,
+    Settings
 }

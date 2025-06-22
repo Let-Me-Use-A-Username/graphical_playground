@@ -1,5 +1,12 @@
 # Changelog
 
+### 0.2.66 Changes 22/6/2025
+- v.0.2.66 *Implemented Tinkerer* structure to modify Sound levels and player variables.
+- v.0.2.66 Implemented Tinkerer inheritance with Accoustic and Player.
+- v.0.2.66 Implemented *Settings menu* with variable changing.
+- v.0.2.66 Implemented saving and loading settings.
+
+
 ### 0.2.65 Changes 21/6/2025
 - v.0.2.65 Made *Grid smaller: 32 * 32*.
 - v.0.2.65 Implemented *Boost Charges UI*.

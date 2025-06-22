@@ -9,7 +9,7 @@ use rand::{thread_rng, Rng};
 
 use crate::event_system::event::{Event, EventType};
 use crate::event_system::interface::{Enemy, Publisher, Subscriber};
-use crate::utils::globals;
+use crate::utils::globals::Global;
 
 use super::enemy_type::EnemyType;
 use super::recycler::Recycler;
@@ -102,9 +102,8 @@ impl Factory{
 
     fn get_enemy_spawn_position(&self, viewport: Rect) -> Vec2 {
         let mut rng = thread_rng();
-        let global = globals::Global::new();
         
-        let world_width = (global.get_grid_size() * global.get_cell_size()) as f32;
+        let world_width = (Global::get_grid_size() * Global::get_cell_size()) as f32;
         let world_height = world_width;
         
         let min_offset = 50.0;

@@ -1,13 +1,5 @@
 ==============================================
 ================== Final Roadmap =============
-
-- Implement UI
-    - Optional Settings
-        - Alter Effects/Music volume
-        - Alter Movement/Drifting variables
-        - Create a file to read variables from. Load them into a global struct.
-
-
 - Implement Boss
     - use shape outlines to highlight them.
 
@@ -17,7 +9,10 @@
 
 ==============================================
 ================== Current ===================
-
+- Implemented variable Tinkerer
+    - Test the ranges given to the sliders, could be too much.
+        - Low master volume creates weird noises.
+- Implement full screen option
 
 
 ==============================================
@@ -29,12 +24,6 @@
             - Or less appearances
 
 - Implement small buffer between Menu - Playing
-
-
-==============================================
-================== Gameplay ==================
-- Implement a `hold velocity` mechanic, that slows down the player but after released, provides a burst of movement
-    - Substitute with boost?
 
 
 ==============================================
@@ -55,23 +44,12 @@
 - In release version, player movement feels different. Test it
 
 - Grid map edge requests
-
-==============================================
-================== Gameplay Design and Ideas==
-
-
  
 ==============================================
 ================== Implementation ideas ======
-- Implement better UI
-    - Implement fullscreen with  macroquad::prelude::Conf
-        - Function macroquad::window::set_fullscreen ?
-            - When settings are changed, restart game to run them (hot reload)
-    - Implement Tinkering menu for different player-based aspects, variables, skins, sounds etc
-
-
 - Performance enhancing ideas
     - Make an asynchronous and synchronous update loop
+
 
 ==============================================
 ================== Notes =====================

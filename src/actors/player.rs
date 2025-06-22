@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::mpsc::Sender;
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}, tinkerer::VariablesSettings}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 
@@ -42,12 +42,14 @@ pub struct Player{
     //Emitter specifics
     emittion_configs: Vec<(StateType, ConfigType)>,
     //Sound specifics
-    sound_config: Vec<(StateType, SoundType)>
+    sound_config: Vec<(StateType, SoundType)>,
+    //Configurable Variables
+    pub(crate) variables: VariablesSettings
 }
 
 impl Player{
 
-    pub async fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>) -> Self{
+    pub async fn new(x: f32, y:f32, size: f32, color: Color, sender: Sender<Event>, variables: VariablesSettings) -> Self{
         let player = Player { 
             id: 0,
             health: Global::get_player_health(),
@@ -98,6 +100,8 @@ impl Player{
                 (StateType::Moving, SoundType::PlayerMoving),
                 (StateType::Hit, SoundType::PlayerHit)
             ],
+
+            variables: variables
         };
 
         player.publish(Event::new((player.get_id(), player.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
@@ -234,23 +238,23 @@ impl Player{
         match is_drifting {
             true => {
                 // Drift mode: more responsive steering, less friction for sliding
-                min_steering_effectiveness = 0.3;
-                max_steering_effectiveness = 1.2;
-                rotation_speed_multiplier = 3.0;
-                steering_force_multiplier = 0.5;
-                acceleration_multiplier = 0.01;      
-                velocity_zero_threshold = 150.0;    
-                friction = (0.2, 1.8);
+                min_steering_effectiveness = self.variables.drifting_min_steering_effectiveness;
+                max_steering_effectiveness = self.variables.drifting_max_steering_effectiveness;
+                rotation_speed_multiplier = self.variables.drifting_rotation_speed_multiplier;
+                steering_force_multiplier = self.variables.drifting_steering_force_multiplier;
+                acceleration_multiplier = self.variables.drifting_acceleration_multiplier;      
+                velocity_zero_threshold = self.variables.drifting_velocity_zero_threshold;    
+                friction = self.variables.drifting_friction;
             },
             false => {
                 // Normal mode: realistic car physics
-                min_steering_effectiveness = 0.1;
-                max_steering_effectiveness = 1.0;
-                rotation_speed_multiplier = 1.35;
-                steering_force_multiplier = 0.3;
-                acceleration_multiplier = 0.4;
-                velocity_zero_threshold = 100.0;
-                friction = (0.7, 1.0);
+                min_steering_effectiveness = self.variables.min_steering_effectiveness;
+                max_steering_effectiveness = self.variables.max_steering_effectiveness;
+                rotation_speed_multiplier = self.variables.rotation_speed_multiplier;
+                steering_force_multiplier = self.variables.steering_force_multiplier;
+                acceleration_multiplier = self.variables.acceleration_multiplier;
+                velocity_zero_threshold = self.variables.velocity_zero_threshold; 
+                friction = self.variables.friction;
             },
         }
         

@@ -27,6 +27,7 @@ use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
 use crate::ui::uicontroller::UIController;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
+use crate::utils::tinkerer::{AudioSettings, Tinkerer, VariablesSettings};
 use crate::StatusCode;
 
 #[derive(Debug, Clone)]
@@ -35,6 +36,7 @@ pub enum GameState{
     Playing,
     Paused,
     MainMenu,
+    Settings,
     GameOver,
     Quit
 }
@@ -62,6 +64,8 @@ pub struct GameManager{
 
     player: Arc<Mutex<Player>>,
 
+    tinkerer: Tinkerer,
+
     last_draw_call: Option<Vec<(i32, DrawCall)>>,
     is_paused: bool,
     player_name: String
@@ -70,6 +74,7 @@ pub struct GameManager{
 impl GameManager{
 
     pub async fn new() -> Self{
+        //Main style for screen with buttons.
         let button_style = root_ui().style_builder()
             .font_size(64)                    // Larger text
             .text_color(BLACK)
@@ -79,6 +84,7 @@ impl GameManager{
             .margin(RectOffset::new(20.0, 20.0, 10.0, 10.0))    // Internal padding
             .build();
         
+        //If no buttons are present, this styles overwrites.
         let label_style = root_ui().style_builder()
             .font_size(64)
             .text_color(BLACK)
@@ -92,28 +98,38 @@ impl GameManager{
 
         root_ui().push_skin(&skin);
 
+        //Initialize tinkerer before rests
+        let tinkerer = {
+            match Tinkerer::new(){
+                Ok(tinker) => tinker,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(-1);
+                },
+            }
+        };
 
-        let global = Global::new();
-        let map_bounds = (global.get_cell_size() * global.get_grid_size()) as f32;
+
+        let map_bounds = (Global::get_cell_size() * Global::get_grid_size()) as f32;
 
         let mut dispatcher = Dispatcher::new();
         let spawner = Arc::new(Mutex::new(
             SpawnManager::new(
                 dispatcher.create_sender(), 
-                global.get_level_interval(),
-                global.get_spawn_interval()
+                Global::get_level_interval(),
+                Global::get_spawn_interval()
             )));
         let factory = Arc::new(Mutex::new(
             Factory::new(
                 dispatcher.create_sender(), 
-                global.get_factory_size(),
+                Global::get_factory_size(),
                 dispatcher.create_sender()).await
             ));
         let grid = Arc::new(Mutex::new(
             Grid::new(
-                global.get_grid_size(),
-                global.get_cell_size(),
-                global.get_cell_capacity(),
+                Global::get_grid_size(),
+                Global::get_cell_size(),
+                Global::get_cell_capacity(),
                 dispatcher.create_sender())
             ));
         let handler = Arc::new(Mutex::new(Handler::new(dispatcher.create_sender())));
@@ -123,7 +139,8 @@ impl GameManager{
                 map_bounds / 2.0,
                 15.0,
                 BLACK,
-                dispatcher.create_sender()
+                dispatcher.create_sender(),
+                tinkerer.get_variables()
         ).await));
         let metal = Arc::new(Mutex::new(MetalArtist::new()));
 
@@ -134,11 +151,11 @@ impl GameManager{
 
         let assistant = Arc::new(Mutex::new(TriangleAssistant::new(
             dispatcher.create_sender(), 
-            global.get_triangle_assistant_pool_size(), 
-            global.get_triangle_bullet_amount()
+            Global::get_triangle_assistant_pool_size(), 
+            Global::get_triangle_bullet_amount()
         )));
 
-        let accoustic = Arc::new(Mutex::new(Accoustic::new().await));
+        let accoustic = Arc::new(Mutex::new(Accoustic::new(tinkerer.get_audio_settings()).await));
         
         let uicontroller = Arc::new(Mutex::new(UIController::new(dispatcher.create_sender())));
         
@@ -216,6 +233,8 @@ impl GameManager{
 
             dispatcher: dispatcher,
 
+            tinkerer: tinkerer,
+
             last_draw_call: None,
             is_paused: false,
             player_name: "DEFAULT".to_string()
@@ -229,7 +248,6 @@ impl GameManager{
 
                 return StatusCode::NewGame
             },
-            //Playing -> Paused, GameOver
             GameState::Playing => {
                 if let Ok(mut acc) = self.accoustic.lock(){
                     acc.allow();
@@ -239,9 +257,7 @@ impl GameManager{
 
                 return StatusCode::Playing
             },
-            //Paused -> Menu, Quit
             GameState::Paused => {
-                
                 if let Ok(mut acc) = self.accoustic.lock(){
                     acc.stop_all();
                 }
@@ -249,7 +265,6 @@ impl GameManager{
 
                 return StatusCode::Paused
             },
-            //Menu -> Playing, Quit
             GameState::MainMenu => {
                 self.update_menu().await;
 
@@ -262,17 +277,36 @@ impl GameManager{
 
                 let name: String = self.player_name.clone();
                 let points = self.uicontroller.lock().unwrap().get_points();
-                
+        
                 if name != "DEFAULT".to_string() && points > 100.0{
                     self.write_file(name, points).await;
                 }
 
                 return StatusCode::Reset
             },
-            //Quit -> ()
             GameState::Quit => {
                 return StatusCode::Exit
             }
+            GameState::Settings => {
+                        
+                let label_style = root_ui().style_builder()
+                    .font_size(16)
+                    .text_color(BLACK)
+                    .build();
+
+                let skin = Skin {
+                    label_style,
+                    ..root_ui().default_skin()
+                };
+
+                root_ui().push_skin(&skin);
+                
+                self.settings().await;
+                
+                root_ui().pop_skin();
+
+                return StatusCode::Settings
+            },
         }
     }
 
@@ -553,6 +587,12 @@ impl GameManager{
                         self.is_paused = false;
                         self.state = GameState::GameOver;
                     }
+
+                    ui.separator();
+
+                    if ui.button(vec2(hwidth - 140.0, hheight - 450.0), "Settings") {
+                        self.state = GameState::Settings;
+                    }
                     
                     ui.separator();
                     
@@ -686,11 +726,115 @@ impl GameManager{
                         self.player_name = input.clone();
                         self.state = GameState::Playing
                     }
-                });
+            });
 
 
             next_frame().await;
         }
+    }
+
+    async fn settings(&mut self) {
+        let width = Global::get_screen_width();
+        let height = Global::get_screen_height();
+        let hwidth = width / 2.0;
+        let hheight = height / 2.0;
+        let current_y = 125.0; // Start position for UI elements
+        
+
+        if let Ok(mut acc) = self.accoustic.lock() {
+            if let Ok(mut player) = self.player.lock() {
+                widgets::Window::new(
+                    hash!(),
+                    vec2(0.0, 0.0),
+                    vec2(width, height)
+                )
+                .label("Settings")
+                .titlebar(true)
+                .ui(&mut *root_ui(), |ui| {
+                /* 
+                    Audio settings
+                */
+                ui.separator();
+                ui.label(vec2(hwidth - 50.0, 0.0 + 5.0), "Audio Settings");
+                ui.separator();
+                
+                ui.label(None, "Master Volume");
+                ui.slider(0, "", 0.01..1.0, &mut acc.master_volume);
+                
+                ui.label(None, "Music Volume");
+                ui.slider(1, "", 0.01..1.0, &mut acc.music_volume);
+                
+                ui.label(None, "Sound Effects");
+                ui.slider(2, "", 0.01..1.0, &mut acc.effect_volume);
+                
+                
+                /* 
+                    Player settings
+                */
+                ui.separator();
+                ui.label(vec2(hwidth - 55.0, current_y ), "Player Settings");
+                ui.separator();
+                
+                // Player sliders
+                ui.label(None, "Min steering effectiveness");
+                ui.slider(3, "", 0.01..1.0, &mut player.variables.min_steering_effectiveness);
+                ui.label(None, "Max steering effectiveness");
+                ui.slider(3, "", 0.1..3.0, &mut player.variables.max_steering_effectiveness);
+                ui.label(None, "Rotation speed_multiplier");
+                ui.slider(3, "", 0.5..3.0, &mut player.variables.rotation_speed_multiplier);
+                ui.label(None, "Steering force multiplier");
+                ui.slider(3, "", 0.1..1.0, &mut player.variables.steering_force_multiplier);
+                ui.label(None, "Acceleration multiplier");
+                ui.slider(3, "", 0.1..1.0, &mut player.variables.acceleration_multiplier);
+                ui.label(None, "Velocity threshold");
+                ui.slider(3, "", 10.0..300.0, &mut player.variables.velocity_zero_threshold);
+                ui.label(None, "Front wheel friction");
+                ui.slider(3, "", 0.1..5.0, &mut player.variables.friction.0);
+                ui.label(None, "Rear wheel friction");
+                ui.slider(3, "", 0.1..5.0, &mut player.variables.friction.1);
+
+                ui.label(None, "Drifting| Min steering effectiveness");
+                ui.slider(3, "", 0.01..1.0, &mut player.variables.drifting_min_steering_effectiveness);
+                ui.label(None, "Drifting| Max steering effectiveness");
+                ui.slider(3, "", 0.1..3.0, &mut player.variables.drifting_max_steering_effectiveness);
+                ui.label(None, "Drifting| Rotation speed_multiplier");
+                ui.slider(3, "", 1.0..6.0, &mut player.variables.drifting_rotation_speed_multiplier);
+                ui.label(None, "Drifting| Steering force multiplier");
+                ui.slider(3, "", 0.1..1.0, &mut player.variables.drifting_steering_force_multiplier);
+                ui.label(None, "Drifting| Acceleration multiplier");
+                ui.slider(3, "", 0.001..0.1, &mut player.variables.drifting_acceleration_multiplier);
+                ui.label(None, "Drifting| Velocity threshold");
+                ui.slider(3, "", 10.0..300.0, &mut player.variables.drifting_velocity_zero_threshold);
+                ui.label(None, "Drifting| Front wheel friction");
+                ui.slider(3, "", 0.1..5.0, &mut player.variables.drifting_friction.0);
+                ui.label(None, "Drifting| Rear wheel friction");
+                ui.slider(3, "", 0.1..5.0, &mut player.variables.drifting_friction.1);
+
+                if ui.button(vec2(hwidth - 200.0, hheight + 300.0),  "Save") {
+                    //Save differences
+                    let res = self.tinkerer.write(AudioSettings{ 
+                        master: acc.master_volume,
+                        effects: acc.effect_volume,
+                        music: acc.music_volume
+                        }, 
+                        player.variables.clone()
+                    );
+
+                    self.state = GameState::GameOver;
+                    return;
+                }
+
+                if ui.button(vec2(hwidth + 20.0, hheight + 300.0),  "Back") {
+                    //Save differences
+                    self.state = GameState::Paused;
+                    return;
+                }
+
+                });
+            }
+        }
+        
+        next_frame().await
     }
 
     fn keycode_to_char(&self, key: KeyCode) -> Option<char> {

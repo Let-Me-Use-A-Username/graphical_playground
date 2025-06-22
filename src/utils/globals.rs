@@ -3,11 +3,6 @@ use macroquad::prelude::*;
 pub struct Global{}
 
 impl Global{
-    pub fn new() -> Self{
-        return Global {}
-    }
-
-
     /* 
             General
     */
@@ -23,15 +18,15 @@ impl Global{
     /* 
             Grid 
     */
-    pub fn get_cell_size(&self) -> i32{
+    pub fn get_cell_size() -> i32{
         return 720
     }
 
-    pub fn get_grid_size(&self) -> i32{
+    pub fn get_grid_size() -> i32{
         return 32
     }
 
-    pub fn get_cell_capacity(&self) -> usize{
+    pub fn get_cell_capacity() -> usize{
         return 0
     }
 
@@ -39,18 +34,18 @@ impl Global{
     /* 
             Factory
     */
-    pub fn get_factory_size(&self) -> usize{
+    pub fn get_factory_size() -> usize{
         return 256
     }
 
     /* 
             Spawner
     */
-    pub fn get_level_interval(&self) -> f64{
+    pub fn get_level_interval() -> f64{
         return 60.0
     }
 
-    pub fn get_spawn_interval(&self) -> f64{
+    pub fn get_spawn_interval() -> f64{
         return 3.0
     }
 
@@ -58,11 +53,11 @@ impl Global{
     /* 
         Triangle Assistant
     */
-    pub fn get_triangle_assistant_pool_size(&self) -> usize{
+    pub fn get_triangle_assistant_pool_size() -> usize{
         return 128
     }
 
-    pub fn get_triangle_bullet_amount(&self) -> usize{
+    pub fn get_triangle_bullet_amount() -> usize{
         return 10
     }
 
