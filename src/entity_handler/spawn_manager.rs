@@ -36,19 +36,19 @@ impl EnemyComplexity {
 
         let pool: Vec<EnemyType> = match self {
             EnemyComplexity::Simple => {
-                vec![EnemyType::Circle].into()
+                vec![EnemyType::Circle, EnemyType::CircleBoss].into()
             },
             EnemyComplexity::Average => {
                 vec![EnemyType::Circle, EnemyType::Triangle].into()
             },
             EnemyComplexity::Complex => {
-                vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect].into()
+                vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect, EnemyType::CircleBoss].into()
             },
             EnemyComplexity::Expert => {
                 vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon].into()
             },
             EnemyComplexity::Hell => {
-                vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon].into()
+                vec![EnemyType::Circle, EnemyType::Triangle, EnemyType::Rect, EnemyType::Hexagon, EnemyType::TriangleBoss].into()
             }, 
         };
 
@@ -74,7 +74,8 @@ impl EnemyComplexity {
 pub struct WaveConfig{
     enemy_count: u64,
     spawn_interval: f64,
-    complexity: EnemyComplexity
+    complexity: EnemyComplexity,
+    spawned_boss: bool
 }
 
 impl WaveConfig{
@@ -84,7 +85,8 @@ impl WaveConfig{
         return WaveConfig{
             enemy_count: (complexity * multiplier) as u64,
             spawn_interval: spawn_interval,
-            complexity: EnemyComplexity::Simple
+            complexity: EnemyComplexity::Simple,
+            spawned_boss: false
         }
     }
 }
@@ -158,8 +160,6 @@ impl SpawnManager{
         if enemy_count > factory_queue_capacity{
             let cap = enemy_count - factory_queue_capacity;
             self.publish(Event::new(cap, EventType::FactoryResize)).await;
-            //hotfix for testing different enemy amounts
-            //factory_surplus = (false, std::cmp::max(active_enemies, 20));
         }
 
         //Number of enemies to queue in factory
@@ -203,18 +203,30 @@ impl SpawnManager{
         
         let complexity = self.config.complexity.next();
         self.config.complexity = complexity;
-        self.config.enemy_count = (complexity as usize * Self::ENEMY_MULTIPLIER) as u64
+        self.config.enemy_count = (complexity as usize * Self::ENEMY_MULTIPLIER) as u64;
+        self.config.spawned_boss = false;
     }
 
     #[inline(always)]
-    fn get_spawn_template(&self, size: usize) -> VecDeque<EnemyType>{
+    fn get_spawn_template(&mut self, size: usize) -> VecDeque<EnemyType>{
         let complexity = self.config.complexity;
 
         let mut template: VecDeque<EnemyType> = VecDeque::with_capacity(size);
         
         while template.len() < template.capacity(){
             let etype = complexity.get_enemy_type();
-            template.push_back(etype);
+            
+            let is_boss= etype.is_boss();
+
+            //spawn non boss enemy
+            if !is_boss{
+                template.push_back(etype);
+            }
+            //if is boss and boss hasn't spawned
+            else if is_boss && !self.config.spawned_boss{
+                self.config.spawned_boss = true;
+                template.push_back(etype);
+            }
         }
 
         return template

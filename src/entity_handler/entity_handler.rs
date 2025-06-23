@@ -141,8 +141,17 @@ impl Handler{
                 viewport.contains(enemy.get_pos()) && enemy.is_alive()
             })
             .for_each(|enemy|{
-                draw_calls.push((4, enemy.get_draw_call()));
-                
+
+                if !enemy.get_type().is_boss(){
+                    draw_calls.push((4, enemy.get_draw_call()));
+                    
+                }
+                else {
+                    for call in enemy.get_all_draw_calls(){
+                        draw_calls.push((6, call));
+                    }
+                }
+                //DEBUG for colliders
                 // for call in enemy.get_all_draw_calls(){
                 //     draw_calls.push((4, call));
                 // }

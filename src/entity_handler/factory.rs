@@ -28,12 +28,14 @@ impl Factory{
         //Review: Enemy pool size is the same as the factories, because in the extreme case that the factory
         //Review: spanws only one enemy type, the pool has to match the factories queue size.
         
-        let hash_size = size;
+        let hash_size = size / 2;
 
-        size_param.insert(EnemyType::Circle, hash_size);
-        size_param.insert(EnemyType::Triangle, hash_size);
+        size_param.insert(EnemyType::Circle, size);
+        size_param.insert(EnemyType::Triangle, size);
         size_param.insert(EnemyType::Rect, hash_size);
         size_param.insert(EnemyType::Hexagon, hash_size);
+        size_param.insert(EnemyType::CircleBoss, 3);
+        size_param.insert(EnemyType::TriangleBoss, 3);
 
         recycler.pre_populate(size_param).await;
 
@@ -94,7 +96,14 @@ impl Factory{
                         let size = thread_rng().gen_range(100..150) as f32;
                         self.queue_enemy(EnemyType::Hexagon, pos, size, color, player_pos).await;
                     },
-                    EnemyType::Boss => {}
+                    EnemyType::CircleBoss => {
+                        let size = thread_rng().gen_range(100..150) as f32;
+                        self.queue_enemy(EnemyType::CircleBoss, pos, size, color, player_pos).await;
+                    }
+                    EnemyType::TriangleBoss => {
+                        let size = thread_rng().gen_range(120..170) as f32;
+                        self.queue_enemy(EnemyType::TriangleBoss, pos, size, color, player_pos).await;
+                    }
                 }
             }
         }
@@ -214,7 +223,12 @@ impl Subscriber for Factory{
                         EnemyType::Hexagon => {
                             self.queue_enemy(EnemyType::Hexagon, pos, size, color, player_pos).await;
                         },
-                        EnemyType::Boss => {}
+                        EnemyType::CircleBoss => {
+                            self.queue_enemy(EnemyType::CircleBoss, pos, size, color, player_pos).await;
+                        },
+                        EnemyType::TriangleBoss => {
+                            self.queue_enemy(EnemyType::TriangleBoss, pos, size, color, player_pos).await;
+                        }
                     }
                 }
             },

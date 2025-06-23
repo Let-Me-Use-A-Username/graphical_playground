@@ -6,7 +6,7 @@ use macroquad::math::Vec2;
 use macroquad::color::Color;
 use ::rand::{thread_rng, Rng};
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::artist::{ConfigType, DrawCall}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::{artist::DrawCall, metal::ConfigType}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
 /* 
     The triangle in comparison to the circle is more complex.
@@ -223,7 +223,7 @@ impl Updatable for Triangle{
         
             if play_sound{
                 // Emit sound request
-                let srequest = SoundRequest::new(true, false, 0.1);
+                let srequest = SoundRequest::new(true, false, 0.07);
                 self.publish(Event::new((SoundType::EnemyDeath, srequest), EventType::PlaySound)).await;
             }
         }

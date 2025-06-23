@@ -5,9 +5,9 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::{artist::DrawCall, metal::ConfigType}, utils::machine::{StateMachine, StateType}};   
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::{artist::DrawCall, metal::ConfigType}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
-pub struct Circle{
+pub struct CircleBoss{
     //Attributes
     id: u64,
     pos: Vec2,
@@ -15,6 +15,10 @@ pub struct Circle{
     speed: f32,
     color: Color,
     target: Vec2,
+    //Health
+    health: i32,
+    was_hit: bool,
+    hit_timer: SimpleTimer,
     //Components
     sender: Sender<Event>,
     collider: CircleCollider,
@@ -23,25 +27,61 @@ pub struct Circle{
     is_alive: bool,
     //Emittion
     emittion_configs: Vec<(StateType, ConfigType)>,
+    //Dash specifics
+    boost_timer: SimpleTimer,
+    boost_duration: SimpleTimer,
+    is_boosting: bool
+}
+
+impl CircleBoss{
+    fn select_movement(&mut self, delta: f32, overide: Option<Vec2>){
+        let now = get_time();
+
+        if self.boost_duration.expired(now){
+            self.is_boosting = false;
+        }
+
+        if !self.is_boosting{
+            self.move_to(delta, overide);
+        }
+        else{
+            self.boost(delta)
+        }
+    }
+
+    fn boost(&mut self, delta: f32){
+        let mut new_pos = self.target;
+        let speed = self.speed * 10.0;
+        
+        new_pos = self.pos.move_towards(new_pos, speed * delta);
+        self.pos = new_pos;
+    }
 }
 
 //========== Circle interfaces =========
 #[async_trait]
-impl Updatable for Circle{
+impl Updatable for CircleBoss{
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
             //Update target position
             let mut overide = None;
             let mut play_sound = false;
-
+            let now = get_time();
 
             while let Some(param_item) = params.pop(){
                 if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
-                    self.target = *player_pos;
+                    if !self.is_boosting{
+                        self.target = *player_pos;
+                    }
                 }
+                //REVIEW: No override is ever given since Bosses don't register enemy collitions.
                 if let Some(overide_pos) = param_item.downcast_ref::<Option<Vec2>>(){
                     overide = *overide_pos;
                 }
+            }
+
+            if self.hit_timer.expired(now){
+                self.was_hit = false;
             }
 
             //Update based on state machine
@@ -51,11 +91,28 @@ impl Updatable for Circle{
                         self.machine.transition(StateType::Moving);
                     },
                     StateType::Moving => {
-                        self.move_to(delta, overide);
+                        if self.boost_timer.expired(now){
+                            self.is_boosting = true;
+                            self.boost_timer.set(now, 5.0);
+                            self.boost_duration.set(now, 2.0);
+                        }
+                        self.select_movement(delta, overide);
                     },
                     StateType::Hit => {
-                        self.set_alive(false);
+                        self.health -= 1;
                         play_sound = true;
+
+                        if self.health <= 0 {
+                            self.set_alive(false);
+                        }
+                        else{
+                            self.machine.transition(StateType::Moving);
+                        }
+
+                        if !self.was_hit{
+                            self.was_hit = true;
+                            self.hit_timer.set(now, 1.0);
+                        }
                     },
                     _ => (), //Unreachable
                 }
@@ -65,15 +122,21 @@ impl Updatable for Circle{
             self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await;
         
             if play_sound{
-                // Emit sound request
-                let srequest = SoundRequest::new(true, false, 0.07);
-                self.publish(Event::new((SoundType::EnemyDeath, srequest), EventType::PlaySound)).await;
-            }
+                    // Emit sound request
+                    if self.health > 0{
+                        let srequest = SoundRequest::new(true, false, 0.1);
+                        self.publish(Event::new((SoundType::RectHit, srequest), EventType::PlaySound)).await;
+                    }
+                    else{
+                        let srequest = SoundRequest::new(true, false, 0.1);
+                        self.publish(Event::new((SoundType::EnemyDeath, srequest), EventType::PlaySound)).await;
+                    }
+                }
         }
     }
 }
 
-impl Object for Circle{
+impl Object for CircleBoss{
     #[inline(always)]
     fn get_pos(&self) -> Vec2{
         return self.pos
@@ -88,7 +151,7 @@ impl Object for Circle{
     }
 }
 
-impl Moveable for Circle{
+impl Moveable for CircleBoss{
     #[inline(always)]
     fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32){
         let mut new_pos = overide.unwrap_or(self.target);
@@ -100,7 +163,7 @@ impl Moveable for Circle{
     }
 }
 
-impl Drawable for Circle{
+impl Drawable for CircleBoss{
     #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
         return DrawCall::Circle(self.pos.x, self.pos.y, self.size, self.color)
@@ -117,7 +180,7 @@ impl Drawable for Circle{
     }
 }
 
-impl GameEntity for Circle{
+impl GameEntity for CircleBoss{
     #[inline(always)]
     fn get_id(&self) -> u64 {
         return self.id
@@ -137,9 +200,9 @@ impl GameEntity for Circle{
 }
 
 #[async_trait]
-impl Enemy for Circle{
+impl Enemy for CircleBoss{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
-        let enemy =  Circle {
+        let enemy =  CircleBoss {
             id: id,
             pos: pos, 
             size: size, 
@@ -147,13 +210,21 @@ impl Enemy for Circle{
             color: color,
             target: player_pos,
 
+            health: 30,
+            was_hit: false,
+            hit_timer: SimpleTimer::blank(),
+
             sender: sender,
             collider: CircleCollider::new(pos.x, pos.y, size),
             machine: StateMachine::new(),
 
             is_alive: true,
             
-            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)]
+            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)],
+            
+            boost_timer: SimpleTimer::blank(),
+            boost_duration: SimpleTimer::blank(),
+            is_boosting: false
         };
 
         return enemy
@@ -203,14 +274,14 @@ impl Enemy for Circle{
     }
 
     fn get_all_draw_calls(&self) -> Vec<DrawCall>{
-        let col_cal = self.collider.get_draw_call();
+        let outline = DrawCall::CircleLines(self.pos.x, self.pos.y, self.size, 10.0, BLACK);
         let selfcal = self.get_draw_call();
 
-        return vec![selfcal, col_cal]
+        return vec![selfcal, outline]
     }
 
     fn get_type(&self) -> EnemyType{
-        return EnemyType::Circle
+        return EnemyType::CircleBoss
     }
 
     fn reset(&mut self, id: u64, pos: Vec2, color: Color, size: f32, target: Vec2, is_alive: bool){
@@ -222,11 +293,19 @@ impl Enemy for Circle{
         self.is_alive = is_alive;
         self.collider = CircleCollider::new(pos.x, pos.y, size);
         self.machine.transition(StateType::Idle);
+
+        self.health = 30;
+        self.was_hit = false;
+        self.hit_timer = SimpleTimer::blank();
+
+        self.boost_timer = SimpleTimer::blank();
+        self.boost_duration = SimpleTimer::blank();
+        self.is_boosting = false;
     }
 }
 
 #[async_trait]
-impl Publisher for Circle{
+impl Publisher for CircleBoss{
     async fn publish(&self, event: Event){
         let _ = self.sender.send(event);
     }
@@ -234,12 +313,12 @@ impl Publisher for Circle{
 
 
 
-impl std::fmt::Debug for Circle{
+impl std::fmt::Debug for CircleBoss{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Circle")
+        f.debug_struct("CircleBoss")
             .field("id", &self.id)
             .field("pos", &self.pos)
-            .field("type", &"circle")
+            .field("type", &"CircleBoss")
             .finish()
     }
 }

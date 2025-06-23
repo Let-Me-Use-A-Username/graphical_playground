@@ -10,28 +10,36 @@ mod objects;
 mod renderer;
 mod ui;
 
-use std::env;
-use macroquad::prelude::*;
+use std::{env, process::{exit, Command}};
+use macroquad::{miniquad::conf::Platform, prelude::*};
 use game_manager::GameManager;
 use mimalloc::MiMalloc;
+
+use crate::utils::tinkerer::{Tinkerer, WindowConf};
 
 //Mimalloc is used because heap allocation is very frequent due to futures and Box-es
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-//NOTE: This should be configured in settings ideally...
 pub fn window_conf() -> Conf{
-    let mut conf = Conf {
-        window_title: "Geometrical".to_owned(),
-        //fullscreen: true,
-        window_height: 1200,
-        window_width: 1400,
-        window_resizable: true,
-        ..Default::default()
-    };
+    let mut windowconf = WindowConf::default();
 
-    conf.platform.swap_interval = Some(0);
-    conf.platform.blocking_event_loop = false;
+    match Tinkerer::read_conf(){
+        Ok(found_conf) => {
+            windowconf = found_conf; 
+        },
+        Err(err) => {
+            eprintln!("Failed to load Window configuration: {}", err);
+        },
+    }
+
+    let icon = None;
+    let mut platform = Platform::default();
+
+    platform.swap_interval = Some(0);
+    platform.blocking_event_loop = false;
+
+    let conf = windowconf.into_conf(icon, platform);
 
     return conf
 }
@@ -63,7 +71,14 @@ async fn main() {
                 std::process::exit(0);
             },
             StatusCode::Reset => {
-                game_manager = GameManager::new().await;
+                let exe_path = env::current_exe().expect("failed to get current exe path");
+
+                Command::new(exe_path)
+                    .args(env::args().skip(8))
+                    .spawn()
+                    .expect("failed to spawn new process");
+
+                exit(0);
             },
             _ => {}
         }

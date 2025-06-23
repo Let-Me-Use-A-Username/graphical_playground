@@ -1,7 +1,6 @@
 ==============================================
 ================== Final Roadmap =============
-- Implement Boss
-    - use shape outlines to highlight them.
+- Implement Bosses
 
 ==============================================
 ================== Critical ==================
@@ -9,22 +8,28 @@
 
 ==============================================
 ================== Current ===================
-- Implemented variable Tinkerer
-    - Test the ranges given to the sliders, could be too much.
-        - Low master volume creates weird noises.
-- Implement full screen option
+- Circle boss dashes at player at interval
+    - Increase distance so it goes behind the target position
+    - Sound effect?
+    
+- Triangle Boss shoots lots of bullets 
 
 
 ==============================================
 ================== General todo ==============
+- Implement Game over menu with score and highscore?
+
+- Implement player health indicator (UI)
+
 -Tested the game.
     - Enemies:
+        - Rect:
+            - Provides no knockback on hit (with or no shield)
         - Hexagon:
             - Either make it a boss
             - Or less appearances
 
 - Implement small buffer between Menu - Playing
-
 
 ==============================================
 ================== Testing ===================
@@ -40,6 +45,7 @@
             - *UNSURE whether I want to keep this*
             - *Player Test ???*
 
+- Test Tinker ranges on variables.
 
 - In release version, player movement feels different. Test it
 

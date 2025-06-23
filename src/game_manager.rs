@@ -23,11 +23,12 @@ use crate::event_system::{event::EventType, dispatcher::Dispatcher};
 use crate::grid_system::wall::Wall;
 use crate::grid_system::grid::{EntityType, Grid};
 use crate::objects::bullet::ProjectileType;
-use crate::renderer::artist::{Artist, DrawCall, MetalArtist};
+use crate::renderer::artist::{Artist, DrawCall};
+use crate::renderer::metal::MetalArtist;
 use crate::ui::uicontroller::UIController;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
-use crate::utils::tinkerer::{AudioSettings, Tinkerer, VariablesSettings};
+use crate::utils::tinkerer::{AudioSettings, Tinkerer};
 use crate::StatusCode;
 
 #[derive(Debug, Clone)]
@@ -590,7 +591,7 @@ impl GameManager{
 
                     ui.separator();
 
-                    if ui.button(vec2(hwidth - 140.0, hheight - 450.0), "Settings") {
+                    if ui.button(vec2(hwidth - 130.0, hheight - 450.0), "Settings") {
                         self.state = GameState::Settings;
                     }
                     
@@ -739,7 +740,6 @@ impl GameManager{
         let hwidth = width / 2.0;
         let hheight = height / 2.0;
         let current_y = 125.0; // Start position for UI elements
-        
 
         if let Ok(mut acc) = self.accoustic.lock() {
             if let Ok(mut player) = self.player.lock() {
@@ -755,7 +755,8 @@ impl GameManager{
                     Audio settings
                 */
                 ui.separator();
-                ui.label(vec2(hwidth - 50.0, 0.0 + 5.0), "Audio Settings");
+                ui.label(None, "");
+                ui.label(vec2(hwidth - 50.0, 0.0 + 12.0), "Audio Settings");
                 ui.separator();
                 
                 ui.label(None, "Master Volume");
@@ -772,45 +773,60 @@ impl GameManager{
                     Player settings
                 */
                 ui.separator();
-                ui.label(vec2(hwidth - 55.0, current_y ), "Player Settings");
+                ui.label(None, "");
+                ui.label(vec2(hwidth - 55.0, current_y + 20.0), "Player Settings");
                 ui.separator();
                 
                 // Player sliders
                 ui.label(None, "Min steering effectiveness");
                 ui.slider(3, "", 0.01..1.0, &mut player.variables.min_steering_effectiveness);
                 ui.label(None, "Max steering effectiveness");
-                ui.slider(3, "", 0.1..3.0, &mut player.variables.max_steering_effectiveness);
+                ui.slider(4, "", 0.1..3.0, &mut player.variables.max_steering_effectiveness);
                 ui.label(None, "Rotation speed_multiplier");
-                ui.slider(3, "", 0.5..3.0, &mut player.variables.rotation_speed_multiplier);
+                ui.slider(5, "", 0.5..3.0, &mut player.variables.rotation_speed_multiplier);
                 ui.label(None, "Steering force multiplier");
-                ui.slider(3, "", 0.1..1.0, &mut player.variables.steering_force_multiplier);
+                ui.slider(6, "", 0.1..1.0, &mut player.variables.steering_force_multiplier);
                 ui.label(None, "Acceleration multiplier");
-                ui.slider(3, "", 0.1..1.0, &mut player.variables.acceleration_multiplier);
+                ui.slider(7, "", 0.1..1.0, &mut player.variables.acceleration_multiplier);
                 ui.label(None, "Velocity threshold");
-                ui.slider(3, "", 10.0..300.0, &mut player.variables.velocity_zero_threshold);
+                ui.slider(8, "", 10.0..300.0, &mut player.variables.velocity_zero_threshold);
                 ui.label(None, "Front wheel friction");
-                ui.slider(3, "", 0.1..5.0, &mut player.variables.friction.0);
+                ui.slider(9, "", 0.1..5.0, &mut player.variables.friction.0);
                 ui.label(None, "Rear wheel friction");
-                ui.slider(3, "", 0.1..5.0, &mut player.variables.friction.1);
+                ui.slider(10, "", 0.1..5.0, &mut player.variables.friction.1);
+
+                ui.separator();
+                ui.label(None, "");
+                ui.label(vec2(hwidth - 85.0, current_y + 355.0), "Player drifting settings");
+                ui.separator();
 
                 ui.label(None, "Drifting| Min steering effectiveness");
-                ui.slider(3, "", 0.01..1.0, &mut player.variables.drifting_min_steering_effectiveness);
+                ui.slider(11, "", 0.01..1.0, &mut player.variables.drifting_min_steering_effectiveness);
                 ui.label(None, "Drifting| Max steering effectiveness");
-                ui.slider(3, "", 0.1..3.0, &mut player.variables.drifting_max_steering_effectiveness);
+                ui.slider(12, "", 0.1..3.0, &mut player.variables.drifting_max_steering_effectiveness);
                 ui.label(None, "Drifting| Rotation speed_multiplier");
-                ui.slider(3, "", 1.0..6.0, &mut player.variables.drifting_rotation_speed_multiplier);
+                ui.slider(13, "", 1.0..6.0, &mut player.variables.drifting_rotation_speed_multiplier);
                 ui.label(None, "Drifting| Steering force multiplier");
-                ui.slider(3, "", 0.1..1.0, &mut player.variables.drifting_steering_force_multiplier);
+                ui.slider(14, "", 0.1..1.0, &mut player.variables.drifting_steering_force_multiplier);
                 ui.label(None, "Drifting| Acceleration multiplier");
-                ui.slider(3, "", 0.001..0.1, &mut player.variables.drifting_acceleration_multiplier);
+                ui.slider(15, "", 0.001..0.1, &mut player.variables.drifting_acceleration_multiplier);
                 ui.label(None, "Drifting| Velocity threshold");
-                ui.slider(3, "", 10.0..300.0, &mut player.variables.drifting_velocity_zero_threshold);
+                ui.slider(16, "", 10.0..300.0, &mut player.variables.drifting_velocity_zero_threshold);
                 ui.label(None, "Drifting| Front wheel friction");
-                ui.slider(3, "", 0.1..5.0, &mut player.variables.drifting_friction.0);
+                ui.slider(17, "", 0.1..5.0, &mut player.variables.drifting_friction.0);
                 ui.label(None, "Drifting| Rear wheel friction");
-                ui.slider(3, "", 0.1..5.0, &mut player.variables.drifting_friction.1);
+                ui.slider(18, "", 0.1..5.0, &mut player.variables.drifting_friction.1);
 
-                if ui.button(vec2(hwidth - 200.0, hheight + 300.0),  "Save") {
+                ui.separator();
+                ui.label(None, "");
+                ui.label(vec2(hwidth - 62.0, current_y + 690.0), "General settings");
+                ui.separator();
+
+                ui.checkbox(20, "Fullscreen", &mut self.tinkerer.conf.fullscreen);
+                ui.checkbox(21, "High DPI", &mut self.tinkerer.conf.high_dpi);
+                ui.checkbox(22, "Resizable", &mut self.tinkerer.conf.window_resizable);
+
+                if ui.button(vec2(hwidth - 200.0, hheight + 400.0),  "Save") {
                     //Save differences
                     let res = self.tinkerer.write(AudioSettings{ 
                         master: acc.master_volume,
@@ -820,11 +836,15 @@ impl GameManager{
                         player.variables.clone()
                     );
 
+                    if res.is_err(){
+                        eprintln!("{}", res.unwrap_err());
+                    }
+
                     self.state = GameState::GameOver;
                     return;
                 }
 
-                if ui.button(vec2(hwidth + 20.0, hheight + 300.0),  "Back") {
+                if ui.button(vec2(hwidth + 20.0, hheight + 400.0),  "Back") {
                     //Save differences
                     self.state = GameState::Paused;
                     return;

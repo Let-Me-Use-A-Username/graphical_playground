@@ -5,9 +5,9 @@ use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::{artist::DrawCall, metal::ConfigType}, utils::machine::{StateMachine, StateType}};   
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::{artist::DrawCall, metal::ConfigType}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
 
-pub struct Circle{
+pub struct TriangleBoss{
     //Attributes
     id: u64,
     pos: Vec2,
@@ -15,6 +15,10 @@ pub struct Circle{
     speed: f32,
     color: Color,
     target: Vec2,
+    //Health
+    health: i32,
+    was_hit: bool,
+    hit_timer: SimpleTimer,
     //Components
     sender: Sender<Event>,
     collider: CircleCollider,
@@ -27,18 +31,19 @@ pub struct Circle{
 
 //========== Circle interfaces =========
 #[async_trait]
-impl Updatable for Circle{
+impl Updatable for TriangleBoss{
     async fn update(&mut self, delta: f32, mut params: Vec<Box<dyn std::any::Any + Send>>) {
         if self.is_alive{
             //Update target position
             let mut overide = None;
             let mut play_sound = false;
-
+            let now = get_time();
 
             while let Some(param_item) = params.pop(){
                 if let Some(player_pos) = param_item.downcast_ref::<Vec2>(){
                     self.target = *player_pos;
                 }
+                //REVIEW: No override is ever given since Bosses don't register enemy collitions.
                 if let Some(overide_pos) = param_item.downcast_ref::<Option<Vec2>>(){
                     overide = *overide_pos;
                 }
@@ -54,8 +59,20 @@ impl Updatable for Circle{
                         self.move_to(delta, overide);
                     },
                     StateType::Hit => {
-                        self.set_alive(false);
+                        self.health -= 1;
                         play_sound = true;
+
+                        if self.health <= 0 {
+                            self.set_alive(false);
+                        }
+                        else{
+                            self.machine.transition(StateType::Moving);
+                        }
+
+                        if !self.was_hit{
+                            self.was_hit = true;
+                            self.hit_timer.set(now, 0.3);
+                        }
                     },
                     _ => (), //Unreachable
                 }
@@ -65,15 +82,21 @@ impl Updatable for Circle{
             self.publish(Event::new((self.id, EntityType::Enemy, self.pos, self.size), EventType::InsertOrUpdateToGrid)).await;
         
             if play_sound{
-                // Emit sound request
-                let srequest = SoundRequest::new(true, false, 0.07);
-                self.publish(Event::new((SoundType::EnemyDeath, srequest), EventType::PlaySound)).await;
-            }
+                    // Emit sound request
+                    if self.health > 0{
+                        let srequest = SoundRequest::new(true, false, 0.1);
+                        self.publish(Event::new((SoundType::RectHit, srequest), EventType::PlaySound)).await;
+                    }
+                    else{
+                        let srequest = SoundRequest::new(true, false, 0.1);
+                        self.publish(Event::new((SoundType::EnemyDeath, srequest), EventType::PlaySound)).await;
+                    }
+                }
         }
     }
 }
 
-impl Object for Circle{
+impl Object for TriangleBoss{
     #[inline(always)]
     fn get_pos(&self) -> Vec2{
         return self.pos
@@ -88,7 +111,7 @@ impl Object for Circle{
     }
 }
 
-impl Moveable for Circle{
+impl Moveable for TriangleBoss{
     #[inline(always)]
     fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32){
         let mut new_pos = overide.unwrap_or(self.target);
@@ -100,10 +123,30 @@ impl Moveable for Circle{
     }
 }
 
-impl Drawable for Circle{
+impl Drawable for TriangleBoss{
     #[inline(always)]
     fn get_draw_call(&self) -> DrawCall {
-        return DrawCall::Circle(self.pos.x, self.pos.y, self.size, self.color)
+        let top_angle = std::f32::consts::PI / 2.0;
+        
+        // Top vertex
+        let v1 = Vec2::new(
+            self.pos.x + self.size * f32::cos(top_angle),
+            self.pos.y - self.size * f32::sin(top_angle)
+        );
+        
+        // Bottom right vertex
+        let v2 = Vec2::new(
+            self.pos.x + self.size * f32::cos(top_angle + 2.0 * std::f32::consts::PI / 3.0),
+            self.pos.y - self.size * f32::sin(top_angle + 2.0 * std::f32::consts::PI / 3.0)
+        );
+        
+        // Bottom left vertex
+        let v3 = Vec2::new(
+            self.pos.x + self.size * f32::cos(top_angle + 4.0 * std::f32::consts::PI / 3.0),
+            self.pos.y - self.size * f32::sin(top_angle + 4.0 * std::f32::consts::PI / 3.0)
+        );
+        
+        return DrawCall::Triangle(v1, v2, v3, self.color)
     }
 
     fn should_emit(&self) -> bool{
@@ -117,7 +160,7 @@ impl Drawable for Circle{
     }
 }
 
-impl GameEntity for Circle{
+impl GameEntity for TriangleBoss{
     #[inline(always)]
     fn get_id(&self) -> u64 {
         return self.id
@@ -137,15 +180,19 @@ impl GameEntity for Circle{
 }
 
 #[async_trait]
-impl Enemy for Circle{
+impl Enemy for TriangleBoss{
     fn new(id: u64, pos: Vec2, size: f32, color: Color, player_pos: Vec2, sender:Sender<Event>) -> Self where Self: Sized {
-        let enemy =  Circle {
+        let enemy =  TriangleBoss {
             id: id,
             pos: pos, 
             size: size, 
             speed: 100.0,
             color: color,
             target: player_pos,
+
+            health: 30,
+            was_hit: false,
+            hit_timer: SimpleTimer::blank(),
 
             sender: sender,
             collider: CircleCollider::new(pos.x, pos.y, size),
@@ -203,14 +250,34 @@ impl Enemy for Circle{
     }
 
     fn get_all_draw_calls(&self) -> Vec<DrawCall>{
-        let col_cal = self.collider.get_draw_call();
+        let top_angle = std::f32::consts::PI / 2.0;
+        
+        // Top vertex
+        let v1 = Vec2::new(
+            self.pos.x + self.size * f32::cos(top_angle),
+            self.pos.y - self.size * f32::sin(top_angle)
+        );
+        
+        // Bottom right vertex
+        let v2 = Vec2::new(
+            self.pos.x + self.size * f32::cos(top_angle + 2.0 * std::f32::consts::PI / 3.0),
+            self.pos.y - self.size * f32::sin(top_angle + 2.0 * std::f32::consts::PI / 3.0)
+        );
+        
+        // Bottom left vertex
+        let v3 = Vec2::new(
+            self.pos.x + self.size * f32::cos(top_angle + 4.0 * std::f32::consts::PI / 3.0),
+            self.pos.y - self.size * f32::sin(top_angle + 4.0 * std::f32::consts::PI / 3.0)
+        );
+        
+        let outline = DrawCall::TriangleLine(v1, v2, v3, 10.0, BLACK);
         let selfcal = self.get_draw_call();
 
-        return vec![selfcal, col_cal]
+        return vec![selfcal, outline]
     }
 
     fn get_type(&self) -> EnemyType{
-        return EnemyType::Circle
+        return EnemyType::TriangleBoss
     }
 
     fn reset(&mut self, id: u64, pos: Vec2, color: Color, size: f32, target: Vec2, is_alive: bool){
@@ -222,11 +289,15 @@ impl Enemy for Circle{
         self.is_alive = is_alive;
         self.collider = CircleCollider::new(pos.x, pos.y, size);
         self.machine.transition(StateType::Idle);
+
+        self.health = 30;
+        self.was_hit = false;
+        self.hit_timer = SimpleTimer::blank();
     }
 }
 
 #[async_trait]
-impl Publisher for Circle{
+impl Publisher for TriangleBoss{
     async fn publish(&self, event: Event){
         let _ = self.sender.send(event);
     }
@@ -234,12 +305,12 @@ impl Publisher for Circle{
 
 
 
-impl std::fmt::Debug for Circle{
+impl std::fmt::Debug for TriangleBoss{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Circle")
+        f.debug_struct("TriangleBoss")
             .field("id", &self.id)
             .field("pos", &self.pos)
-            .field("type", &"circle")
+            .field("type", &"TriangleBoss")
             .finish()
     }
 }

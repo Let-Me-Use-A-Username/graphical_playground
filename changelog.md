@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.66 Changes 23/6/2025
+- v.0.2.66 Implemented saving and loading Window Conf's via `tinker` and `game manager`.
+- v.0.2.66 Implemented dynamic change of settings.
+- v.0.2.66 *Broke up Artist and MetalArtist* into different files for clarity.
+- v.0.2.66 Partially implemented Boss logic. Behavior hasn't been implemented yet.
+- v.0.2.66 Implemented BossTypes, added all components logic, except for behavior.
+
+
 ### 0.2.66 Changes 22/6/2025
 - v.0.2.66 *Implemented Tinkerer* structure to modify Sound levels and player variables.
 - v.0.2.66 Implemented Tinkerer inheritance with Accoustic and Player.

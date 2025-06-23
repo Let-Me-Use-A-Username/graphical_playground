@@ -45,7 +45,8 @@ impl UIController{
                     EnemyType::Triangle => points += triangle_score,
                     EnemyType::Rect => points += rect_score,
                     EnemyType::Hexagon => points += hexagon_score,
-                    EnemyType::Boss => points += boss_score,
+                    EnemyType::CircleBoss => points += boss_score,
+                    EnemyType::TriangleBoss => points += boss_score,
                 }
             }); 
         

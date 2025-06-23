@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::mpsc::Sender;
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::artist::{ConfigType, DrawCall}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}, tinkerer::VariablesSettings}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::{artist::DrawCall, metal::ConfigType}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}, tinkerer::VariablesSettings}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 

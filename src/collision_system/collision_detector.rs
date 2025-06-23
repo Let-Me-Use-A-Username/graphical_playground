@@ -89,8 +89,15 @@ impl CollisionDetector{
                 enemies_cloned.retain(|enemy| enemy.get_id() != enemy_i.get_id());
                 
                 for enemy_j in &enemies_cloned {
+                    
+                    //Bosses do not collide with enemies
+                    let is_boss = {
+                        enemy_i.get_type().is_boss()
+                        &&
+                        enemy_j.get_type().is_boss()
+                    };
     
-                    if enemy_i.collides(enemy_j.get_collider()) {
+                    if enemy_i.collides(enemy_j.get_collider()) && !is_boss{
                         self.publish(Event::new((enemy_i.get_id(), enemy_j.get_id()), EventType::CollidingEnemies)).await;
                     }
                 }

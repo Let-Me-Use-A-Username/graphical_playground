@@ -1,14 +1,21 @@
 use std::{error::Error, fs, path::Path};
+use macroquad::{miniquad::conf::{Icon, Platform}, window::Conf};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
 
 
 const SETTINGS_PATH: &str = "assets\\settings.yaml";
+const CONF_PATH: &str = "assets\\conf.yaml";
 
-
+/* 
+    Tinkerer struct holds variables that the player can change via the Settings menu.
+    Saves changes to `SETTINGS_PATH` whenever changes have been made. 
+*/
 pub struct Tinkerer{
     has_player_changes: bool,
-    settings: Settings
+    settings: Settings,
+    pub conf: WindowConf,
+    backup: WindowConf
 }
 
 impl Tinkerer{
@@ -16,6 +23,12 @@ impl Tinkerer{
         let path = Path::new(SETTINGS_PATH);
         let path_as_string = SETTINGS_PATH.to_string();
         
+        let mut conf = WindowConf::default();
+
+        if let Ok(previous_conf) = Self::read_conf(){
+            conf = previous_conf
+        }
+
         match fs::metadata(path) {
             Ok(metadata) => {
                 //Object found but isn't file. Exit.
@@ -28,7 +41,9 @@ impl Tinkerer{
                     Ok(settings) => {
                         return Ok(Tinkerer{
                             has_player_changes: false,
-                            settings: settings
+                            settings: settings,
+                            conf: conf.clone(),
+                            backup: conf
                         })
                     },
                     Err(err) => return Err(err),
@@ -40,7 +55,9 @@ impl Tinkerer{
                         //File not found. Doesn't matter since it will be created on exit.
                         return Ok(Tinkerer{
                             has_player_changes: false,
-                            settings: Settings::default()
+                            settings: Settings::default(),
+                            conf: conf.clone(),
+                            backup: conf
                         })
                     }
                     //File found but permission error. Exit
@@ -54,6 +71,7 @@ impl Tinkerer{
         }
     }
 
+    ///Reads settings if exist.
     fn read_settings(path: &Path) -> Result<Settings, TinkererError>{
         // Read the file
         let contents = fs::read_to_string(path)
@@ -66,7 +84,64 @@ impl Tinkerer{
         Ok(config)
     }
 
+    pub fn read_conf() -> Result<WindowConf, TinkererError>{
+        // Read the file
+        let contents = fs::read_to_string(CONF_PATH)
+            .map_err(TinkererError::IOError)?;
+        
+        // Parse YAML
+        let config: WindowConf = serde_yaml::from_str(&contents)
+            .map_err(TinkererError::InvalidFormat)?;
+        
+        Ok(config)
+    }
 
+
+    ///Request to write data.
+    pub fn write(&mut self, sounds: AudioSettings, variables: VariablesSettings) -> Result<bool, TinkererError>{
+        self.settings.audio = sounds;
+        self.settings.variables = variables;
+
+        let temp_settings = Settings::default();
+
+        let conf_path = Path::new(CONF_PATH);
+
+        //If changes made to configurationm
+        if self.conf != self.backup{
+            self.backup = self.conf.clone();
+            
+            match self.write_conf(conf_path, self.conf.clone()){
+                Ok(res) => println!("Wrote config: {}", res),
+                Err(err) => eprintln!("Failed writing conf: {}", err),
+            }
+        }
+
+        //Check if Settings has been modified and write
+        if self.settings != temp_settings{
+            let settings_path = Path::new(SETTINGS_PATH);
+
+            self.has_player_changes = true;
+
+            return self.write_settings(settings_path);
+        }
+        return Ok(false)
+    }
+
+    fn write_conf(&self, path: &Path, conf: WindowConf) -> Result<bool, TinkererError>{
+        // Write the file
+        let content = serde_yaml::to_string(&conf);
+
+        if content.is_ok(){
+            match fs::write(path, content.unwrap()){
+                Ok(_) => return Ok(true),
+                Err(err) => return Err(TinkererError::IOError(err)),
+            }
+        }
+
+        return Err(TinkererError::NoChanges)
+    }
+
+    ///Writes settings to path if changes made
     fn write_settings(&mut self, path: &Path) -> Result<bool, TinkererError>{
         if self.has_player_changes{
             // Write the file
@@ -86,6 +161,7 @@ impl Tinkerer{
         return Err(TinkererError::NoChanges)
     }
 
+
     pub fn get_audio_settings(&self) -> AudioSettings{
         return self.settings.audio.clone()
     }
@@ -93,47 +169,45 @@ impl Tinkerer{
     pub fn get_variables(&self) -> VariablesSettings{
         return self.settings.variables.clone()
     }
-
-    ///If changes to settings, write data
-    pub fn write(&mut self, sounds: AudioSettings, variables: VariablesSettings) -> Result<bool, TinkererError>{
-        self.settings.audio = sounds;
-        self.settings.variables = variables;
-
-        let temp_settings = Settings::default();
-
-        if self.settings != temp_settings{
-            let path = Path::new(SETTINGS_PATH);
-            self.has_player_changes = true;
-
-            return self.write_settings(path);
-        }
-        return Ok(false)
-    }
 }
 
-#[derive(Debug)]
-pub enum TinkererError{
-    FileNotFound(String),
-    PermissionDenied(String),
-    IOError(std::io::Error),
-    InvalidFormat(serde_yaml::Error),
-    NoChanges
-}
 
-impl std::fmt::Display for TinkererError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TinkererError::FileNotFound(path) => write!(f, "File not found: {}", path),
-            TinkererError::PermissionDenied(path) => write!(f, "Permission denied: {}", path),
-            TinkererError::IOError(path) => write!(f, "IOError: {}", path),
-            TinkererError::InvalidFormat(error) => write!(f, "Invalid format: {}", error),
-            TinkererError::NoChanges => write!(f, "Nothing to commit"),
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct WindowConf {
+    pub window_title: String,
+    pub window_width: i32,
+    pub window_height: i32,
+    pub high_dpi: bool,
+    pub fullscreen: bool,
+    pub sample_count: i32,
+    pub window_resizable: bool
+}
+impl WindowConf{
+    pub fn default() -> WindowConf{
+        return WindowConf{
+            window_title: "Geometrical".to_owned(),
+            window_height: 1200,
+            window_width: 1400,
+            window_resizable: true,
+            high_dpi: false,
+            fullscreen: false,
+            sample_count: 1,
         }
     }
+
+    pub fn into_conf(&self, icon: Option<Icon>, platform: Platform) -> Conf{
+        return Conf { 
+            window_title: self.window_title.clone(), 
+            window_width: self.window_width, 
+            window_height: self.window_height, 
+            high_dpi: self.high_dpi, 
+            fullscreen: self.fullscreen, 
+            sample_count: self.sample_count, 
+            window_resizable: self.window_resizable, 
+            icon: icon, 
+            platform: platform }
+    }
 }
-
-impl Error for TinkererError{}
-
 
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -149,6 +223,8 @@ impl Settings{
         }
     }
 }
+
+
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct AudioSettings{
@@ -177,6 +253,9 @@ impl AudioSettings{
         return self.effects
     }
 }
+
+
+
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct VariablesSettings{
@@ -216,3 +295,28 @@ impl VariablesSettings{
         }
     }
 }
+
+
+
+#[derive(Debug)]
+pub enum TinkererError{
+    FileNotFound(String),
+    PermissionDenied(String),
+    IOError(std::io::Error),
+    InvalidFormat(serde_yaml::Error),
+    NoChanges
+}
+
+impl std::fmt::Display for TinkererError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TinkererError::FileNotFound(path) => write!(f, "File not found: {}", path),
+            TinkererError::PermissionDenied(path) => write!(f, "Permission denied: {}", path),
+            TinkererError::IOError(path) => write!(f, "IOError: {}", path),
+            TinkererError::InvalidFormat(error) => write!(f, "Invalid format: {}", error),
+            TinkererError::NoChanges => write!(f, "Nothing to commit"),
+        }
+    }
+}
+
+impl Error for TinkererError{}

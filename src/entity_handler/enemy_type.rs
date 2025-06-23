@@ -6,5 +6,16 @@ pub enum EnemyType{
     Triangle,
     Rect,
     Hexagon,
-    Boss
+    CircleBoss,
+    TriangleBoss
+}
+
+impl EnemyType{
+    pub fn is_boss(&self) -> bool{
+        match self{
+            EnemyType::CircleBoss => true,
+            EnemyType::TriangleBoss => true,
+            _ => {false}
+        }
+    }
 }

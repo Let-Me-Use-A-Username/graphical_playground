@@ -1,6 +1,6 @@
 use std::{collections::{HashMap, VecDeque}, sync::{atomic::{AtomicU64, Ordering}, mpsc::Sender}};
 use macroquad::{color::{Color, WHITE}, math::Vec2};
-use crate::{actors::{circle::Circle, hexagon::Hexagon, rect, triangle::Triangle}, event_system::{event::Event, interface::Enemy}, utils::machine::StateType};
+use crate::{actors::{circle::Circle, circle_boss::CircleBoss, hexagon::Hexagon, rect, triangle::Triangle, triangle_boss::TriangleBoss}, event_system::{event::Event, interface::Enemy}, utils::machine::StateType};
 
 use super::enemy_type::EnemyType;
 
@@ -18,8 +18,10 @@ impl Recycler{
         
         pools.insert(EnemyType::Circle, VecDeque::with_capacity(size));
         pools.insert(EnemyType::Triangle, VecDeque::with_capacity(size));
-        pools.insert(EnemyType::Rect, VecDeque::with_capacity(size));
-        pools.insert(EnemyType::Hexagon, VecDeque::with_capacity(size));
+        pools.insert(EnemyType::Rect, VecDeque::with_capacity(size / 2));
+        pools.insert(EnemyType::Hexagon, VecDeque::with_capacity(size / 2));
+        pools.insert(EnemyType::CircleBoss, VecDeque::with_capacity(3));
+        pools.insert(EnemyType::TriangleBoss, VecDeque::with_capacity(3));
         
         Recycler {
             pools,
@@ -87,46 +89,65 @@ impl Recycler{
                           player_pos: Vec2) -> Box<dyn Enemy> {
         match enemy_type {
             EnemyType::Circle => {
-                        Box::new(Circle::new(
-                            0, 
-                            pos, 
-                            size, 
-                            color, 
-                            player_pos, 
-                            self.enemy_sender.clone()
-                        ))
-                    },
+                Box::new(Circle::new(
+                    0, 
+                    pos, 
+                    size, 
+                    color, 
+                    player_pos, 
+                    self.enemy_sender.clone()
+                ))
+            },
             EnemyType::Triangle => {
-                        Box::new(Triangle::new(
-                            0, 
-                            pos, 
-                            size, 
-                            color, 
-                            player_pos, 
-                            self.enemy_sender.clone()
-                        ))
-                    },
+                Box::new(Triangle::new(
+                    0, 
+                    pos, 
+                    size, 
+                    color, 
+                    player_pos, 
+                    self.enemy_sender.clone()
+                ))
+            },
             EnemyType::Rect => {
-                        Box::new(rect::Rect::new(
-                            0, 
-                            pos, 
-                            size, 
-                            color, 
-                            player_pos, 
-                            self.enemy_sender.clone()
-                        ))
-                    },
+                Box::new(rect::Rect::new(
+                    0, 
+                    pos, 
+                    size, 
+                    color, 
+                    player_pos, 
+                    self.enemy_sender.clone()
+                ))
+            },
             EnemyType::Hexagon => {
-                        Box::new(Hexagon::new(
-                            0, 
-                            pos, 
-                            size, 
-                            color, 
-                            player_pos, 
-                            self.enemy_sender.clone()
-                        ))
-                    },
-            EnemyType::Boss => todo!(),
+                Box::new(Hexagon::new(
+                    0, 
+                    pos, 
+                    size, 
+                    color, 
+                    player_pos, 
+                    self.enemy_sender.clone()
+                ))
+            },
+            EnemyType::CircleBoss => {
+                Box::new(CircleBoss::new(
+                    0, 
+                    pos, 
+                    size, 
+                    color, 
+                    player_pos, 
+                    self.enemy_sender.clone()
+                ))
+            },
+            EnemyType::TriangleBoss => {
+                Box::new(TriangleBoss::new(
+                    0, 
+                    pos, 
+                    size, 
+                    color, 
+                    player_pos, 
+                    self.enemy_sender.clone()
+                ))
+            },
         }
     }
 
