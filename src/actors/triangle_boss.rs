@@ -4,8 +4,12 @@ use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
+use ::rand::{thread_rng, Rng};
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::{artist::DrawCall, metal::ConfigType}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, objects::bullet::ProjectileType, renderer::{artist::DrawCall, metal::ConfigType}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+
+const FIRING_RANGE: f32 = 1100.0;
+const FIRING_COOLDOWN: f64 = 1.0;
 
 pub struct TriangleBoss{
     //Attributes
@@ -27,6 +31,193 @@ pub struct TriangleBoss{
     is_alive: bool,
     //Emittion
     emittion_configs: Vec<(StateType, ConfigType)>,
+    //Positioning specifics
+    current_destination: Option<Vec2>,
+    approach_player: bool,
+    position_switch_distance: f32,
+    //Fire specifics
+    fire_cooldown: SimpleTimer,
+    fire_counter: u32,
+    fire_pattern: Vec<bool>,
+}
+impl TriangleBoss{
+    /* 
+        Calculates an intermediate position between triangle and player.
+    */
+    fn determine_next_position(&mut self) -> Vec2 {
+        let mut rng = thread_rng();
+        
+        let distance_to_player = self.pos.distance(self.target);
+        
+        // Close to player - prefer evasive positioning
+        if distance_to_player < FIRING_RANGE {
+            if rng.gen_bool(0.7) { // 70% chance to evade after getting close
+                return self.generate_evasive_position();
+            }
+        }
+        
+        // Default positioning logic
+        if rng.gen_bool(0.6) { // 60%
+            // Intermediate Triangle - Player position
+            let direction = (self.target - self.pos).normalize();
+            let distance = self.pos.distance(self.target);
+            let intermediate_distance = distance * rng.gen_range(0.4..0.8); // 40-80% of the way
+            
+            return self.pos + direction * intermediate_distance;
+        }  
+        else if rng.gen_bool(0.1) { //10%
+            // Directly approach player
+            return self.target;
+        } 
+        else {                      // 30%
+            // Position around triangle or player
+            if rng.gen_bool(0.5) {  //coinflip
+                return self.generate_position_around(self.pos);
+            } else {
+                return self.generate_position_around(self.target);
+            }
+        }
+    }
+    
+    /* 
+        Generates an evasive position that faces away from the player and 
+        is *almost* perpendicular due to some (-60, 60) randomness. The 
+        distance is: size * (10..15)
+    */
+    fn generate_evasive_position(&self) -> Vec2 {
+        let mut rng = thread_rng();
+        
+        let from_player = (self.pos - self.target).normalize();
+        
+        let angle = rng.gen_range(-0.6..0.6) + std::f32::consts::FRAC_PI_2;
+        let perpendicular = Vec2::new(
+            from_player.x * angle.cos() - from_player.y * angle.sin(),
+            from_player.x * angle.sin() + from_player.y * angle.cos()
+        ).normalize();
+        
+        let evasive_direction = (from_player + perpendicular * 0.8).normalize();
+        let distance = self.size * rng.gen_range(10.0..15.0);
+        
+        self.pos + evasive_direction * distance
+    }
+    
+    // Generate position around a point with improved variability
+    fn generate_position_around(&self, center: Vec2) -> Vec2 {
+        let mut rng = thread_rng();
+        
+        let angle = rng.gen::<f32>() * std::f32::consts::PI * 2.0;
+        
+        let radius = self.size * rng.gen_range(20.0..50.0); //Radius randomness
+        let distance = radius * rng.gen::<f32>().sqrt();
+        
+        let offset_x = distance * angle.cos();
+        let offset_y = distance * angle.sin();
+        
+        return Vec2::new(center.x + offset_x, center.y + offset_y)
+    }
+    
+    // Check if reached destination
+    fn has_reached_destination(&self) -> bool {
+        if let Some(dest) = self.current_destination {
+
+            return self.pos.distance(dest) < self.position_switch_distance;
+        }
+        return true
+    }
+    
+    // Continuous check for player distance and firing opportunities
+    async fn check_player_interaction(&mut self){
+        let now = get_time();
+        let distance_to_player = self.pos.distance(self.target);
+
+        //Attempt to fire at the player no matter the distance to him.
+        if self.fire_cooldown.expired(now){
+            self.decide_fire_mode().await;
+            self.fire_cooldown.set(now, FIRING_COOLDOWN);
+        }
+
+        // Within firing range
+        if distance_to_player < FIRING_RANGE{
+            self.current_destination = Some(self.generate_evasive_position());
+        }
+        // Out of firing range, approach more directly
+        else if distance_to_player > FIRING_RANGE * 2.0 {
+            self.approach_player = true;
+
+            let direction = (self.target - self.pos).normalize();
+            let approach_pos = self.pos + direction * (distance_to_player * 0.6);
+
+            self.current_destination = Some(approach_pos);
+        } 
+    }
+
+    async fn decide_fire_mode(&mut self){
+        let pattern_index = (self.fire_counter as usize) % self.fire_pattern.len();
+        self.fire_counter += 1;
+
+        if self.fire_counter > self.fire_pattern.len() as u32{
+            self.fire_counter = 0;
+        }
+        
+        if self.fire_pattern[pattern_index] {
+            self.fire().await;
+        } else {
+            self.flurry().await;
+        }
+    }
+
+
+    async fn fire(&mut self){
+        let direction_to_player = (self.target - self.pos).normalize();
+        let spawn_pos = self.pos;
+
+        self.publish(Event::new((
+            self.id,
+            spawn_pos,
+            350.0 as f32, // Increased bullet speed from 300.0
+            direction_to_player,
+            10.0,
+            22.0 as f32,
+            ProjectileType::Enemy), 
+            EventType::TriangleBulletRequest)
+        ).await;
+    }
+
+    async fn flurry(&mut self){
+        let base = (self.target - self.pos).normalize();
+        let spread_angle = 15.0_f32.to_radians(); // 15 degrees on each side
+        let spawn_pos = self.pos;
+        
+        for i in 0..=40 {
+            let direction = if i == 0 {
+                // First bullet goes straight
+                base
+            } else {
+                // Alternate left and right with increasing angle
+                let side_multiplier = if i % 2 == 1 { -1.0 } else { 1.0 }; // Odd = left, even = right
+                let angle_multiplier = ((i + 1) / 2) as f32; // 1, 1, 2, 2, 3, 3, 4, 4...
+                let angle_offset = spread_angle * angle_multiplier * side_multiplier;
+                
+                // Rotate the base direction by the angle offset
+                Vec2::new(
+                    base.x * angle_offset.cos() - base.y * angle_offset.sin(),
+                    base.x * angle_offset.sin() + base.y * angle_offset.cos()
+                )
+            };
+
+            self.publish(
+                Event::new((
+                    self.id,
+                    spawn_pos,
+                    350.0 as f32,
+                    direction,
+                    10.0,
+                    22.0 as f32,
+                    ProjectileType::Enemy),
+                    EventType::BossBulletRequest)
+            ).await;
+        }
+    }
 }
 
 //========== Circle interfaces =========
@@ -48,6 +239,8 @@ impl Updatable for TriangleBoss{
                     overide = *overide_pos;
                 }
             }
+
+            self.check_player_interaction().await;
 
             //Update based on state machine
             if let Ok(state) = self.machine.get_state().try_lock(){
@@ -114,11 +307,20 @@ impl Object for TriangleBoss{
 impl Moveable for TriangleBoss{
     #[inline(always)]
     fn move_to(&mut self, delta: f32, overide: Option<Vec2>) -> (f32, f32){
-        let mut new_pos = overide.unwrap_or(self.target);
+        // If override, simply go to it.
+        if let Some(pos) = overide {
+            self.current_destination = Some(pos);
+        }
+        // If we've reached destination or don't have one, get a new one
+        else if self.has_reached_destination() || self.current_destination.is_none() {
+            self.current_destination = Some(self.determine_next_position());
+        }
         
-        new_pos = self.pos.move_towards(new_pos, self.speed * delta);
-        self.pos = new_pos;
-
+        // Move toward the current destination
+        if let Some(dest) = self.current_destination {
+            self.pos = self.pos.move_towards(dest, self.speed * delta);
+        }
+        
         return self.pos.into()
     }
 }
@@ -200,7 +402,19 @@ impl Enemy for TriangleBoss{
 
             is_alive: true,
             
-            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)]
+            emittion_configs: vec![(StateType::Hit, ConfigType::EnemyDeath)],
+
+            current_destination: None,
+            approach_player: false,
+            position_switch_distance: 250.0,
+            
+            fire_cooldown: SimpleTimer::new(FIRING_COOLDOWN),
+            fire_counter: 0,
+            fire_pattern: vec![
+                true, true, false, true, false,     //fire: 9/15 = 0.6
+                true, true, false, true, true,      //flurry: 1/3 = 33.333
+                false, true, true, false, false     //dual fire: 1/15 = 0.066
+            ],
         };
 
         return enemy
@@ -293,6 +507,18 @@ impl Enemy for TriangleBoss{
         self.health = 30;
         self.was_hit = false;
         self.hit_timer = SimpleTimer::blank();
+        
+        self.current_destination = None;
+        self.approach_player = false;
+        self.position_switch_distance = 250.0;
+        
+        self.fire_cooldown = SimpleTimer::new(FIRING_COOLDOWN);
+        self.fire_counter = 0;
+        self.fire_pattern = vec![
+                true, true, false, true, false,     //fire: 9/15 = 0.6
+                true, true, false, true, true,      //flurry: 1/3 = 33.333
+                false, true, true, false, false     //dual fire: 1/15 = 0.066
+        ];
     }
 }
 

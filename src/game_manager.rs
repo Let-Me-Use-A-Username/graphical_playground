@@ -200,6 +200,7 @@ impl GameManager{
         dispatcher.register_listener(EventType::TriangleBulletRequest, assistant.clone());
         dispatcher.register_listener(EventType::ForwardCollectionToEntity, assistant.clone());
         dispatcher.register_listener(EventType::RemoveTriangle, assistant.clone());
+        dispatcher.register_listener(EventType::BossBulletRequest, assistant.clone());
 
         //Accoustic
         dispatcher.register_listener(EventType::PlaySound, accoustic.clone());

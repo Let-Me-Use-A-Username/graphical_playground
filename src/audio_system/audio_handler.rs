@@ -24,6 +24,8 @@ pub enum SoundType{
     RectHit,            //ok. Fires from Rect.
     HexDeflect,         //ok. Fires from Entity_Handler
 
+    CircleBossDash,
+
     MainTheme           //ok. Fires from Game Manager.
 }
 impl SoundType{
@@ -129,6 +131,7 @@ impl Accoustic{
         let enemy_firing = audio::load_sound(&"audio/sounds/triangle_firing.wav").await.unwrap();
         let rect_hit = audio::load_sound(&"audio/sounds/rect_hit.wav").await.unwrap();
         let hex_deflect = audio::load_sound(&"audio/sounds/hex_deflect.wav").await.unwrap();
+        let circle_boss_dash = audio::load_sound(&"audio/sounds/circleboss_dash.wav").await.unwrap();
 
         let main_theme = audio::load_sound(&"audio/theme_song/MCL.wav").await.unwrap();
 
@@ -148,6 +151,7 @@ impl Accoustic{
         sounds.insert(SoundType::TriangleFiring, SoundRecord { sound: enemy_firing, is_playing: false, looped: false, volume: 100.0 });
         sounds.insert(SoundType::RectHit, SoundRecord { sound: rect_hit, is_playing: false, looped: false, volume: 100.0 });
         sounds.insert(SoundType::HexDeflect, SoundRecord { sound: hex_deflect, is_playing: false, looped: false, volume: 100.0 });
+        sounds.insert(SoundType::CircleBossDash, SoundRecord { sound: circle_boss_dash, is_playing: false, looped: false, volume: 100.0 });
 
         sounds.insert(SoundType::MainTheme, SoundRecord { sound: main_theme, is_playing: false, looped: false, volume: 100.0 });
 

@@ -1,6 +1,5 @@
 ==============================================
 ================== Final Roadmap =============
-- Implement Bosses
 
 ==============================================
 ================== Critical ==================
@@ -8,18 +7,13 @@
 
 ==============================================
 ================== Current ===================
-- Circle boss dashes at player at interval
-    - Increase distance so it goes behind the target position
-    - Sound effect?
-    
-- Triangle Boss shoots lots of bullets 
+- Implement Game over menu with score and highscore?
+
+- Implement player health indicator (UI)
 
 
 ==============================================
 ================== General todo ==============
-- Implement Game over menu with score and highscore?
-
-- Implement player health indicator (UI)
 
 -Tested the game.
     - Enemies:

@@ -12,7 +12,8 @@ pub struct TriangleAssistant{
     bullets: Vec<Bullet>,
     sender: Sender<Event>,
     pool_size: usize,
-    triangle_amount: usize
+    triangle_amount: usize,
+    requested_blanks: bool,
 }
 impl TriangleAssistant{
     pub fn new(sender: Sender<Event>, pool_size: usize, triangle_amount: usize) -> TriangleAssistant{
@@ -21,7 +22,8 @@ impl TriangleAssistant{
             sender: sender, 
             pool_size: pool_size,
             triangle_amount: triangle_amount,
-            bullets: Vec::new() 
+            bullets: Vec::new(),
+            requested_blanks: false 
         }
     }
 
@@ -32,11 +34,14 @@ impl TriangleAssistant{
             direction: Vec2, 
             remove_time: f64, 
             size: f32, 
-            ptype: ProjectileType
+            ptype: ProjectileType,
+            is_boss: bool
         ){
-            let can_fire = {
+            let can_fire = if is_boss{
+                    true
+                } 
                 //Triangle has fired previously.
-                if let Some(amount) = self.triangles.get(&triangle_id){
+                else if let Some(amount) = self.triangles.get(&triangle_id){
                     if *amount > 0{
                         true
                     }
@@ -48,24 +53,41 @@ impl TriangleAssistant{
                 else{
                     self.triangles.insert(triangle_id, self.triangle_amount - 1);
                     true
-                }
-            };
+                };
+            
             
             if can_fire{
                 if let Some(mut bullet) = self.bullets.pop(){
+                    
+                    if self.requested_blanks{
+                        self.requested_blanks = false;
+                    }
+
                     bullet.set(pos, speed, direction, remove_time, size, ptype);
                     
                     let proj = Box::new(bullet) as Box<dyn Projectile>;
                     self.publish(Event::new(Some(proj), EventType::EnemyBulletSpawn)).await;
                     
                     // Emit sound request
-                    let srequest = SoundRequest::new(true, false, 0.05);
+                    let volume = if is_boss{0.001} else {0.05};     //FIXME: Boss flurry attack hotfix
+                    let srequest = SoundRequest::new(true, false, volume);
                     self.publish(Event::new((SoundType::TriangleFiring, srequest), EventType::PlaySound)).await;
                 }
                 else{
-                    self.publish(Event::new((self.pool_size, ProjectileType::Enemy), EventType::RequestBlankCollection)).await;
+                    //Note: if no bullets to pop. Pool run out of bullets
+                    if !self.requested_blanks{
+                        self.publish(Event::new((self.pool_size, ProjectileType::Enemy), EventType::RequestBlankCollection)).await;
+                        self.requested_blanks = true;
+                    }
                 }
             }
+            else{
+                //Note: if can't fire -> Triangle run out of bullets.
+                if !self.requested_blanks{
+                    self.publish(Event::new((self.triangle_amount, ProjectileType::Enemy), EventType::RequestBlankCollection)).await;
+                    self.requested_blanks = true;
+                }
+            }   
 
             self.debug();
     }
@@ -117,9 +139,37 @@ impl Subscriber for TriangleAssistant{
                     let size= blue.5;
                     let ptype = blue.6;
 
-                    self.request(id, pos, speed, dir, r_time, size, ptype).await;
+                    self.request(id, pos, speed, dir, r_time, size, ptype, false).await;
                 }
-            }
+            },
+            EventType::BossBulletRequest => {
+                let mut blueprint = None;
+
+                if let Ok(result) = event.data.lock(){
+                    if let Some(data) = result.downcast_ref::<(
+                            u64, 
+                            Vec2, 
+                            f32, 
+                            Vec2, 
+                            f64, 
+                            f32, 
+                            ProjectileType)>(){
+                        blueprint = Some(data.to_owned());
+                    }
+                }
+
+                if let Some(blue) = blueprint{
+                    let id = blue.0;
+                    let pos = blue.1;
+                    let speed = blue.2;
+                    let dir = blue.3;
+                    let r_time = blue.4;
+                    let size= blue.5;
+                    let ptype = blue.6;
+                    
+                    self.request(id, pos, speed, dir, r_time, size, ptype, true).await;
+                }
+            },
             EventType::ForwardCollectionToEntity => {
                 if let Ok(mut result) = event.data.lock(){
                     if let Some(data) = result.downcast_mut::<Option<Vec<Bullet>>>(){

@@ -42,6 +42,7 @@ pub enum EventType{
     ForwardCollectionToEntity,
     //Triangle Assistant
     TriangleBulletRequest,
+    BossBulletRequest,
     RemoveTriangle,
     //Accoustic
     PlaySound,

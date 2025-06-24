@@ -4,8 +4,11 @@ use async_trait::async_trait;
 use macroquad::prelude::*;
 use macroquad::math::Vec2;
 use macroquad::color::Color;
+use ::rand::{thread_rng, Rng};
 
 use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{CircleCollider, Collider}, entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Drawable, Enemy, GameEntity, Moveable, Object, Publisher, Updatable}}, grid_system::grid::EntityType, renderer::{artist::DrawCall, metal::ConfigType}, utils::{machine::{StateMachine, StateType}, timer::SimpleTimer}};   
+
+const MAX_HEALTH: i32 = 60;
 
 pub struct CircleBoss{
     //Attributes
@@ -30,31 +33,61 @@ pub struct CircleBoss{
     //Dash specifics
     boost_timer: SimpleTimer,
     boost_duration: SimpleTimer,
-    is_boosting: bool
+    is_boosting: bool,
+    boost_target: Option<Vec2>
 }
 
 impl CircleBoss{
-    fn select_movement(&mut self, delta: f32, overide: Option<Vec2>){
+    async fn select_movement(&mut self, delta: f32, overide: Option<Vec2>){
         let now = get_time();
 
         if self.boost_duration.expired(now){
             self.is_boosting = false;
+            self.boost_target = None;
         }
 
         if !self.is_boosting{
             self.move_to(delta, overide);
         }
         else{
-            self.boost(delta)
+            self.boost(delta).await;
         }
     }
 
-    fn boost(&mut self, delta: f32){
-        let mut new_pos = self.target;
+    async fn boost(&mut self, delta: f32){
         let speed = self.speed * 10.0;
         
-        new_pos = self.pos.move_towards(new_pos, speed * delta);
-        self.pos = new_pos;
+        if self.boost_target.is_none(){
+            let to_player = self.target - self.pos;
+            let dist_to_player = to_player.length();
+            
+            let overshoot_distance = self.calculate_overshoot_distance(dist_to_player);
+            
+            let dir = if dist_to_player > 1e-4 {
+                (self.target - self.pos).normalize()
+            } else {
+                Vec2::ZERO
+            };
+
+            self.boost_target = Some(self.target + dir * overshoot_distance);
+            let request = SoundRequest::new(true, true, 0.1);
+            self.publish(Event::new((SoundType::CircleBossDash, request), EventType::PlaySound)).await;
+        }
+        
+        if let Some(target) = self.boost_target{
+            self.pos = self.pos.move_towards(target, speed * delta);
+        }
+    }
+
+    fn calculate_overshoot_distance(&self, distance: f32) -> f32{
+        let base_overshoot = 150.0;
+        let distance_factor = (distance * 0.25).min(200.0);
+        
+        // Add some randomness
+        let mut rng = thread_rng();
+        let random_variation = rng.gen_range(-50.0..=100.0); // Bias toward longer overshoots
+        
+        (base_overshoot + distance_factor + random_variation).max(50.0)
     }
 }
 
@@ -84,6 +117,8 @@ impl Updatable for CircleBoss{
                 self.was_hit = false;
             }
 
+            let mut can_move = false;
+
             //Update based on state machine
             if let Ok(state) = self.machine.get_state().try_lock(){
                 match *state{
@@ -96,7 +131,7 @@ impl Updatable for CircleBoss{
                             self.boost_timer.set(now, 5.0);
                             self.boost_duration.set(now, 2.0);
                         }
-                        self.select_movement(delta, overide);
+                        can_move = true;
                     },
                     StateType::Hit => {
                         self.health -= 1;
@@ -116,6 +151,10 @@ impl Updatable for CircleBoss{
                     },
                     _ => (), //Unreachable
                 }
+            }
+
+            if can_move{
+                self.select_movement(delta, overide).await;
             }
 
             self.collider.update(self.pos);
@@ -210,7 +249,7 @@ impl Enemy for CircleBoss{
             color: color,
             target: player_pos,
 
-            health: 30,
+            health: MAX_HEALTH,
             was_hit: false,
             hit_timer: SimpleTimer::blank(),
 
@@ -224,7 +263,8 @@ impl Enemy for CircleBoss{
             
             boost_timer: SimpleTimer::blank(),
             boost_duration: SimpleTimer::blank(),
-            is_boosting: false
+            is_boosting: false,
+            boost_target: None
         };
 
         return enemy
@@ -294,7 +334,7 @@ impl Enemy for CircleBoss{
         self.collider = CircleCollider::new(pos.x, pos.y, size);
         self.machine.transition(StateType::Idle);
 
-        self.health = 30;
+        self.health = MAX_HEALTH;
         self.was_hit = false;
         self.hit_timer = SimpleTimer::blank();
 
@@ -322,4 +362,3 @@ impl std::fmt::Debug for CircleBoss{
             .finish()
     }
 }
-

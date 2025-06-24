@@ -36,7 +36,7 @@ impl EnemyComplexity {
 
         let pool: Vec<EnemyType> = match self {
             EnemyComplexity::Simple => {
-                vec![EnemyType::Circle, EnemyType::CircleBoss].into()
+                vec![EnemyType::Circle].into()
             },
             EnemyComplexity::Average => {
                 vec![EnemyType::Circle, EnemyType::Triangle].into()
@@ -105,7 +105,7 @@ pub struct SpawnManager{
 
 impl SpawnManager{
     //FIXME: Was 160
-    const ENEMY_MULTIPLIER: usize = 80;
+    const ENEMY_MULTIPLIER: usize =  40;
     const MIN_SPAWN_ENEMIES: usize = 5;
 
     pub fn new(sender: Sender<Event>, level_interval: f64, spawn_interval: f64) -> SpawnManager{

@@ -1,6 +1,13 @@
 # Changelog
 
 ### 0.2.66 Changes 23/6/2025
+- v.0.2.66 Implemented *CircleBoss Dash mechanic* with pseudo-randomized distancing.
+- v.0.2.66 Implemented Sound effect for CircleBoss Dash.
+- v.0.2.66 Implemented Triangle Boss.
+- v.0.2.66 *TriangleBoss now isn't checked for bullet consumption* in `TriangleAssistant`
+
+
+### 0.2.66 Changes 23/6/2025
 - v.0.2.66 Implemented saving and loading Window Conf's via `tinker` and `game manager`.
 - v.0.2.66 Implemented dynamic change of settings.
 - v.0.2.66 *Broke up Artist and MetalArtist* into different files for clarity.

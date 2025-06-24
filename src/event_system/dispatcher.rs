@@ -37,12 +37,14 @@ impl Dispatcher{
         while let Ok(event) = self.receiver.try_recv() {
             if let Some(subscriber_list) = self.subscribers.get(&event.event_type) {
                 for subscriber in subscriber_list {
-                    if let Ok(mut sub) = subscriber.lock() {
-                        sub.notify(&event).await;
+                    match subscriber.lock(){
+                        Ok(mut sub) => {
+                            sub.notify(&event).await;
+                        },
+                        Err(err) => eprintln!("Error during dispatching: {}", err),
                     }
                 }
             }
-            drop(event);
         }
     }
 
