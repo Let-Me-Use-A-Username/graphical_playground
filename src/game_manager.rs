@@ -4,8 +4,6 @@ use macroquad::prelude::*;
 use macroquad::ui::Skin;
 use macroquad::ui::{hash, root_ui, widgets};
 
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
@@ -28,7 +26,7 @@ use crate::renderer::metal::MetalArtist;
 use crate::ui::uicontroller::UIController;
 use crate::utils::globals::Global;
 use crate::utils::machine::StateType;
-use crate::utils::tinkerer::{AudioSettings, Tinkerer};
+use crate::utils::tinkerer::{AudioSettings, ScoreboardEntry, Tinkerer};
 use crate::StatusCode;
 
 #[derive(Debug, Clone)]
@@ -39,6 +37,7 @@ pub enum GameState{
     MainMenu,
     Settings,
     GameOver,
+    GameOverMenu,
     Quit
 }
 
@@ -158,7 +157,7 @@ impl GameManager{
 
         let accoustic = Arc::new(Mutex::new(Accoustic::new(tinkerer.get_audio_settings()).await));
         
-        let uicontroller = Arc::new(Mutex::new(UIController::new(dispatcher.create_sender())));
+        let uicontroller = Arc::new(Mutex::new(UIController::new(dispatcher.create_sender()).await));
         
         //Player events
         dispatcher.register_listener(EventType::PlayerHit, player.clone());
@@ -210,6 +209,8 @@ impl GameManager{
         dispatcher.register_listener(EventType::AlterBoostCharges, uicontroller.clone());
         dispatcher.register_listener(EventType::AlterAmmo, uicontroller.clone());
         dispatcher.register_listener(EventType::GameOver, uicontroller.clone());
+        dispatcher.register_listener(EventType::AlterPlayerHealth, uicontroller.clone());
+        dispatcher.register_listener(EventType::GrayscalePlayersHealth, uicontroller.clone());
 
         return GameManager { 
             state: GameState::MainMenu,
@@ -272,16 +273,21 @@ impl GameManager{
 
                 return StatusCode::MainMenu
             },
-            GameState::GameOver => {
+            GameState::GameOverMenu => {
                 if let Ok(mut acc) = self.accoustic.lock(){
                     acc.stop_all();
                 }
-
+                
                 let name: String = self.player_name.clone();
                 let points = self.uicontroller.lock().unwrap().get_points();
-        
-                if name != "DEFAULT".to_string() && points > 100.0{
-                    self.write_file(name, points).await;
+
+                self.update_game_over_menu(name.clone(), points).await;
+
+                return StatusCode::MainMenu
+            },
+            GameState::GameOver => {
+                if let Ok(mut acc) = self.accoustic.lock(){
+                    acc.stop_all();
                 }
 
                 return StatusCode::Reset
@@ -547,7 +553,12 @@ impl GameManager{
                     
                     if controller.game_over(){
                         self.is_paused = true;
-                        self.state = GameState::GameOver;
+                        self.state = GameState::GameOverMenu;
+                        
+                        let name: String = self.player_name.clone();
+                        let points = controller.get_points();
+                        
+                        self.tinkerer.write_score(name, points);
                     }
                 }
             }
@@ -639,27 +650,73 @@ impl GameManager{
         next_frame().await;
     }
 
-    async fn write_file(&mut self, name: String, score: f64){
-        self.artist.draw_background(LIGHTGRAY);
+        async fn update_game_over_menu(&mut self, name: String, score: f64){
+            clear_background(WHITE);
 
-        let score_path = "assets\\scoreboard.txt";
+            let width = Global::get_screen_width();
+            let height = Global::get_screen_height();
 
-        let fileopt = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(score_path);
+            let hwidth = width / 2.0;
+            let hheight = height / 2.0;
 
-        if let Ok(mut file) = fileopt{
-            if let Ok(res) = file.write(format!("\n{}, {}", name, score.to_string()).as_bytes()){
-                eprintln!("Writted data: {}", res);
-            }
-            else{
-                println!("Error during writting data");
-            }
-        }
-        else{
-            eprintln!("Failed opening file.")
-        }
+            let mut scores = {
+                match self.tinkerer.read_score(){
+                    Ok(vec) => {
+                        vec
+                    },
+                    Err(err) => {
+                        eprintln!("{:?}", err);
+
+                        let entry = ScoreboardEntry{
+                            name: "MASTER".to_string(),
+                            score: 1000000.0,
+                        };
+                        
+                        vec![entry]
+                    },
+                }
+            };
+
+            let amount = if scores.len() > 7 {7} else {scores.len()};
+
+            scores.sort();
+            let top: Vec<ScoreboardEntry> = scores.drain(..amount).collect();
+
+            let mut msg: Vec<String> = top.iter()
+                .map(|entry| format!("{} : {}", entry.name, entry.score))
+                .collect();
+            
+            msg.push("".to_string());
+            msg.push("Current run:".to_string());
+            msg.push(format!("{} : {}", name, score));
+            
+            widgets::Window::new(
+                hash!(),
+                vec2(0.0, 0.0),
+                vec2(width, height)
+            )
+                .label("Game over")
+                .titlebar(true)
+                .ui(&mut *root_ui(), |ui| {
+                    ui.separator();
+
+                    ui.label(None, "Highscores");
+                    for line in &msg {
+                        ui.label(None, line);
+                    }
+
+                    if ui.button(vec2(hwidth - 150.0, hheight - 150.0),  "Main Menu") {
+                        self.state = GameState::GameOver;
+                    }
+
+                    ui.separator();
+
+                    if ui.button(vec2(hwidth - 75.0, hheight), "Exit") {
+                        self.state = GameState::Quit
+                    }
+                });
+
+            next_frame().await;
     }
 
     async fn new_game(&mut self){

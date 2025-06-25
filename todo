@@ -4,12 +4,15 @@
 ==============================================
 ================== Critical ==================
 
-
 ==============================================
 ================== Current ===================
-- Implement Game over menu with score and highscore?
+- Tinkerer `write_score` and `read_score` work differently
+    than their counterparts. Fix this with yaml
+    - First line is blank causing read to fail
 
-- Implement player health indicator (UI)
+- Implement better in-game UI by using textures.
+    - Bullet texture
+    - Shield texture
 
 
 ==============================================
@@ -24,6 +27,7 @@
             - Or less appearances
 
 - Implement small buffer between Menu - Playing
+
 
 ==============================================
 ================== Testing ===================

@@ -81,7 +81,7 @@ impl Global{
     }
 
     pub fn get_player_health() -> i32{
-        return 10000
+        return 1
     }
 
 

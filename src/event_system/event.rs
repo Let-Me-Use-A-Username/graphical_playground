@@ -49,7 +49,9 @@ pub enum EventType{
     //UIController
     AddScorePoints,
     AlterBoostCharges,
-    AlterAmmo 
+    AlterAmmo,
+    AlterPlayerHealth,
+    GrayscalePlayersHealth,
 }
 
 #[derive(Clone, Debug)]

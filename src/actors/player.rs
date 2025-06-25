@@ -34,6 +34,7 @@ pub struct Player{
     //State specifics
     immune_timer: Timer,
     bounce: bool,
+    emitted_grayscale: bool,
     //Firing specifics
     left_fire: bool,
     attack_speed: SimpleTimer,
@@ -82,6 +83,7 @@ impl Player{
             
             immune_timer: Timer::new(),
             bounce: false,
+            emitted_grayscale: false,
 
             left_fire: true,
             attack_speed: SimpleTimer::blank(),
@@ -370,7 +372,16 @@ impl Player{
 impl Updatable for Player{
     async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {        
         let now = get_time();
+
+        if self.emitted_grayscale{
+            //If immune timer expired, remove grayscale
+            if self.immune_timer.on_cooldown(now).is_some_and(|opt| opt){
+                self.publish(Event::new(false, EventType::GrayscalePlayersHealth)).await;
+                self.emitted_grayscale = false;
+            }
+        }
         
+        //Get shield color based on charges left
         let shield_color = {
             if let Some(counter) = self.shield_counter.get_remaining_charges(){
                 
@@ -496,6 +507,7 @@ impl Updatable for Player{
                             //Reverse velocity vector
                             if self.bounce{
                                 self.health -= 1;
+                                self.publish(Event::new(1, EventType::AlterPlayerHealth)).await;
 
                                 if self.health <= 0{
                                     died = true;
@@ -691,13 +703,13 @@ impl Playable for Player{
 impl Subscriber for Player {
     async fn notify(&mut self, event: &Event){
         let mut shield_hit = false;
+        let mut enemy_hit = false;
         
         match &event.event_type{
             EventType::PlayerHit => {
                 let mut current_time = get_time();
 
                 let entry = event.data.try_lock().unwrap();
-                let mut enemy_hit = false;
                 let mut wall_hit = false;
 
                 if let Some(now) = entry.downcast_ref::<f64>(){
@@ -753,6 +765,13 @@ impl Subscriber for Player {
             // Emit Sound
             let sound_request = SoundRequest::new(true, false, 0.1);
             self.publish(Event::new((SoundType::ShieldHit ,sound_request), EventType::PlaySound)).await;
+        }
+
+        if enemy_hit{
+            if !self.emitted_grayscale{
+                self.emitted_grayscale = true;
+                self.publish(Event::new(true, EventType::GrayscalePlayersHealth)).await;
+            }
         }
     }
 }

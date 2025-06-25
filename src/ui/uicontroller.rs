@@ -1,31 +1,70 @@
-use std::sync::mpsc::Sender;
+use std::{collections::HashMap, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::{color::BLACK, math::Vec2, text::{draw_text_ex, load_ttf_font, Font, TextParams}};
+use macroquad::{color::{BLACK, GRAY, WHITE}, math::Vec2, prelude::ImageFormat, text::{draw_text_ex, load_ttf_font, load_ttf_font_from_bytes, Font, TextParams}, texture::{draw_texture_ex, DrawTextureParams, Image, Texture2D}};
 
 use crate::{entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, utils::globals::Global};
 
 
+#[derive(Eq, Hash, PartialEq)]
+enum FontType{
+    ScoreFont,
+}
 
 pub struct UIController{
+    fonts: HashMap<FontType, Font>,
     killed: u64,
     score: f64,
+
     boost_charges: i32,
     ammo: usize,
+    
+    game_over: bool,
+
+    player_health: Vec<Texture2D>,
+    is_immune: bool,
+
     sender: Sender<Event>,
-    game_over: bool
 }
 impl UIController{
-    pub fn new(sender: Sender<Event>) -> UIController{
-        return UIController{
+    pub async fn new(sender: Sender<Event>) -> UIController {
+        let mut fonts = HashMap::new();
+        
+        if let Ok(font) = load_ttf_font_from_bytes(include_bytes!("../../assets/fonts/arcade.ttf")).await{
+            fonts.insert(FontType::ScoreFont, font);
+        }
+
+        let player_health = Global::get_player_health();
+        let mut healths: Vec<Texture2D> = Vec::with_capacity(player_health as usize);
+
+        for _ in 0..player_health {
+            let image = Image::from_file_with_format(
+                include_bytes!("../../assets/textures/heart.png"),
+                Some(ImageFormat::Png),
+            );
+
+            match image {
+                Ok(im) => {
+                    let texture = Texture2D::from_image(&im);
+                    healths.push(texture);
+                },
+                Err(err) => eprintln!("{}", err),
+            }
+        }
+
+        UIController {
+            fonts: fonts,
             killed: 0,
             score: 0.0,
             boost_charges: Global::get_boost_charges() as i32,
             ammo: Global::get_bullet_ammo_size(),
-            sender: sender,
-            game_over: false
+            game_over: false,
+            player_health: healths,
+            is_immune: false,
+            sender,
         }
     }
+
 
     fn get_new_points(&mut self, enemies: Vec<EnemyType>) -> f64{
         let scores = Global::get_enemy_points();
@@ -59,7 +98,7 @@ impl UIController{
     pub async fn draw(&self){
         let height = Global::get_screen_height();
         let width = Global::get_screen_width();
-        let padding = 30.0;
+        let padding = 40.0;
 
         let scoreboard_label_pos = Vec2::new(width /2.0 - padding * 2.0, 0.0 + padding);
         let boost_charges_pos = Vec2::new(width - padding * 12.0, height - padding * 3.0);
@@ -68,7 +107,27 @@ impl UIController{
         self.draw_scoreboard(scoreboard_label_pos, padding).await;
         self.draw_boost_charges(boost_charges_pos).await;
         self.draw_ammo(ammo_pos).await;
+        self.draw_player_health().await;
     }
+
+    async fn draw_player_health(&self){
+        let icon_size = 64.0;
+        let color = if self.is_immune{GRAY} else {WHITE};
+
+        for (i, texture) in self.player_health.iter().enumerate() {
+            draw_texture_ex(
+                texture,
+                20.0 + i as f32 * (icon_size + 10.0),
+                20.0,
+                color,
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(icon_size, icon_size)),
+                    ..Default::default()
+                },
+            );
+        }
+    }
+
 
     async fn draw_ammo(&self, ammo_pos: Vec2){
         let custom_font = load_ttf_font("assets/font.ttf").await.unwrap_or_else(|_| {
@@ -124,10 +183,14 @@ impl UIController{
     }
 
     async fn draw_scoreboard(&self, scoreboard_label_pos: Vec2, padding: f32){
-        let custom_font = load_ttf_font("assets/font.ttf").await.unwrap_or_else(|_| {
-            // Fallback to default font if loading fails
-            Font::default()
-        });
+        let custom_font = {
+            if let Some(font) = self.fonts.get(&FontType::ScoreFont){
+                font
+            }
+            else{
+                &Font::default()
+            }
+        };
 
         let scoreboard_params = TextParams {
             font: Some(&custom_font),
@@ -148,14 +211,14 @@ impl UIController{
         };
 
         draw_text_ex(
-            &format!("Score: {}", self.score),
+            &format!("Score   {}", self.score),
             scoreboard_label_pos.x,
             scoreboard_label_pos.y,
             scoreboard_params,
         );
 
         draw_text_ex(
-            &format!("Kills: {}", self.killed),
+            &format!("Kills   {}", self.killed),
             scoreboard_label_pos.x + padding,
             scoreboard_label_pos.y + padding,
             kill_params,
@@ -227,6 +290,22 @@ impl Subscriber for UIController {
                 if let Ok(request) = event.data.lock(){
                     if let Some(_) = request.downcast_ref::<i32>(){
                         self.game_over = true;
+                    }
+                } 
+            },
+            EventType::AlterPlayerHealth => {
+                if let Ok(request) = event.data.lock(){
+                    if let Some(counter) = request.downcast_ref::<i32>(){
+                        for _ in 0..*counter as usize{
+                            self.player_health.pop();
+                        }
+                    }
+                } 
+            },
+            EventType::GrayscalePlayersHealth => {
+                if let Ok(request) = event.data.lock(){
+                    if let Some(immune) = request.downcast_ref::<bool>(){
+                        self.is_immune = *immune;
                     }
                 } 
             }

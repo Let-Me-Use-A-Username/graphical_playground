@@ -1,4 +1,4 @@
-use std::{error::Error, fs, path::Path};
+use std::{error::Error, fs::{self, OpenOptions}, io::{BufRead, BufReader, Write}, path::Path};
 use macroquad::{miniquad::conf::{Icon, Platform}, window::Conf};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
@@ -6,6 +6,7 @@ use serde_yaml;
 
 const SETTINGS_PATH: &str = "assets\\settings.yaml";
 const CONF_PATH: &str = "assets\\conf.yaml";
+const SCOREBOARD_PATH: &str = "assets\\scoreboard.txt";
 
 /* 
     Tinkerer struct holds variables that the player can change via the Settings menu.
@@ -161,6 +162,46 @@ impl Tinkerer{
         return Err(TinkererError::NoChanges)
     }
 
+    pub fn write_score(&mut self, name: String, score: f64){
+        let score_path = SCOREBOARD_PATH;
+
+        let fileopt = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(score_path);
+
+        if let Ok(mut file) = fileopt{
+            if let Ok(res) = file.write(format!("\n{}, {}", name, score.to_string()).as_bytes()){
+                eprintln!("Writted data: {}", res);
+            }
+            else{
+                println!("Error during writting data");
+            }
+        }
+        else{
+            eprintln!("Failed opening file.")
+        }
+    }
+
+    pub fn read_score(&mut self) -> Result<Vec<ScoreboardEntry>, TinkererError>{
+        let path = SCOREBOARD_PATH;
+
+        let file = OpenOptions::new().read(true).open(path)
+        .map_err(TinkererError::IOError)?;
+    
+        let reader = BufReader::new(file);
+        let mut entries = Vec::new();
+
+        for (i, line_result) in reader.lines().enumerate() {
+            println!("line: {}", i);
+            let line = line_result.map_err(TinkererError::IOError)?;
+            let entry = ScoreboardEntry::from_line(&line)?;
+            entries.push(entry);
+        }
+
+        Ok(entries)
+    }
+
 
     pub fn get_audio_settings(&self) -> AudioSettings{
         return self.settings.audio.clone()
@@ -172,6 +213,63 @@ impl Tinkerer{
 }
 
 
+
+
+
+
+
+/* 
+    Temporary object used to serialize scoreboard data
+    into struct.
+
+*/
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub struct ScoreboardEntry{
+    pub name: String, 
+    pub score: f64
+}
+impl ScoreboardEntry{
+    pub fn from_line(line: &str) -> Result<Self, TinkererError> {
+        let parts: Vec<&str> = line.trim().split(',').collect();
+
+        if parts.len() != 2 {
+            return Err(TinkererError::Unknown("Found only one part on scoreboard entry.".to_string()));
+        }
+
+        let name = parts[0].trim().to_string();
+        let score = parts[1]
+            .trim()
+            .parse::<f64>()
+            .map_err(|_| TinkererError::Unknown(format!("Invalid score in line: {}", line)))?;
+
+        Ok(ScoreboardEntry { name, score })
+    }
+}
+impl Eq for ScoreboardEntry {}
+
+impl PartialOrd for ScoreboardEntry {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        // Reverse to get highest score first
+        other.score.partial_cmp(&self.score)
+    }
+}
+
+impl Ord for ScoreboardEntry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Use partial_cmp, and unwrap safely since f64 supports it here
+        self.partial_cmp(other).unwrap_or(std::cmp::Ordering::Equal)
+    }
+}
+
+
+
+/* 
+    Temporary object used to freely clone `Conf` file
+    required by macroquad.
+
+    Affects windows configuration.
+*/
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct WindowConf {
     pub window_title: String,
@@ -297,13 +395,16 @@ impl VariablesSettings{
 }
 
 
-
+/*
+    Error types to help with file management mostly.
+*/
 #[derive(Debug)]
 pub enum TinkererError{
     FileNotFound(String),
     PermissionDenied(String),
     IOError(std::io::Error),
     InvalidFormat(serde_yaml::Error),
+    Unknown(String),
     NoChanges
 }
 
@@ -315,6 +416,7 @@ impl std::fmt::Display for TinkererError {
             TinkererError::IOError(path) => write!(f, "IOError: {}", path),
             TinkererError::InvalidFormat(error) => write!(f, "Invalid format: {}", error),
             TinkererError::NoChanges => write!(f, "Nothing to commit"),
+            TinkererError::Unknown(msg) => write!(f, "Unknown: {}", msg),
         }
     }
 }

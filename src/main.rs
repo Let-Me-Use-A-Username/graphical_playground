@@ -36,7 +36,7 @@ pub fn window_conf() -> Conf{
     let icon = None;
     let mut platform = Platform::default();
 
-    platform.swap_interval = Some(0);
+    //platform.swap_interval = Some(0);
     platform.blocking_event_loop = false;
 
     let conf = windowconf.into_conf(icon, platform);

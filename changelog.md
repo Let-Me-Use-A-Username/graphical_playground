@@ -1,6 +1,13 @@
 # Changelog
 
-### 0.2.66 Changes 23/6/2025
+### 0.2.66 Changes 25/6/2025
+- v.0.2.66 Implemented Player health logic and texture.
+- v.0.2.66 Added *grayscaling to player health* when he is immune.
+- v.0.2.66 Implemented UI fonts.
+- v.0.2.66 Implemented game over menu with scoreboard.
+
+
+### 0.2.66 Changes 24/6/2025
 - v.0.2.66 Implemented *CircleBoss Dash mechanic* with pseudo-randomized distancing.
 - v.0.2.66 Implemented Sound effect for CircleBoss Dash.
 - v.0.2.66 Implemented Triangle Boss.
