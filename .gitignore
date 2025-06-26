@@ -1,7 +1,11 @@
+/assets
+/src
 /target
-/audio
-/assets/scoreboard.txt
-/assets/settings.yaml
 
-/Geometrical
-/geometrical.zip
+Cargo.lock
+Cargo.toml
+changelog.md
+create_release.bat
+README.md
+run.bat
+todo
