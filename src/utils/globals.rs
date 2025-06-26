@@ -23,7 +23,7 @@ impl Global{
     }
 
     pub fn get_grid_size() -> i32{
-        return 32
+        return 8
     }
 
     pub fn get_cell_capacity() -> usize{
@@ -81,7 +81,7 @@ impl Global{
     }
 
     pub fn get_player_health() -> i32{
-        return 1
+        return 5
     }
 
 

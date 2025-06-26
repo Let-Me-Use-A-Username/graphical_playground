@@ -6,14 +6,6 @@
 
 ==============================================
 ================== Current ===================
-- Tinkerer `write_score` and `read_score` work differently
-    than their counterparts. Fix this with yaml
-    - First line is blank causing read to fail
-
-- Implement better in-game UI by using textures.
-    - Bullet texture
-    - Shield texture
-
 
 ==============================================
 ================== General todo ==============
@@ -26,8 +18,15 @@
             - Either make it a boss
             - Or less appearances
 
-- Implement small buffer between Menu - Playing
+- Bullets can travel outside of grid space. *What happens to them?*
 
+- When player close to wall, enemies can spawn on wall. *Keep(?)*
+
+- In release version, *player movement feels different*. Test it
+
+- Add game icon 
+
+- Create Linux version
 
 ==============================================
 ================== Testing ===================
@@ -44,16 +43,9 @@
             - *Player Test ???*
 
 - Test Tinker ranges on variables.
-
-- In release version, player movement feels different. Test it
-
-- Grid map edge requests
  
 ==============================================
 ================== Implementation ideas ======
-- Performance enhancing ideas
-    - Make an asynchronous and synchronous update loop
-
 
 ==============================================
 ================== Notes =====================

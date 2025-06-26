@@ -1,5 +1,13 @@
 # Changelog
 
+### 0.2.66 Changes 26/6/2025
+- v.0.2.66 Fixed bug when *writing - displaying current run score*.
+- v.0.2.66 Added *bullet texture* in UIcontroller.
+- v.0.2.66 Added small buffer when creating `GameManager` to *hide some loading delays*.
+- v.0.2.66 Added *shield texture* in UIcontroller.
+- v.0.2.66 Added scripts for running and building automation.
+
+
 ### 0.2.66 Changes 25/6/2025
 - v.0.2.66 Implemented Player health logic and texture.
 - v.0.2.66 Added *grayscaling to player health* when he is immune.

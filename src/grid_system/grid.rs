@@ -240,9 +240,9 @@ impl Grid{
                     .collect::<Vec<(EntityType, EntityId)>>()
                 );
         }
-        else{
-            eprintln!("|Grid|get_nearby_enemies()| Cell not found for pos {:?}", cell_pos);
-        }
+        // else{
+        //     eprintln!("|Grid|get_nearby_enemies()| Cell not found for pos {:?}", cell_pos);
+        // }
 
         return None
     }
@@ -259,9 +259,9 @@ impl Grid{
                 if let Some(cell) = self.cells.get(&(cell_pos.0 + dx, cell_pos.1 + dy)){
                     entities.extend(cell.entities.iter().map(|entity| (entity.entity_type.clone(), entity.entity_id)));
                 }
-                else{
-                    eprintln!("|Grid|get_nearby_enemies()| Cell not found for pos {:?} and offset {:?}", cell_pos, (dx, dy));
-                }
+                // else{
+                //     eprintln!("|Grid|get_nearby_enemies()| Cell not found for pos {:?} and offset {:?}", cell_pos, (dx, dy));
+                // }
             }
         }
         return entities

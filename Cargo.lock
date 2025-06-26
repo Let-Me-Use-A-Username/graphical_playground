@@ -349,6 +349,7 @@ dependencies = [
 [[package]]
 name = "macroquad"
 version = "0.4.14"
+source = "git+https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git?branch=master#6d4f51b2d6ca3d3cedf8546ae9c72035332b8042"
 dependencies = [
  "fontdue",
  "glam",
@@ -362,6 +363,7 @@ dependencies = [
 [[package]]
 name = "macroquad-particles"
 version = "0.2.2"
+source = "git+https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git?branch=master#6d4f51b2d6ca3d3cedf8546ae9c72035332b8042"
 dependencies = [
  "macroquad",
 ]
@@ -369,6 +371,7 @@ dependencies = [
 [[package]]
 name = "macroquad_macro"
 version = "0.1.8"
+source = "git+https://github.com/Let-Me-Use-A-Username/unsafe_macroquad.git?branch=master#6d4f51b2d6ca3d3cedf8546ae9c72035332b8042"
 
 [[package]]
 name = "malloc_buf"

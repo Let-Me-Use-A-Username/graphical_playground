@@ -63,6 +63,8 @@ async fn main() {
 
     let mut game_manager = GameManager::new().await;
 
+    std::thread::sleep(std::time::Duration::from_millis(300));
+
     loop {
         let stat = game_manager.update().await;
 

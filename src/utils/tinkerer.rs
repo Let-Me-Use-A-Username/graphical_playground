@@ -1,4 +1,4 @@
-use std::{error::Error, fs::{self, OpenOptions}, io::{BufRead, BufReader, Write}, path::Path};
+use std::{error::Error, fs::{self, OpenOptions}, io::{BufRead, BufReader}, path::Path};
 use macroquad::{miniquad::conf::{Icon, Platform}, window::Conf};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
@@ -6,7 +6,7 @@ use serde_yaml;
 
 const SETTINGS_PATH: &str = "assets\\settings.yaml";
 const CONF_PATH: &str = "assets\\conf.yaml";
-const SCOREBOARD_PATH: &str = "assets\\scoreboard.txt";
+const SCOREBOARD_PATH: &str = "assets\\scoreboard.yaml";
 
 /* 
     Tinkerer struct holds variables that the player can change via the Settings menu.
@@ -162,25 +162,27 @@ impl Tinkerer{
         return Err(TinkererError::NoChanges)
     }
 
-    pub fn write_score(&mut self, name: String, score: f64){
+    pub fn write_score(&mut self, name: String, score: f64) -> Result<bool, TinkererError>{
         let score_path = SCOREBOARD_PATH;
+        let entry = ScoreboardEntry{ name: name, score: score};
 
-        let fileopt = OpenOptions::new()
+        let content = format!(
+            "{{name: {}, score: {}}}\n",
+            serde_yaml::to_string(&entry.name).unwrap().trim(),
+            serde_yaml::to_string(&entry.score).unwrap().trim()
+        );
+
+        let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(score_path);
+            .open(score_path)
+            .map_err(TinkererError::IOError)?;
 
-        if let Ok(mut file) = fileopt{
-            if let Ok(res) = file.write(format!("\n{}, {}", name, score.to_string()).as_bytes()){
-                eprintln!("Writted data: {}", res);
-            }
-            else{
-                println!("Error during writting data");
-            }
-        }
-        else{
-            eprintln!("Failed opening file.")
-        }
+        use std::io::Write;
+        file.write_all(content.as_bytes())
+            .map_err(TinkererError::IOError)?;
+
+        Ok(true)
     }
 
     pub fn read_score(&mut self) -> Result<Vec<ScoreboardEntry>, TinkererError>{
@@ -193,10 +195,24 @@ impl Tinkerer{
         let mut entries = Vec::new();
 
         for (i, line_result) in reader.lines().enumerate() {
-            println!("line: {}", i);
-            let line = line_result.map_err(TinkererError::IOError)?;
-            let entry = ScoreboardEntry::from_line(&line)?;
-            entries.push(entry);
+            match line_result {
+                Ok(content) => {
+                    let entry = serde_yaml::from_str::<ScoreboardEntry>(&content)
+                        .map_err(TinkererError::InvalidFormat);
+
+                    match entry {
+                        Ok(entry) => entries.push(entry),
+                        Err(err) => {
+                            eprintln!("Line {}: Invalid entry - {:?}", i + 1, err);
+                            continue;
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Line {}: Read error - {:?}", i + 1, err);
+                    continue;
+                }
+            }
         }
 
         Ok(entries)
@@ -229,23 +245,7 @@ pub struct ScoreboardEntry{
     pub name: String, 
     pub score: f64
 }
-impl ScoreboardEntry{
-    pub fn from_line(line: &str) -> Result<Self, TinkererError> {
-        let parts: Vec<&str> = line.trim().split(',').collect();
 
-        if parts.len() != 2 {
-            return Err(TinkererError::Unknown("Found only one part on scoreboard entry.".to_string()));
-        }
-
-        let name = parts[0].trim().to_string();
-        let score = parts[1]
-            .trim()
-            .parse::<f64>()
-            .map_err(|_| TinkererError::Unknown(format!("Invalid score in line: {}", line)))?;
-
-        Ok(ScoreboardEntry { name, score })
-    }
-}
 impl Eq for ScoreboardEntry {}
 
 impl PartialOrd for ScoreboardEntry {
@@ -404,7 +404,6 @@ pub enum TinkererError{
     PermissionDenied(String),
     IOError(std::io::Error),
     InvalidFormat(serde_yaml::Error),
-    Unknown(String),
     NoChanges
 }
 
@@ -416,7 +415,6 @@ impl std::fmt::Display for TinkererError {
             TinkererError::IOError(path) => write!(f, "IOError: {}", path),
             TinkererError::InvalidFormat(error) => write!(f, "Invalid format: {}", error),
             TinkererError::NoChanges => write!(f, "Nothing to commit"),
-            TinkererError::Unknown(msg) => write!(f, "Unknown: {}", msg),
         }
     }
 }

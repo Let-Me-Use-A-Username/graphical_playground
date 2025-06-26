@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
 use async_trait::async_trait;
-use macroquad::{color::{BLACK, GRAY, WHITE}, math::Vec2, prelude::ImageFormat, text::{draw_text_ex, load_ttf_font, load_ttf_font_from_bytes, Font, TextParams}, texture::{draw_texture_ex, DrawTextureParams, Image, Texture2D}};
+use macroquad::{color::{BLACK, GRAY, WHITE}, file::set_pc_assets_folder, math::Vec2, prelude::ImageFormat, text::{draw_text_ex, load_ttf_font, load_ttf_font_from_bytes, Font, TextParams}, texture::{draw_texture_ex, DrawTextureParams, Image, Texture2D}};
 
 use crate::{entity_handler::enemy_type::EnemyType, event_system::{event::{Event, EventType}, interface::{Publisher, Subscriber}}, utils::globals::Global};
 
@@ -17,7 +17,10 @@ pub struct UIController{
     score: f64,
 
     boost_charges: i32,
+    player_shield: Texture2D,
+
     ammo: usize,
+    player_bullets: Texture2D,
     
     game_over: bool,
 
@@ -28,14 +31,26 @@ pub struct UIController{
 }
 impl UIController{
     pub async fn new(sender: Sender<Event>) -> UIController {
-        let mut fonts = HashMap::new();
+        set_pc_assets_folder("assets");
         
+        let mut fonts = HashMap::new();
+        //Note: include_bytes router from self. Not from project root.
         if let Ok(font) = load_ttf_font_from_bytes(include_bytes!("../../assets/fonts/arcade.ttf")).await{
             fonts.insert(FontType::ScoreFont, font);
         }
 
         let player_health = Global::get_player_health();
         let mut healths: Vec<Texture2D> = Vec::with_capacity(player_health as usize);
+
+        let player_shield = Image::from_file_with_format(
+            include_bytes!("../../assets/textures/shield.png"), 
+            Some(ImageFormat::Png)
+        ); 
+
+        let player_bullets = Image::from_file_with_format(
+            include_bytes!("../../assets/textures/bullets.png"), 
+            Some(ImageFormat::Png)
+        );
 
         for _ in 0..player_health {
             let image = Image::from_file_with_format(
@@ -54,13 +69,21 @@ impl UIController{
 
         UIController {
             fonts: fonts,
+
             killed: 0,
             score: 0.0,
+
             boost_charges: Global::get_boost_charges() as i32,
+            player_shield: Texture2D::from_image(&player_shield.unwrap()),
+
             ammo: Global::get_bullet_ammo_size(),
+            player_bullets: Texture2D::from_image(&player_bullets.unwrap()),
+
             game_over: false,
+
             player_health: healths,
             is_immune: false,
+
             sender,
         }
     }
@@ -96,13 +119,12 @@ impl UIController{
 
     //Note: `draw_text` and `draw_text_ex` HAS to be after `set_default_camera`
     pub async fn draw(&self){
-        let height = Global::get_screen_height();
         let width = Global::get_screen_width();
         let padding = 40.0;
 
         let scoreboard_label_pos = Vec2::new(width /2.0 - padding * 2.0, 0.0 + padding);
-        let boost_charges_pos = Vec2::new(width - padding * 12.0, height - padding * 3.0);
-        let ammo_pos = Vec2::new(width - padding * 12.0, height - padding * 6.0);
+        let boost_charges_pos = Vec2::new(20.0, 200.0);
+        let ammo_pos = Vec2::new(20.0, 100.0);
 
         self.draw_scoreboard(scoreboard_label_pos, padding).await;
         self.draw_boost_charges(boost_charges_pos).await;
@@ -151,10 +173,21 @@ impl UIController{
             color: BLACK,
         };
 
-        draw_text_ex(
-            &format!("Ammo: {}", message),
+        draw_texture_ex(
+            &self.player_bullets,
             ammo_pos.x,
             ammo_pos.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(64.0, 64.0)),
+                ..Default::default()
+            },
+        );
+
+        draw_text_ex(
+            &format!(": {}", message),
+            ammo_pos.x + 55.0,
+            ammo_pos.y + 45.0,
             charges_params,
         );
     }
@@ -174,10 +207,21 @@ impl UIController{
             color: BLACK,
         };
 
-        draw_text_ex(
-            &format!("Charges: {}", self.boost_charges),
+        draw_texture_ex(
+            &self.player_shield,
             boost_charges_pos.x,
             boost_charges_pos.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(64.0, 64.0)),
+                ..Default::default()
+            },
+        );
+
+        draw_text_ex(
+            &format!(": {}", self.boost_charges),
+            boost_charges_pos.x + 65.0,
+            boost_charges_pos.y + 45.0,
             charges_params,
         );
     }
@@ -244,7 +288,6 @@ impl Subscriber for UIController {
                         let new_data = data.to_owned();
                         let kills = new_data.0;
                         let points = self.get_new_points(new_data.1);
-
                         //Append new kills
                         self.killed += kills;
                         self.score += points;

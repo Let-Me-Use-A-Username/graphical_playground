@@ -68,7 +68,8 @@ pub struct GameManager{
 
     last_draw_call: Option<Vec<(i32, DrawCall)>>,
     is_paused: bool,
-    player_name: String
+    player_name: String,
+    player_score: f64
 }
 
 impl GameManager{
@@ -240,7 +241,8 @@ impl GameManager{
 
             last_draw_call: None,
             is_paused: false,
-            player_name: "DEFAULT".to_string()
+            player_name: "DEFAULT".to_string(),
+            player_score: 0.0
         }
     }
 
@@ -279,7 +281,7 @@ impl GameManager{
                 }
                 
                 let name: String = self.player_name.clone();
-                let points = self.uicontroller.lock().unwrap().get_points();
+                let points = self.player_score;
 
                 self.update_game_over_menu(name.clone(), points).await;
 
@@ -558,7 +560,10 @@ impl GameManager{
                         let name: String = self.player_name.clone();
                         let points = controller.get_points();
                         
-                        self.tinkerer.write_score(name, points);
+                        let res = self.tinkerer.write_score(name, points);
+                        println!("Write results: {:?}", res);
+
+                        self.player_score = points;
                     }
                 }
             }
@@ -650,73 +655,73 @@ impl GameManager{
         next_frame().await;
     }
 
-        async fn update_game_over_menu(&mut self, name: String, score: f64){
-            clear_background(WHITE);
+    async fn update_game_over_menu(&mut self, name: String, score: f64){
+        clear_background(WHITE);
 
-            let width = Global::get_screen_width();
-            let height = Global::get_screen_height();
+        let width = Global::get_screen_width();
+        let height = Global::get_screen_height();
 
-            let hwidth = width / 2.0;
-            let hheight = height / 2.0;
+        let hwidth = width / 2.0;
+        let hheight = height / 2.0;
 
-            let mut scores = {
-                match self.tinkerer.read_score(){
-                    Ok(vec) => {
-                        vec
-                    },
-                    Err(err) => {
-                        eprintln!("{:?}", err);
+        let mut scores = {
+            match self.tinkerer.read_score(){
+                Ok(vec) => {
+                    vec
+                },
+                Err(err) => {
+                    eprintln!("{:?}", err);
 
-                        let entry = ScoreboardEntry{
-                            name: "MASTER".to_string(),
-                            score: 1000000.0,
-                        };
-                        
-                        vec![entry]
-                    },
+                    let entry = ScoreboardEntry{
+                        name: "MASTER".to_string(),
+                        score: 1000000.0,
+                    };
+                    
+                    vec![entry]
+                },
+            }
+        };
+
+        let amount = if scores.len() > 7 {7} else {scores.len()};
+
+        scores.sort();
+        let top: Vec<ScoreboardEntry> = scores.drain(..amount).collect();
+
+        let mut msg: Vec<String> = top.iter()
+            .map(|entry| format!("{} : {}", entry.name, entry.score))
+            .collect();
+        
+        msg.push("".to_string());
+        msg.push("Current run:".to_string());
+        msg.push(format!("{} : {}", name, score));
+        
+        widgets::Window::new(
+            hash!(),
+            vec2(0.0, 0.0),
+            vec2(width, height)
+        )
+            .label("Game over")
+            .titlebar(true)
+            .ui(&mut *root_ui(), |ui| {
+                ui.separator();
+
+                ui.label(None, "Highscores");
+                for line in &msg {
+                    ui.label(None, line);
                 }
-            };
 
-            let amount = if scores.len() > 7 {7} else {scores.len()};
+                if ui.button(vec2(hwidth - 150.0, hheight - 150.0),  "Main Menu") {
+                    self.state = GameState::GameOver;
+                }
 
-            scores.sort();
-            let top: Vec<ScoreboardEntry> = scores.drain(..amount).collect();
+                ui.separator();
 
-            let mut msg: Vec<String> = top.iter()
-                .map(|entry| format!("{} : {}", entry.name, entry.score))
-                .collect();
-            
-            msg.push("".to_string());
-            msg.push("Current run:".to_string());
-            msg.push(format!("{} : {}", name, score));
-            
-            widgets::Window::new(
-                hash!(),
-                vec2(0.0, 0.0),
-                vec2(width, height)
-            )
-                .label("Game over")
-                .titlebar(true)
-                .ui(&mut *root_ui(), |ui| {
-                    ui.separator();
+                if ui.button(vec2(hwidth - 75.0, hheight), "Exit") {
+                    self.state = GameState::Quit
+                }
+            });
 
-                    ui.label(None, "Highscores");
-                    for line in &msg {
-                        ui.label(None, line);
-                    }
-
-                    if ui.button(vec2(hwidth - 150.0, hheight - 150.0),  "Main Menu") {
-                        self.state = GameState::GameOver;
-                    }
-
-                    ui.separator();
-
-                    if ui.button(vec2(hwidth - 75.0, hheight), "Exit") {
-                        self.state = GameState::Quit
-                    }
-                });
-
-            next_frame().await;
+        next_frame().await;
     }
 
     async fn new_game(&mut self){

@@ -18,3 +18,11 @@ The game is only playable by using keyboard and mouse, and at the moment, contro
 - <strong>Right Mouse button</strong>: Shield yourself. 
 <br>
 <br>
+
+# Installation 
+To build the game, use: 
+```
+    git clone https://github.com/Let-Me-Use-A-Username/graphical_playground.git
+    cargo build --release
+    cargo run --release
+```
