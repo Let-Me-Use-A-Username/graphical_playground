@@ -9,6 +9,9 @@
 
 ==============================================
 ================== General todo ==============
+- Create Linux version
+    - Input handler
+        - Player only, game manager will probably wokr
 
 -Tested the game.
     - Enemies:
@@ -20,13 +23,8 @@
 
 - Bullets can travel outside of grid space. *What happens to them?*
 
-- When player close to wall, enemies can spawn on wall. *Keep(?)*
-
 - In release version, *player movement feels different*. Test it
 
-- Add game icon 
-
-- Create Linux version
 
 ==============================================
 ================== Testing ===================
@@ -38,11 +36,14 @@
             - Partially fixed by applying stronger deceleration in drifting when not throttling 
 
 - Test in Player movement
+    - Test general feel of movement
     - Forwards and backwards directions maintain acceleration. Switching from W/D provides no deceleration
             - *UNSURE whether I want to keep this*
             - *Player Test ???*
 
 - Test Tinker ranges on variables.
+
+- When player close to wall, enemies can spawn on wall. *Keep(?)*
  
 ==============================================
 ================== Implementation ideas ======

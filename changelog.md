@@ -1,5 +1,9 @@
 # Changelog
 
+### 0.2.66 Changes 27/6/2025
+- v.0.2.66 Added *game Icon*.
+
+
 ### 0.2.66 Changes 26/6/2025
 - v.0.2.66 Fixed bug when *writing - displaying current run score*.
 - v.0.2.66 Added *bullet texture* in UIcontroller.

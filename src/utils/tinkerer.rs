@@ -1,5 +1,5 @@
 use std::{error::Error, fs::{self, OpenOptions}, io::{BufRead, BufReader}, path::Path};
-use macroquad::{miniquad::conf::{Icon, Platform}, window::Conf};
+use macroquad::{miniquad::conf::{Icon, Platform}, prelude::ImageFormat, texture::Image, window::Conf};
 use serde::{Deserialize, Serialize};
 use serde_yaml;
 
@@ -293,7 +293,30 @@ impl WindowConf{
         }
     }
 
-    pub fn into_conf(&self, icon: Option<Icon>, platform: Platform) -> Conf{
+    pub fn into_conf(&self, platform: Platform) -> Conf{
+
+        let small_image = Image::from_file_with_format(
+            include_bytes!("../../assets/icon/icon16.png"), 
+            Some(ImageFormat::Png)
+        ).unwrap();
+
+        let medium_image = Image::from_file_with_format(
+            include_bytes!("../../assets/icon/icon32.png"), 
+            Some(ImageFormat::Png)
+        ).unwrap();
+
+
+        let large_image = Image::from_file_with_format(
+            include_bytes!("../../assets/icon/icon64.png"), 
+            Some(ImageFormat::Png)
+        ).unwrap();
+
+        let icon = Icon{
+            small: small_image.bytes.try_into().unwrap(),
+            medium: medium_image.bytes.try_into().unwrap(),
+            big: large_image.bytes.try_into().unwrap(),
+        };
+        
         return Conf { 
             window_title: self.window_title.clone(), 
             window_width: self.window_width, 
@@ -302,8 +325,9 @@ impl WindowConf{
             fullscreen: self.fullscreen, 
             sample_count: self.sample_count, 
             window_resizable: self.window_resizable, 
-            icon: icon, 
-            platform: platform }
+            icon: Some(icon), 
+            platform: platform 
+        }
     }
 }
 

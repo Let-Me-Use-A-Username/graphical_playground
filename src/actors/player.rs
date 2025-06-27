@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::mpsc::Sender;
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::{artist::DrawCall, metal::ConfigType}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}, tinkerer::VariablesSettings}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, input_handler::handler::Handler, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::{artist::DrawCall, metal::ConfigType}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}, tinkerer::VariablesSettings}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 
@@ -108,6 +108,8 @@ impl Player{
 
         player.publish(Event::new((player.get_id(), player.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
         player.publish(Event::new((Global::get_bullet_ammo_size(), ProjectileType::Player), EventType::RequestBlankCollection)).await;
+
+        Handler::new();
 
         return player
     }
@@ -372,6 +374,8 @@ impl Player{
 impl Updatable for Player{
     async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {        
         let now = get_time();
+
+        Handler::update();
 
         if self.emitted_grayscale{
             //If immune timer expired, remove grayscale

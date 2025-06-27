@@ -9,6 +9,7 @@ mod collision_system;
 mod objects;
 mod renderer;
 mod ui;
+mod input_handler;
 
 use std::{env, process::{exit, Command}};
 use macroquad::{miniquad::conf::Platform, prelude::*};
@@ -33,13 +34,12 @@ pub fn window_conf() -> Conf{
         },
     }
 
-    let icon = None;
     let mut platform = Platform::default();
 
     //platform.swap_interval = Some(0);
     platform.blocking_event_loop = false;
 
-    let conf = windowconf.into_conf(icon, platform);
+    let conf = windowconf.into_conf(platform);
 
     return conf
 }
