@@ -51,6 +51,7 @@ pub enum EventType{
     AlterBoostCharges,
     AlterAmmo,
     AlterPlayerHealth,
+    AlterShieldCharges,
     GrayscalePlayersHealth,
 }
 

@@ -212,6 +212,7 @@ impl GameManager{
         dispatcher.register_listener(EventType::GameOver, uicontroller.clone());
         dispatcher.register_listener(EventType::AlterPlayerHealth, uicontroller.clone());
         dispatcher.register_listener(EventType::GrayscalePlayersHealth, uicontroller.clone());
+        dispatcher.register_listener(EventType::AlterShieldCharges, uicontroller.clone());
 
         return GameManager { 
             state: GameState::MainMenu,

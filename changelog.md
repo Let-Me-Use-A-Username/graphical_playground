@@ -2,6 +2,8 @@
 
 ### 0.2.66 Changes 27/6/2025
 - v.0.2.66 Added *game Icon*.
+- v.0.2.66 **IMPORTANT**: Dropped the idea of Input handling since core linux distros should be ok
+- v.0.2.66 Added *shield UI*.
 
 
 ### 0.2.66 Changes 26/6/2025

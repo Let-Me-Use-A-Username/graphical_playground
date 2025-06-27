@@ -1,7 +1,8 @@
-use macroquad::input::{get_last_key_pressed, is_key_down, KeyCode};
+use macroquad::input::{get_last_key_pressed, KeyCode};
 
 
 
+#[allow(dead_code)]
 pub struct Handler{
     forwards: KeyCode,
     backwards: KeyCode,
@@ -10,6 +11,7 @@ pub struct Handler{
     boost: KeyCode,
     drift: KeyCode
 }
+#[allow(dead_code)]
 impl Handler{
     pub fn new(){
         if cfg!(target_os = "windows") {
@@ -36,32 +38,32 @@ impl Handler{
     }
 
     pub fn update(){
-        // if is_key_down(KeyCode::A){
-        //     println!("Left")
-        // }
-        // if is_key_down(KeyCode::D){
-        //     println!("Right")
-        // }
-        // if is_key_down(KeyCode::W){
-        //     println!("Forwards")
-        // }
-        // if is_key_down(KeyCode::S){
-        //     println!("Backwards")
-        // }
-        // if is_key_down(KeyCode::LeftShift){
-        //     println!("Left Shift")
-        // }
-        // if is_key_down(KeyCode::Space){
-        //     println!("Space")
-        // }
-        // if is_key_down(KeyCode::Escape){
-        //     println!("Escape")
-        // }
-        // if is_key_down(KeyCode::Enter){
-        //     println!("Enter")
-        // }
         if let Some(key) = get_last_key_pressed(){
             match key{
+                KeyCode::A =>{
+                    println!("A");
+                },
+                KeyCode::D =>{
+                    println!("D");
+                },
+                KeyCode::W =>{
+                    println!("W");
+                },
+                KeyCode::S =>{
+                    println!("S");
+                },
+                KeyCode::Space =>{
+                    println!("Space");
+                },
+                KeyCode::LeftShift =>{
+                    println!("LeftShift");
+                },
+                KeyCode::Enter =>{
+                    println!("Enter");
+                },
+                KeyCode::Escape =>{
+                    println!("Espace");
+                },
                 _ => println!("Other key: {:?}", key),
             }
         }

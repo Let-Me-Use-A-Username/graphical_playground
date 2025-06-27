@@ -5,7 +5,7 @@ use macroquad::color::Color;
 
 use std::sync::mpsc::Sender;
 
-use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, input_handler::handler::Handler, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::{artist::DrawCall, metal::ConfigType}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}, tinkerer::VariablesSettings}};
+use crate::{audio_system::audio_handler::{SoundRequest, SoundType}, collision_system::collider::{Collider, RectCollider}, event_system::{event::{Event, EventType}, interface::{GameEntity, Playable, Projectile, Updatable}}, objects::{bullet::{Bullet, ProjectileType}, shield::Shield}, renderer::{artist::DrawCall, metal::ConfigType}, utils::{counter::RechargebleCounter, globals::Global, machine::{StateMachine, StateType}, timer::{SimpleTimer, Timer}, tinkerer::VariablesSettings}};
 use crate::event_system::interface::{Publisher, Subscriber, Object, Moveable, Drawable};
 
 
@@ -70,7 +70,7 @@ impl Player{
             
             shield: Shield::new(Vec2::new(x, y), (size * 3.0) as usize, BLUE),
             shield_counter: RechargebleCounter::new(
-                10, 
+                Global::get_shield_charges(), 
                 1, 
                 true, 
                 Some(2.0)),
@@ -108,8 +108,6 @@ impl Player{
 
         player.publish(Event::new((player.get_id(), player.emittion_configs.clone()), EventType::RegisterEmitterConf)).await;
         player.publish(Event::new((Global::get_bullet_ammo_size(), ProjectileType::Player), EventType::RequestBlankCollection)).await;
-
-        Handler::new();
 
         return player
     }
@@ -375,8 +373,7 @@ impl Updatable for Player{
     async fn update(&mut self, delta: f32, _params: Vec<Box<dyn std::any::Any + Send>>) {        
         let now = get_time();
 
-        Handler::update();
-
+        //UI health call
         if self.emitted_grayscale{
             //If immune timer expired, remove grayscale
             if self.immune_timer.on_cooldown(now).is_some_and(|opt| opt){
@@ -409,17 +406,22 @@ impl Updatable for Player{
             }
         };
 
-        //Update collider with slight offset, in respect to the drawn rect
+        //Update collider
         self.collider.update(self.pos);
         self.collider.set_rotation(self.rotation);
     
-        let _ = self.shield_counter.update();
+        let shield_recharges = self.shield_counter.update();
         let boost_recharges = self.boost_counter.update();
 
-        //Update UI
+        //UI shield call
+        if shield_recharges{
+            self.publish(Event::new(1, EventType::AlterShieldCharges)).await;
+        }
+        //UI boost call
         if boost_recharges{
             self.publish(Event::new(1, EventType::AlterBoostCharges)).await
         }
+
         self.shield.update(delta, vec!(Box::new(self.get_pos()), Box::new(shield_color))).await;
 
         let current_state = self.machine.get_state().lock().unwrap().clone();
@@ -769,6 +771,7 @@ impl Subscriber for Player {
             // Emit Sound
             let sound_request = SoundRequest::new(true, false, 0.1);
             self.publish(Event::new((SoundType::ShieldHit ,sound_request), EventType::PlaySound)).await;
+            self.publish(Event::new(-1, EventType::AlterShieldCharges)).await;
         }
 
         if enemy_hit{

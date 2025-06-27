@@ -68,6 +68,10 @@ impl Global{
         return 5
     }
 
+    pub fn get_shield_charges() -> u32{
+        return 10
+    }
+
     pub fn get_bullet_ammo_size() ->  usize{
         return 128
     }

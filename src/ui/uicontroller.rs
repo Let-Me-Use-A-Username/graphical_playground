@@ -17,6 +17,8 @@ pub struct UIController{
     score: f64,
 
     boost_charges: i32,
+    player_boost: Texture2D,
+    shield_charges: i32,
     player_shield: Texture2D,
 
     ammo: usize,
@@ -42,10 +44,15 @@ impl UIController{
         let player_health = Global::get_player_health();
         let mut healths: Vec<Texture2D> = Vec::with_capacity(player_health as usize);
 
+        let player_boost = Image::from_file_with_format(
+            include_bytes!("../../assets/textures/boost.png"), 
+            Some(ImageFormat::Png)
+        ); 
+
         let player_shield = Image::from_file_with_format(
             include_bytes!("../../assets/textures/shield.png"), 
             Some(ImageFormat::Png)
-        ); 
+        );
 
         let player_bullets = Image::from_file_with_format(
             include_bytes!("../../assets/textures/bullets.png"), 
@@ -74,6 +81,8 @@ impl UIController{
             score: 0.0,
 
             boost_charges: Global::get_boost_charges() as i32,
+            player_boost: Texture2D::from_image(&player_boost.unwrap()),
+            shield_charges: Global::get_shield_charges() as i32,
             player_shield: Texture2D::from_image(&player_shield.unwrap()),
 
             ammo: Global::get_bullet_ammo_size(),
@@ -123,13 +132,15 @@ impl UIController{
         let padding = 40.0;
 
         let scoreboard_label_pos = Vec2::new(width /2.0 - padding * 2.0, 0.0 + padding);
-        let boost_charges_pos = Vec2::new(20.0, 200.0);
         let ammo_pos = Vec2::new(20.0, 100.0);
+        let boost_charges_pos = Vec2::new(20.0, 200.0);
+        let shield_pos = Vec2::new(20.0, 300.0);
 
         self.draw_scoreboard(scoreboard_label_pos, padding).await;
         self.draw_boost_charges(boost_charges_pos).await;
         self.draw_ammo(ammo_pos).await;
         self.draw_player_health().await;
+        self.draw_shield(shield_pos).await;
     }
 
     async fn draw_player_health(&self){
@@ -208,7 +219,7 @@ impl UIController{
         };
 
         draw_texture_ex(
-            &self.player_shield,
+            &self.player_boost,
             boost_charges_pos.x,
             boost_charges_pos.y,
             WHITE,
@@ -224,6 +235,40 @@ impl UIController{
             boost_charges_pos.y + 45.0,
             charges_params,
         );
+    }
+
+        async fn draw_shield(&self, shield_pos: Vec2){
+            let custom_font = load_ttf_font("assets/font.ttf").await.unwrap_or_else(|_| {
+                // Fallback to default font if loading fails
+                Font::default()
+            });
+
+            let charges_params = TextParams {
+                font: Some(&custom_font),
+                font_size: 48,
+                font_scale: 1.0,
+                font_scale_aspect: 1.0,
+                rotation: 0.0,
+                color: BLACK,
+            };
+
+            draw_texture_ex(
+                &self.player_shield,
+                shield_pos.x,
+                shield_pos.y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(64.0, 64.0)),
+                    ..Default::default()
+                },
+            );
+
+            draw_text_ex(
+                &format!(": {}", self.shield_charges),
+                shield_pos.x + 65.0,
+                shield_pos.y + 45.0,
+                charges_params,
+            );
     }
 
     async fn draw_scoreboard(&self, scoreboard_label_pos: Vec2, padding: f32){
@@ -329,19 +374,32 @@ impl Subscriber for UIController {
                     }
                 } 
             },
-            EventType::GameOver => {
-                if let Ok(request) = event.data.lock(){
-                    if let Some(_) = request.downcast_ref::<i32>(){
-                        self.game_over = true;
-                    }
-                } 
-            },
             EventType::AlterPlayerHealth => {
                 if let Ok(request) = event.data.lock(){
                     if let Some(counter) = request.downcast_ref::<i32>(){
                         for _ in 0..*counter as usize{
                             self.player_health.pop();
                         }
+                    }
+                } 
+            },
+            EventType::AlterShieldCharges => {
+                if let Ok(request) = event.data.lock(){
+                    if let Some(data) = request.downcast_ref::<i32>(){
+                        let new_data = data.to_owned();
+
+                        let new_counter = self.shield_charges + new_data;
+
+                        if new_counter <= Global::get_shield_charges() as i32{
+                            self.shield_charges = new_counter;
+                        }
+                    }
+                } 
+            },
+            EventType::GameOver => {
+                if let Ok(request) = event.data.lock(){
+                    if let Some(_) = request.downcast_ref::<i32>(){
+                        self.game_over = true;
                     }
                 } 
             },
